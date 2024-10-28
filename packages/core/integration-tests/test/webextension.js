@@ -76,21 +76,17 @@ describe('webextension', function () {
         assets: ['manifest.json'],
       },
       {
-        assets: ['index.ts', 'esmodule-helpers.js'],
+        assets: ['index.ts'],
       },
       {
-        assets: ['other.ts', 'esmodule-helpers.js'],
+        assets: ['other.ts'],
       },
       {
-        assets: [
-          'esmodule-helpers.js',
-          'index-jsx.jsx',
-          'index.js',
-          'index.js',
-          'react.development.js',
-        ],
+        assets: ['index-jsx.jsx'],
       },
-      {assets: ['single.js', 'esmodule-helpers.js']},
+      {
+        assets: ['single.js'],
+      },
     ]);
     const manifest = JSON.parse(
       await outputFS.readFile(
