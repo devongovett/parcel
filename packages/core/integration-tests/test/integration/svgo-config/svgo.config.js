@@ -1,10 +1,12 @@
-const { extendDefaultPlugins } = require('svgo');
-
 module.exports = {
-  plugins: extendDefaultPlugins([
+  plugins: [
     {
-      name: 'removeComments',
-      active: false
+      name: 'preset-default',
+      params: {
+        overrides: {
+          removeComments: false
+        }
+      }
     }
-  ])
+  ]
 }

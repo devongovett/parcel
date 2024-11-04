@@ -1,8 +1,7 @@
 const path = require('path')
 
 module.exports = {
-    includePaths: [
+    loadPaths: [
         path.join(__dirname, "include-path")
-    ],
-    silenceDeprecations: ['legacy-js-api']
+    ]
 }
