@@ -9,6 +9,7 @@ import {
 } from '@parcel/test-utils';
 import path from 'path';
 import Logger from '@parcel/logger';
+import {md} from '@parcel/diagnostic';
 
 describe('svg', function () {
   it('should support bundling SVG', async () => {
@@ -171,7 +172,7 @@ describe('svg', function () {
       // autoinstall is disabled
       assert.equal(
         err.diagnostics[0].message,
-        `Could not resolve module "svgo" from "${path.resolve(
+        md`Could not resolve module "svgo" from "${path.resolve(
           overlayFS.cwd(),
           '/svgo-version/index',
         )}"`,
