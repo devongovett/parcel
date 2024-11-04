@@ -1,3 +1,4 @@
 module.exports = {
-  data: "$color: red;"
+  data: "$color: red;",
+  silenceDeprecations: ['legacy-js-api']
 }
