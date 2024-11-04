@@ -649,6 +649,12 @@ impl<'a> Macros<'a> {
           Err(opt.span)
         }
       }
+      Expr::TsAs(TsAsExpr { expr, .. })
+      | Expr::TsNonNull(TsNonNullExpr { expr, .. })
+      | Expr::TsSatisfies(TsSatisfiesExpr { expr, .. })
+      | Expr::TsTypeAssertion(TsTypeAssertion { expr, .. })
+      | Expr::TsInstantiation(TsInstantiation { expr, .. })
+      | Expr::TsConstAssertion(TsConstAssertion { expr, .. }) => self.eval(expr),
       Expr::Fn(FnExpr { function, .. }) => Err(function.span),
       Expr::Class(ClassExpr { class, .. }) => Err(class.span),
       Expr::JSXElement(el) => Err(el.span),
@@ -663,7 +669,9 @@ impl<'a> Macros<'a> {
       | Expr::Yield(YieldExpr { span, .. })
       | Expr::Await(AwaitExpr { span, .. })
       | Expr::JSXFragment(JSXFragment { span, .. })
-      | Expr::PrivateName(PrivateName { span, .. }) => Err(*span),
+      | Expr::PrivateName(PrivateName { span, .. })
+      | Expr::SuperProp(SuperPropExpr { span, .. })
+      | Expr::MetaProp(MetaPropExpr { span, .. }) => Err(*span),
       _ => Err(DUMMY_SP),
     }
   }
