@@ -31,7 +31,7 @@
     "@parcel/fs": "2.12.0",
     "@parcel/package-manager": "2.12.0",
     "comlink": "^4.3.1",
-    "filesize": "^6.3.0",
+    "filesize": "^10.1.6",
     "idb": "^5.0.8",
     "isomorphic-fetch": "^3.0.0",
     "jszip": "^3.7.1",
@@ -45,6 +45,6 @@
   "browserslist": "Chrome 75",
   "devDependencies": {
     "eslint-config-react-app": "^7.0.1",
-    "sharp": "^0.31.1"
+    "sharp": "^0.33.5"
   }
 }

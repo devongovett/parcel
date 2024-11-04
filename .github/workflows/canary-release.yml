@@ -4,9 +4,8 @@
 name: canary-release
 
 on:
-  push:
-    branches:
-      - v2
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:

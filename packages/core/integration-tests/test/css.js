@@ -549,7 +549,9 @@ describe('css', () => {
       path.join(__dirname, '/integration/css-nesting/a.css'),
       {
         defaultTargetOptions: {
-          engines: {},
+          engines: {
+            browsers: 'chrome 80',
+          },
         },
       },
     );

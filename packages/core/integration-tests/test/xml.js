@@ -139,7 +139,7 @@ describe('xml', function () {
       contents.includes(
         `&lt;img src="http://example.org/${path.basename(
           b.getBundles().find(b => b.type === 'png').filePath,
-        )}">`,
+        )}"&gt;`,
       ),
     );
     assert(contents.includes(`<link>http://example.org/post.html</link>`));

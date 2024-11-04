@@ -97,7 +97,7 @@ impl VisitMut for GlobalReplacer<'_> {
         if self.update_binding(id, |_| {
           Member(MemberExpr {
             obj: Box::new(Call(create_require(specifier.clone(), unresolved_mark))),
-            prop: MemberProp::Ident(ast::Ident::new("Buffer".into(), DUMMY_SP)),
+            prop: MemberProp::Ident(ast::IdentName::new("Buffer".into(), DUMMY_SP)),
             span: DUMMY_SP,
           })
         }) {
@@ -149,7 +149,10 @@ impl VisitMut for GlobalReplacer<'_> {
         if !self.scope_hoist {
           self.update_binding(id, |_| {
             Member(MemberExpr {
-              obj: Box::new(Ident(ast::Ident::new(js_word!("arguments"), DUMMY_SP))),
+              obj: Box::new(Ident(ast::Ident::new_no_ctxt(
+                js_word!("arguments"),
+                DUMMY_SP,
+              ))),
               prop: MemberProp::Computed(ComputedPropName {
                 span: DUMMY_SP,
                 expr: Box::new(Lit(ast::Lit::Num(3.into()))),
@@ -181,13 +184,13 @@ impl GlobalReplacer<'_> {
     F: FnOnce(&Self) -> Expr,
   {
     if let Some((syntax_context, _)) = self.globals.get(&id.sym) {
-      id.span.ctxt = *syntax_context;
+      id.ctxt = *syntax_context;
       false
     } else {
       let (decl, syntax_context) =
         create_global_decl_stmt(id.sym.clone(), expr(self), self.global_mark);
 
-      id.span.ctxt = syntax_context;
+      id.ctxt = syntax_context;
 
       self.globals.insert(id.sym.clone(), (syntax_context, decl));
 

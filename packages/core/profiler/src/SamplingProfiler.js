@@ -68,7 +68,7 @@ export default class SamplingProfiler {
 
   sendCommand(
     method: string,
-    params?: mixed,
+    params?: {...},
   ): Promise<{profile: Profile, ...}> {
     invariant(this.session != null);
     return new Promise((resolve, reject) => {

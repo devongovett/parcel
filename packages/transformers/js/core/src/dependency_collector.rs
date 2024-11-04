@@ -8,11 +8,9 @@ use std::{
 use path_slash::PathBufExt;
 use serde::{Deserialize, Serialize};
 use swc_core::{
-  common::{sync::Lrc, Mark, SourceMap, Span, DUMMY_SP},
+  common::{sync::Lrc, Mark, SourceMap, Span, SyntaxContext, DUMMY_SP},
   ecma::{
-    ast::{
-      Callee, MemberProp, {self},
-    },
+    ast::{self, Callee, IdentName, MemberProp},
     atoms::{js_word, JsWord},
     utils::stack_size::maybe_grow_default,
     visit::{Fold, FoldWith},
@@ -265,7 +263,7 @@ impl<'a> DependencyCollector<'a> {
     // For scripts, we replace with __parcel__require__, which is later replaced
     // by a real parcelRequire of the resolved asset in the packager.
     if self.config.source_type == SourceType::Script {
-      res.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
+      res.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new_no_ctxt(
         "__parcel__require__".into(),
         DUMMY_SP,
       ))));
@@ -418,7 +416,7 @@ impl<'a> Fold for DependencyCollector<'a> {
   }
 
   fn fold_call_expr(&mut self, node: ast::CallExpr) -> ast::CallExpr {
-    use ast::{Expr::*, Ident};
+    use ast::Expr::*;
 
     let kind = match &node.callee {
       Callee::Import(_) => DependencyKind::DynamicImport,
@@ -495,7 +493,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "require".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -503,7 +502,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "import".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -511,7 +511,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "importScripts".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -576,8 +577,7 @@ impl<'a> Fold for DependencyCollector<'a> {
                             match &*arg.expr {
                               Fn(_) | Arrow(_) => {
                                 self.in_promise = true;
-                                let node =
-                                  swc_core::ecma::visit::fold_call_expr(self, node.clone());
+                                let node = node.clone().fold_children_with(self);
                                 self.in_promise = was_in_promise;
 
                                 // Transform Promise.resolve().then(() => __importStar(require('foo')))
@@ -624,7 +624,7 @@ impl<'a> Fold for DependencyCollector<'a> {
             };
 
             let k = match &kv.key {
-              ast::PropName::Ident(Ident { sym, .. })
+              ast::PropName::Ident(IdentName { sym, .. })
               | ast::PropName::Str(ast::Str { value: sym, .. }) => sym.clone(),
               _ => continue,
             };
@@ -740,7 +740,7 @@ impl<'a> Fold for DependencyCollector<'a> {
           SourceType::Module => "require",
           SourceType::Script => "__parcel__require__",
         };
-        call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
+        call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new_no_ctxt(
           name.into(),
           DUMMY_SP,
         ))));
@@ -906,7 +906,8 @@ impl<'a> Fold for DependencyCollector<'a> {
       if !self.config.is_library && !self.config.standalone {
         return Expr::New(NewExpr {
           span: DUMMY_SP,
-          callee: Box::new(Expr::Ident(Ident::new(js_word!("URL"), DUMMY_SP))),
+          callee: Box::new(Expr::Ident(Ident::new_no_ctxt(js_word!("URL"), DUMMY_SP))),
+          ctxt: SyntaxContext::empty(),
           args: Some(vec![ExprOrSpread {
             expr: Box::new(url),
             spread: None,
@@ -1042,7 +1043,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
           f.function.params.insert(
             0,
             ast::Param {
-              pat: ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new(
+              pat: ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new_no_ctxt(
                 "res".into(),
                 DUMMY_SP,
               ))),
@@ -1056,7 +1057,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
           let mut f = f.clone();
           f.params.insert(
             0,
-            ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new(
+            ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new_no_ctxt(
               "res".into(),
               DUMMY_SP,
             ))),
@@ -1081,6 +1082,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
                       span: DUMMY_SP,
                       arg: Some(Box::new(ast::Expr::Call(require_node.clone()))),
                     })],
+                    ctxt: SyntaxContext::empty(),
                   }),
                   params: vec![],
                   decorators: vec![],
@@ -1089,20 +1091,23 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
                   return_type: None,
                   type_params: None,
                   span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
                 }),
               })),
               spread: None,
             }],
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             type_args: None,
           }))),
-          prop: MemberProp::Ident(ast::Ident::new("then".into(), DUMMY_SP)),
+          prop: MemberProp::Ident(ast::IdentName::new("then".into(), DUMMY_SP)),
         }))),
         args: vec![ast::ExprOrSpread {
           expr: Box::new(f),
           spread: None,
         }],
         span: DUMMY_SP,
+        ctxt: SyntaxContext::empty(),
         type_args: None,
       };
     }
@@ -1121,7 +1126,7 @@ fn create_url_constructor(url: ast::Expr, use_import_meta: bool) -> ast::Expr {
         kind: MetaPropKind::ImportMeta,
         span: DUMMY_SP,
       })),
-      prop: MemberProp::Ident(Ident::new(js_word!("url"), DUMMY_SP)),
+      prop: MemberProp::Ident(IdentName::new(js_word!("url"), DUMMY_SP)),
     })
   } else {
     // CJS output: "file:" + __filename
@@ -1129,13 +1134,17 @@ fn create_url_constructor(url: ast::Expr, use_import_meta: bool) -> ast::Expr {
       span: DUMMY_SP,
       left: Box::new(Expr::Lit(Lit::Str("file:".into()))),
       op: BinaryOp::Add,
-      right: Box::new(Expr::Ident(Ident::new("__filename".into(), DUMMY_SP))),
+      right: Box::new(Expr::Ident(Ident::new_no_ctxt(
+        "__filename".into(),
+        DUMMY_SP,
+      ))),
     })
   };
 
   Expr::New(NewExpr {
     span: DUMMY_SP,
-    callee: Box::new(Expr::Ident(Ident::new(js_word!("URL"), DUMMY_SP))),
+    ctxt: SyntaxContext::empty(),
+    callee: Box::new(Expr::Ident(Ident::new_no_ctxt(js_word!("URL"), DUMMY_SP))),
     args: Some(vec![
       ExprOrSpread {
         expr: Box::new(url),
@@ -1167,7 +1176,7 @@ impl Fold for PromiseTransformer {
       }
     }
 
-    swc_core::ecma::visit::fold_return_stmt(self, node)
+    node.fold_children_with(self)
   }
 
   fn fold_arrow_expr(&mut self, node: ast::ArrowExpr) -> ast::ArrowExpr {
@@ -1181,18 +1190,18 @@ impl Fold for PromiseTransformer {
       }
     }
 
-    swc_core::ecma::visit::fold_arrow_expr(self, node)
+    node.fold_children_with(self)
   }
 
   fn fold_expr(&mut self, node: ast::Expr) -> ast::Expr {
-    let node = swc_core::ecma::visit::fold_expr(self, node);
+    let node = node.fold_children_with(self);
 
     // Replace the original require node with a reference to a variable `res`,
     // which will be added as a parameter to the parent function.
     if let ast::Expr::Call(call) = &node {
       if let Some(require_node) = &self.require_node {
         if require_node == call {
-          return ast::Expr::Ident(ast::Ident::new("res".into(), DUMMY_SP));
+          return ast::Expr::Ident(ast::Ident::new_no_ctxt("res".into(), DUMMY_SP));
         }
       }
     }
@@ -1341,9 +1350,9 @@ impl<'a> DependencyCollector<'a> {
     } else {
       // Declares a variable at the top of the module:
       // var import_meta = Object.assign(Object.create(null), {url: 'file:///src/foo.js'});
-      let ident = Ident::new(
+      let ident = Ident::new_private(
         format!("${}$import_meta", self.config.module_id).into(),
-        DUMMY_SP.apply_mark(Mark::fresh(Mark::root())),
+        DUMMY_SP,
       );
       self.import_meta = Some(VarDecl {
         kind: VarDeclKind::Var,
@@ -1353,16 +1362,22 @@ impl<'a> DependencyCollector<'a> {
           name: Pat::Ident(BindingIdent::from(ident.clone())),
           init: Some(Box::new(Expr::Call(CallExpr {
             callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-              obj: Box::new(Expr::Ident(Ident::new(js_word!("Object"), DUMMY_SP))),
-              prop: MemberProp::Ident(Ident::new("assign".into(), DUMMY_SP)),
+              obj: Box::new(Expr::Ident(Ident::new_no_ctxt(
+                js_word!("Object"),
+                DUMMY_SP,
+              ))),
+              prop: MemberProp::Ident(IdentName::new("assign".into(), DUMMY_SP)),
               span: DUMMY_SP,
             }))),
             args: vec![
               ExprOrSpread {
                 expr: Box::new(Expr::Call(CallExpr {
                   callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-                    obj: (Box::new(Expr::Ident(Ident::new(js_word!("Object"), DUMMY_SP)))),
-                    prop: MemberProp::Ident(Ident::new("create".into(), DUMMY_SP)),
+                    obj: (Box::new(Expr::Ident(Ident::new_no_ctxt(
+                      js_word!("Object"),
+                      DUMMY_SP,
+                    )))),
+                    prop: MemberProp::Ident(IdentName::new("create".into(), DUMMY_SP)),
                     span: DUMMY_SP,
                   }))),
                   args: vec![ExprOrSpread {
@@ -1370,6 +1385,7 @@ impl<'a> DependencyCollector<'a> {
                     spread: None,
                   }],
                   span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
                   type_args: None,
                 })),
                 spread: None,
@@ -1377,7 +1393,7 @@ impl<'a> DependencyCollector<'a> {
               ExprOrSpread {
                 expr: Box::new(Expr::Object(ObjectLit {
                   props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Ident::new(js_word!("url"), DUMMY_SP)),
+                    key: PropName::Ident(IdentName::new(js_word!("url"), DUMMY_SP)),
                     value: Box::new(self.get_import_meta_url()),
                   })))],
                   span: DUMMY_SP,
@@ -1386,11 +1402,13 @@ impl<'a> DependencyCollector<'a> {
               },
             ],
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             type_args: None,
           }))),
           span: DUMMY_SP,
           definite: false,
         }],
+        ctxt: SyntaxContext::empty(),
       });
       Expr::Ident(ident)
     }
@@ -1419,7 +1437,7 @@ fn match_worker_type(expr: Option<&ast::ExprOrSpread>) -> (SourceType, Option<as
           };
 
           match &kv.key {
-            PropName::Ident(Ident { sym, .. }) if sym == "type" => {}
+            PropName::Ident(IdentName { sym, .. }) if sym == "type" => {}
             PropName::Str(Str { value, .. }) if value == "type" => {}
             _ => return true,
           };

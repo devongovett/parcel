@@ -159,7 +159,7 @@ export default (new Transformer({
         'postcss-modules',
         asset.filePath,
         {
-          range: '^4.3.0',
+          range: '^6.0.0',
           saveDev: true,
           shouldAutoInstall: options.shouldAutoInstall,
         },
@@ -287,7 +287,7 @@ async function createLoader(
   options: PluginOptions,
 ) {
   let {default: FileSystemLoader} = await options.packageManager.require(
-    'postcss-modules/build/css-loader-core/loader',
+    'postcss-modules/build/FileSystemLoader',
     asset.filePath,
   );
   return class ParcelFileSystemLoader extends FileSystemLoader {

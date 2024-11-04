@@ -203,10 +203,10 @@ describe('image', function () {
     const buffer = await outputFS.readFile(imagePath);
     const image = await sharp(buffer).metadata();
 
-    const {exif} = exifReader(image.exif);
+    const exif = exifReader(image.exif);
 
     assert.strictEqual(
-      exif.UserComment.toString(),
+      exif.Photo.UserComment.toString(),
       'ASCII\u0000\u0000\u0000This is a comment',
     );
   });

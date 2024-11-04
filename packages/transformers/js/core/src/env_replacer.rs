@@ -204,6 +204,7 @@ impl<'a> VisitMut for EnvReplacer<'a> {
       kind: node.kind,
       decls,
       declare: node.declare,
+      ctxt: node.ctxt,
     };
   }
 }

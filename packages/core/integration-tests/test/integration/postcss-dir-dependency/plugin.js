@@ -1,6 +1,7 @@
 module.exports = (opts = {}) => {
-  const glob = require('glob');
+  const glob = require('fast-glob');
   const fs = require('fs');
+  const path = require('path')
 
   return {
     postcssPlugin: 'postcss-test',
@@ -8,7 +9,7 @@ module.exports = (opts = {}) => {
       root.walkRules((rule) => {
         rule.each((decl) => {
           if (decl.value === 'bg-glob') {
-            decl.value = glob.sync(__dirname + '/backgrounds/*.txt').sort().map(f => fs.readFileSync(f)).join(', ');
+            decl.value = glob.sync('backgrounds/*.txt', {cwd: __dirname}).sort().map(f => fs.readFileSync(path.join(__dirname, f))).join(', ');
             result.messages.push({
               type: 'dir-dependency',
               dir: __dirname + '/backgrounds',

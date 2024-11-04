@@ -23,6 +23,6 @@
     "@parcel/diagnostic": "2.12.0",
     "@parcel/plugin": "2.12.0",
     "@parcel/utils": "2.12.0",
-    "content-security-policy-parser": "^0.3.0"
+    "content-security-policy-parser": "^0.6.0"
   }
 }

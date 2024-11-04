@@ -22,6 +22,6 @@
   "dependencies": {
     "@parcel/plugin": "2.12.0",
     "@parcel/utils": "2.12.0",
-    "stylus": "^0.55.0"
+    "stylus": "^0.63.0"
   }
 }

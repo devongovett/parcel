@@ -434,7 +434,7 @@ describe('transpilation', function () {
                 {
                   message: undefined,
                   start: {
-                    column: 4,
+                    column: 3,
                     line: 9,
                   },
                   end: {

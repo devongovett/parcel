@@ -253,12 +253,13 @@ pub fn transform(
                       pragma_frag: react_options.pragma_frag.clone(),
                     },
                     Some(&comments),
+                    unresolved_mark,
                     global_mark,
                   ),
                   config.is_type_script && config.is_jsx
                 ),
                 Optional::new(
-                  typescript::strip(global_mark),
+                  typescript::strip(unresolved_mark, global_mark),
                   config.is_type_script && !config.is_jsx
                 ),
               ));
@@ -540,7 +541,7 @@ fn parse(
   } else {
     filename.into()
   };
-  let source_file = source_map.new_source_file(FileName::Real(filename), code.into());
+  let source_file = source_map.new_source_file(Lrc::new(FileName::Real(filename)), code.into());
 
   let comments = SingleThreadedComments::default();
   let syntax = if config.is_type_script {

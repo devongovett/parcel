@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 const fs = require('fs');
-const glob = require('glob');
+const glob = require('fast-glob');
 const path = require('path');
 const {spawn, execSync} = require('child_process');
 
@@ -15,7 +15,7 @@ async function build() {
     setupMacBuild();
   }
 
-  let packages = glob.sync('packages/*/*');
+  let packages = glob.sync('packages/*/*', {onlyFiles: false});
   for (let pkg of packages) {
     try {
       let pkgJSON = JSON.parse(fs.readFileSync(path.join(pkg, 'package.json')));

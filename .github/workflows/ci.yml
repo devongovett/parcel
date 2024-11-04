@@ -95,12 +95,11 @@ jobs:
             packages/core/rust/*.node
 
   integration_tests:
-    name: Integration tests (${{ matrix.version == 'v3' && 'v3, ' || '' }}${{ matrix.os }}, Node ${{ matrix.node }})
+    name: Integration tests (${{ matrix.os }}, Node ${{ matrix.node }})
     strategy:
       matrix:
         node: [18, 20]
         os: [ubuntu-latest, macos-latest, windows-latest]
-        version: [v2, v3]
       # These tend to be quite flakey, so one failed instance shouldn't stop
       # others from potentially succeeding
       fail-fast: false
@@ -124,8 +123,6 @@ jobs:
       - run: yarn build-native-release
       - run: yarn build
       - run: yarn test:integration-ci
-        env:
-          PARCEL_V3: ${{ matrix.version == 'v3' && 'true' || 'false' }}
 
   # Deployment steps taken from https://github.com/colinwilson/static-site-to-vercel/blob/master/.github/workflows/deploy-preview.yml
   repl_build:

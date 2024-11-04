@@ -126,6 +126,9 @@ export default class HMRServer {
       this.stopServer = null;
     }
     this.wss.close();
+    for (const ws of this.wss.clients) {
+      ws.terminate();
+    }
   }
 
   async emitError(options: PluginOptions, diagnostics: Array<Diagnostic>) {

@@ -8,7 +8,7 @@ edition = "2021"
 crate-type = ["rlib"]
 
 [dependencies]
-swc_core = { version = "0.96", features = [
+swc_core = { version = "0.106", features = [
   "common",
   "common_ahash",
   "common_sourcemap",

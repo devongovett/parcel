@@ -25,7 +25,7 @@
     "@parcel/rust": "2.12.0",
     "nullthrows": "^1.1.1",
     "posthtml": "^0.16.5",
-    "posthtml-parser": "^0.10.1",
+    "posthtml-parser": "^0.12.1",
     "posthtml-render": "^3.0.0",
     "semver": "^7.5.2"
   }

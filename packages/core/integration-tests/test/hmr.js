@@ -189,7 +189,7 @@ describe('hmr', function () {
 
       assert.equal(message.type, 'update');
 
-      assert.equal(message.assets.length, 2);
+      assert.equal(message.assets.length, 1);
     });
 
     it('should emit an HMR error on bundle failure', async function () {

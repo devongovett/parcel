@@ -6,7 +6,6 @@ import typeof BundleGraph, {
 } from '@parcel/core/src/BundleGraph.js';
 import typeof RequestTracker, {
   RequestGraph,
-  readAndDeserializeRequestGraph,
 } from '@parcel/core/src/RequestTracker.js';
 import typeof {requestGraphEdgeTypes} from '@parcel/core/src/RequestTracker.js';
 import typeof {LMDBCache} from '@parcel/cache/src/LMDBCache.js';
@@ -50,7 +49,6 @@ module.exports = (v: {|
   },
   RequestTracker: {
     default: RequestTracker,
-    readAndDeserializeRequestGraph: readAndDeserializeRequestGraph,
     RequestGraph: RequestGraph,
     requestGraphEdgeTypes: requestGraphEdgeTypes,
     ...

@@ -43,6 +43,6 @@
     "mime-types": "2.1.18",
     "nullthrows": "^1.1.1",
     "serve-handler": "^6.0.0",
-    "ws": "^7.0.0"
+    "ws": "^8.18.0"
   }
 }

@@ -27,7 +27,7 @@ import {
 } from './components/';
 import {saveState, reducer, getInitialState} from './components';
 import type {State} from './components';
-import filesize from 'filesize';
+import {filesize} from 'filesize';
 import {linkSourceMapVisualization} from './utils';
 import nullthrows from 'nullthrows';
 

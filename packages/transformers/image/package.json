@@ -22,7 +22,7 @@
     "nullthrows": "^1.1.1"
   },
   "devDependencies": {
-    "sharp": "^0.31.1"
+    "sharp": "^0.33.5"
   },
   "peerDependencies": {
     "@parcel/core": "^2.12.0"

@@ -49,8 +49,8 @@
     "buffer": "mischnic/buffer#b8a4fa94",
     "cross-env": "^7.0.0",
     "eslint": "^8.41.0",
+    "fast-glob": "^3.2.12",
     "flow-bin": "0.184.0",
-    "glob": "^7.1.6",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
     "husky": "^6.0.0",
@@ -60,7 +60,7 @@
     "mocha-junit-reporter": "^2.0.0",
     "mocha-multi-reporters": "^1.5.1",
     "prettier": "2.4.1",
-    "punycode": "^1.4.1",
+    "punycode": "^2.3.1",
     "rimraf": "^5.0.5",
     "semver": "^7.5.2",
     "sinon": "^7.3.1"

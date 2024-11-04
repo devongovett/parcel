@@ -3,7 +3,7 @@ import type {BundleGraph, FilePath, PackagedBundle} from '@parcel/types';
 import type {FileSystem} from '@parcel/fs';
 
 import {generateBuildMetrics, prettifyTime} from '@parcel/utils';
-import filesize from 'filesize';
+import {filesize} from 'filesize';
 import chalk from 'chalk';
 import nullthrows from 'nullthrows';
 

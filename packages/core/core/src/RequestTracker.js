@@ -3,7 +3,6 @@
 import invariant, {AssertionError} from 'assert';
 import path from 'path';
 
-import type {Cache} from '@parcel/cache';
 import {ContentGraph} from '@parcel/graph';
 import type {
   ContentGraphOpts,
@@ -19,7 +18,6 @@ import {
   isGlobMatch,
   isDirectoryInside,
   makeDeferredWithPromise,
-  PromiseQueue,
 } from '@parcel/utils';
 import type {Options as WatcherOptions, Event} from '@parcel/watcher';
 import type WorkerFarm from '@parcel/workers';
@@ -43,7 +41,6 @@ import {
   toProjectPathUnsafe,
   toProjectPath,
 } from './projectPath';
-import {report} from './ReporterRunner';
 import {getConfigKeyContentHash} from './requests/ConfigRequest';
 import type {AssetGraphRequestResult} from './requests/AssetGraphRequest';
 import type {PackageRequestResult} from './requests/PackageRequest';
@@ -91,7 +88,6 @@ type RequestGraphOpts = {|
   optionNodeIds: Set<NodeId>,
   unpredicatableNodeIds: Set<NodeId>,
   invalidateOnBuildNodeIds: Set<NodeId>,
-  cachedRequestChunks: Set<number>,
   configKeyNodes: Map<ProjectPath, Set<NodeId>>,
 |};
 
@@ -104,7 +100,6 @@ type SerializedRequestGraph = {|
   optionNodeIds: Set<NodeId>,
   unpredicatableNodeIds: Set<NodeId>,
   invalidateOnBuildNodeIds: Set<NodeId>,
-  cachedRequestChunks: Set<number>,
   configKeyNodes: Map<ProjectPath, Set<NodeId>>,
 |};
 
@@ -292,11 +287,6 @@ const keyFromEnvContentKey = (contentKey: ContentKey): string =>
 
 const keyFromOptionContentKey = (contentKey: ContentKey): string =>
   contentKey.slice('option:'.length);
-
-// This constant is chosen by local profiling the time to serialise n nodes and tuning until an average time of ~50 ms per blob.
-// The goal is to free up the event loop periodically to allow interruption by the user.
-const NODES_PER_BLOB = 2 ** 14;
-
 export class RequestGraph extends ContentGraph<
   RequestGraphNode,
   RequestGraphEdgeType,
@@ -311,9 +301,7 @@ export class RequestGraph extends ContentGraph<
   // filesystem changes alone. They should rerun on each startup of Parcel.
   unpredicatableNodeIds: Set<NodeId> = new Set();
   invalidateOnBuildNodeIds: Set<NodeId> = new Set();
-  cachedRequestChunks: Set<number> = new Set();
   configKeyNodes: Map<ProjectPath, Set<NodeId>> = new Map();
-  nodesPerBlob: number = NODES_PER_BLOB;
 
   // $FlowFixMe[prop-missing]
   static deserialize(opts: RequestGraphOpts): RequestGraph {
@@ -326,7 +314,6 @@ export class RequestGraph extends ContentGraph<
     deserialized.optionNodeIds = opts.optionNodeIds;
     deserialized.unpredicatableNodeIds = opts.unpredicatableNodeIds;
     deserialized.invalidateOnBuildNodeIds = opts.invalidateOnBuildNodeIds;
-    deserialized.cachedRequestChunks = opts.cachedRequestChunks;
     deserialized.configKeyNodes = opts.configKeyNodes;
     return deserialized;
   }
@@ -342,7 +329,6 @@ export class RequestGraph extends ContentGraph<
       optionNodeIds: this.optionNodeIds,
       unpredicatableNodeIds: this.unpredicatableNodeIds,
       invalidateOnBuildNodeIds: this.invalidateOnBuildNodeIds,
-      cachedRequestChunks: this.cachedRequestChunks,
       configKeyNodes: this.configKeyNodes,
     };
   }
@@ -362,8 +348,6 @@ export class RequestGraph extends ContentGraph<
     } else if (node.type === OPTION) {
       this.optionNodeIds.add(nodeId);
     }
-
-    this.removeCachedRequestChunkForNode(nodeId);
 
     return nodeId;
   }
@@ -437,9 +421,6 @@ export class RequestGraph extends ContentGraph<
     for (let parentNode of parentNodes) {
       this.invalidateNode(parentNode, reason);
     }
-
-    // If the node is invalidated, the cached request chunk on disk needs to be re-written
-    this.removeCachedRequestChunkForNode(nodeId);
   }
 
   invalidateUnpredictableNodes() {
@@ -1053,18 +1034,6 @@ export class RequestGraph extends ContentGraph<
 
     return didInvalidate && this.invalidNodeIds.size > 0;
   }
-
-  hasCachedRequestChunk(index: number): boolean {
-    return this.cachedRequestChunks.has(index);
-  }
-
-  setCachedRequestChunk(index: number): void {
-    this.cachedRequestChunks.add(index);
-  }
-
-  removeCachedRequestChunkForNode(nodeId: number): void {
-    this.cachedRequestChunks.delete(Math.floor(nodeId / this.nodesPerBlob));
-  }
 }
 
 export default class RequestTracker {
@@ -1168,7 +1137,6 @@ export default class RequestTracker {
     if (node && node.type === REQUEST) {
       node.invalidateReason = VALID;
     }
-    this.graph.removeCachedRequestChunkForNode(nodeId);
   }
 
   rejectRequest(nodeId: NodeId) {
@@ -1377,143 +1345,66 @@ export default class RequestTracker {
 
   async writeToCache(signal?: AbortSignal) {
     let cacheKey = getCacheKey(this.options);
-    let requestGraphKey = `requestGraph-${cacheKey}`;
+    let requestGraphKey = `${cacheKey}-RequestGraph`;
     let snapshotKey = `snapshot-${cacheKey}`;
 
     if (this.options.shouldDisableCache) {
       return;
     }
 
-    let serialisedGraph = this.graph.serialize();
-
-    // Delete an existing request graph cache, to prevent invalid states
-    await this.options.cache.deleteLargeBlob(requestGraphKey);
-
-    let total = 0;
-    const serialiseAndSet = async (
-      key: string,
-      // $FlowFixMe serialise input is any type
-      contents: any,
-    ): Promise<void> => {
-      if (signal?.aborted) {
-        throw new Error('Serialization was aborted');
+    let keys = [requestGraphKey];
+    let promises = [];
+    for (let node of this.graph.nodes) {
+      if (!node || node.type !== REQUEST) {
+        continue;
       }
 
-      await this.options.cache.setLargeBlob(
-        key,
-        serialize(contents),
-        signal
-          ? {
-              signal: signal,
-            }
-          : undefined,
-      );
-
-      total += 1;
-
-      report({
-        type: 'cache',
-        phase: 'write',
-        total,
-        size: this.graph.nodes.length,
-      });
-    };
-
-    let queue = new PromiseQueue({
-      maxConcurrent: 32,
-    });
-
-    report({
-      type: 'cache',
-      phase: 'start',
-      total,
-      size: this.graph.nodes.length,
-    });
-
-    // Preallocating a sparse array is faster than pushing when N is high enough
-    let cacheableNodes = new Array(serialisedGraph.nodes.length);
-    for (let i = 0; i < serialisedGraph.nodes.length; i += 1) {
-      let node = serialisedGraph.nodes[i];
-
-      let resultCacheKey = node?.resultCacheKey;
-      if (
-        node?.type === REQUEST &&
-        resultCacheKey != null &&
-        node?.result != null
-      ) {
-        queue
-          .add(() => serialiseAndSet(resultCacheKey, node.result))
-          .catch(() => {
-            // Handle promise rejection
-          });
-
-        // eslint-disable-next-line no-unused-vars
-        let {result: _, ...newNode} = node;
-        cacheableNodes[i] = newNode;
-      } else {
-        cacheableNodes[i] = node;
+      let resultCacheKey = node.resultCacheKey;
+      if (resultCacheKey != null && node.result != null) {
+        keys.push(resultCacheKey);
+        promises.push(
+          this.options.cache.setLargeBlob(
+            resultCacheKey,
+            serialize(node.result),
+            {signal},
+          ),
+        );
+        delete node.result;
       }
     }
 
-    let nodeCountsPerBlob = [];
+    promises.push(
+      this.options.cache.setLargeBlob(requestGraphKey, serialize(this.graph), {
+        signal,
+      }),
+    );
 
-    for (
-      let i = 0;
-      i * this.graph.nodesPerBlob < cacheableNodes.length;
-      i += 1
-    ) {
-      let nodesStartIndex = i * this.graph.nodesPerBlob;
-      let nodesEndIndex = Math.min(
-        (i + 1) * this.graph.nodesPerBlob,
-        cacheableNodes.length,
-      );
-
-      nodeCountsPerBlob.push(nodesEndIndex - nodesStartIndex);
-
-      if (!this.graph.hasCachedRequestChunk(i)) {
-        // We assume the request graph nodes are immutable and won't change
-        let nodesToCache = cacheableNodes.slice(nodesStartIndex, nodesEndIndex);
-
-        queue
-          .add(() =>
-            serialiseAndSet(
-              getRequestGraphNodeKey(i, cacheKey),
-              nodesToCache,
-            ).then(() => {
-              // Succeeded in writing to disk, save that we have completed this chunk
-              this.graph.setCachedRequestChunk(i);
-            }),
-          )
-          .catch(() => {
-            // Handle promise rejection
-          });
-      }
-    }
-
-    try {
-      await queue.run();
-
-      // Set the request graph after the queue is flushed to avoid writing an invalid state
-      await serialiseAndSet(requestGraphKey, {
-        ...serialisedGraph,
-        nodeCountsPerBlob,
-        nodes: undefined,
-      });
-
-      let opts = getWatcherOptions(this.options);
-      let snapshotPath = path.join(this.options.cacheDir, snapshotKey + '.txt');
-
-      await this.options.inputFS.writeSnapshot(
+    let opts = getWatcherOptions(this.options);
+    let snapshotPath = path.join(this.options.cacheDir, snapshotKey + '.txt');
+    promises.push(
+      this.options.inputFS.writeSnapshot(
         this.options.watchDir,
         snapshotPath,
         opts,
-      );
-    } catch (err) {
-      // If we have aborted, ignore the error and continue
-      if (!signal?.aborted) throw err;
-    }
+      ),
+    );
 
-    report({type: 'cache', phase: 'end', total, size: this.graph.nodes.length});
+    try {
+      await Promise.all(promises);
+    } catch (err) {
+      if (signal?.aborted) {
+        // If writing to the cache was aborted, delete all of the keys to avoid inconsistent states.
+        for (let key of keys) {
+          try {
+            await this.options.cache.deleteLargeBlob(key);
+          } catch (err) {
+            // ignore.
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
   }
 
   static async init({
@@ -1549,89 +1440,27 @@ function getCacheKey(options) {
   );
 }
 
-function getRequestGraphNodeKey(index: number, cacheKey: string) {
-  return `requestGraph-nodes-${index}-${cacheKey}`;
-}
-
-export async function readAndDeserializeRequestGraph(
-  cache: Cache,
-  requestGraphKey: string,
-  cacheKey: string,
-): Async<{|requestGraph: RequestGraph, bufferLength: number|}> {
-  let bufferLength = 0;
-  const getAndDeserialize = async (key: string) => {
-    let buffer = await cache.getLargeBlob(key);
-    bufferLength += Buffer.byteLength(buffer);
-    return deserialize(buffer);
-  };
-
-  let serializedRequestGraph = await getAndDeserialize(requestGraphKey);
-
-  let nodePromises = serializedRequestGraph.nodeCountsPerBlob.map(
-    async (nodesCount, i) => {
-      let nodes = await getAndDeserialize(getRequestGraphNodeKey(i, cacheKey));
-      invariant.equal(
-        nodes.length,
-        nodesCount,
-        'RequestTracker node chunk: invalid node count',
-      );
-      return nodes;
-    },
-  );
-
-  return {
-    requestGraph: RequestGraph.deserialize({
-      ...serializedRequestGraph,
-      nodes: (await Promise.all(nodePromises)).flat(),
-    }),
-    // This is used inside parcel query for `.inspectCache`
-    bufferLength,
-  };
-}
-
 async function loadRequestGraph(options): Async<RequestGraph> {
   if (options.shouldDisableCache) {
     return new RequestGraph();
   }
 
   let cacheKey = getCacheKey(options);
-  let requestGraphKey = `requestGraph-${cacheKey}`;
-  let timeout;
+  let requestGraphKey = `${cacheKey}-RequestGraph`;
   const snapshotKey = `snapshot-${cacheKey}`;
   const snapshotPath = path.join(options.cacheDir, snapshotKey + '.txt');
   if (await options.cache.hasLargeBlob(requestGraphKey)) {
     try {
-      let {requestGraph} = await readAndDeserializeRequestGraph(
-        options.cache,
-        requestGraphKey,
-        cacheKey,
+      let requestGraph: RequestGraph = deserialize(
+        await options.cache.getLargeBlob(requestGraphKey),
       );
 
       let opts = getWatcherOptions(options);
-
-      timeout = setTimeout(() => {
-        logger.warn({
-          origin: '@parcel/core',
-          message: `Retrieving file system events since last build...\nThis can take upto a minute after branch changes or npm/yarn installs.`,
-        });
-      }, 5000);
-      let startTime = Date.now();
       let events = await options.inputFS.getEventsSince(
         options.watchDir,
         snapshotPath,
         opts,
       );
-      clearTimeout(timeout);
-
-      logger.verbose({
-        origin: '@parcel/core',
-        message: `File system event count: ${events.length}`,
-        meta: {
-          trackableEvent: 'watcher_events_count',
-          watcherEventCount: events.length,
-          duration: Date.now() - startTime,
-        },
-      });
 
       requestGraph.invalidateUnpredictableNodes();
       requestGraph.invalidateOnBuildNodes();
@@ -1646,7 +1475,6 @@ async function loadRequestGraph(options): Async<RequestGraph> {
       return requestGraph;
     } catch (e) {
       // Prevent logging fs events took too long warning
-      clearTimeout(timeout);
       logErrorOnBailout(options, snapshotPath, e);
       // This error means respondToFSEvents timed out handling the invalidation events
       // In this case we'll return a fresh RequestGraph

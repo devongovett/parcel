@@ -58,6 +58,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
               };
               Call(ast::CallExpr {
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 type_args: None,
                 args: vec![
                   ast::ExprOrSpread {
@@ -65,6 +66,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     expr: Box::new(ast::Expr::Ident(ast::Ident {
                       optional: false,
                       span: DUMMY_SP,
+                      ctxt: SyntaxContext::empty(),
                       // This also uses __dirname as later in the path.join call the hierarchy is then correct
                       // Otherwise path.join(__filename, '..') would be one level to shallow (due to the /filename.js at the end)
                       sym: swc_core::ecma::atoms::JsWord::from("__dirname"),
@@ -93,7 +95,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     path_module_specifier.clone(),
                     unresolved_mark,
                   )))),
-                  prop: MemberProp::Ident(ast::Ident::new("resolve".into(), DUMMY_SP)),
+                  prop: MemberProp::Ident(ast::IdentName::new("resolve".into(), DUMMY_SP)),
                 }))),
               })
             };
@@ -120,6 +122,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
             if self.update_binding(id, "$parcel$__dirname".into(), |_| {
               Call(ast::CallExpr {
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 type_args: None,
                 args: vec![
                   ast::ExprOrSpread {
@@ -127,6 +130,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     expr: Box::new(ast::Expr::Ident(ast::Ident {
                       optional: false,
                       span: DUMMY_SP,
+                      ctxt: SyntaxContext::empty(),
                       sym: swc_core::ecma::atoms::JsWord::from("__dirname"),
                     })),
                   },
@@ -145,7 +149,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     path_module_specifier.clone(),
                     unresolved_mark,
                   )))),
-                  prop: MemberProp::Ident(ast::Ident::new("resolve".into(), DUMMY_SP)),
+                  prop: MemberProp::Ident(ast::IdentName::new("resolve".into(), DUMMY_SP)),
                 }))),
               })
             }) {
@@ -202,13 +206,13 @@ impl NodeReplacer<'_> {
   {
     if let Some((ctxt, _)) = self.globals.get(&new_name) {
       id_ref.sym = new_name;
-      id_ref.span.ctxt = *ctxt;
+      id_ref.ctxt = *ctxt;
       false
     } else {
       id_ref.sym = new_name;
 
       let (decl, ctxt) = create_global_decl_stmt(id_ref.sym.clone(), expr(self), self.global_mark);
-      id_ref.span.ctxt = ctxt;
+      id_ref.ctxt = ctxt;
 
       self.globals.insert(id_ref.sym.clone(), (ctxt, decl));
       true
