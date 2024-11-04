@@ -20,10 +20,14 @@
     "parcel": "^2.12.0"
   },
   "dependencies": {
+    "@parcel/diagnostic": "2.12.0",
     "@parcel/plugin": "2.12.0",
+    "@parcel/utils": "2.12.0",
     "htmlnano": "^2.0.0",
     "nullthrows": "^1.1.1",
-    "posthtml": "^0.16.5",
-    "svgo": "^2.4.0"
+    "posthtml": "^0.16.5"
+  },
+  "devDependencies": {
+    "svgo": "^3.3.2"
   }
 }
