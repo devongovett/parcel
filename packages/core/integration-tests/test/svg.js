@@ -187,7 +187,10 @@ describe('svg', function () {
     );
     assert.deepEqual(messages[0].diagnostics[0].codeFrames, [
       {
-        filePath: path.normalize('/svgo-version/svgo.config.json'),
+        filePath: path.resolve(
+          overlayFS.cwd(),
+          '/svgo-version/svgo.config.json',
+        ),
         codeHighlights: [
           {
             message: undefined,

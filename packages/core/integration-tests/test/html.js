@@ -737,7 +737,10 @@ describe('html', function () {
     );
     assert.deepEqual(messages[0].diagnostics[0].codeFrames, [
       {
-        filePath: path.normalize('/htmlnano-svgo-version/.htmlnanorc'),
+        filePath: path.resolve(
+          overlayFS.cwd(),
+          '/htmlnano-svgo-version/.htmlnanorc',
+        ),
         codeHighlights: [
           {
             message: undefined,
