@@ -257,11 +257,13 @@ async function minifySvg(tree, options, svgoVersion, svgoOptions, logger) {
               // inline SVGs because they could actually be referenced
               // by a separate inline SVG.
               [cleanupIds]: false,
+              removeHiddenElems: false,
             },
           },
         },
         // XML namespaces are not required in HTML.
         'removeXMLNS',
+        'removeXlink',
       ],
     };
   }

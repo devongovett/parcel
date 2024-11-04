@@ -171,7 +171,10 @@ describe('svg', function () {
       // autoinstall is disabled
       assert.equal(
         err.diagnostics[0].message,
-        'Could not resolve module "svgo" from "/svgo-version/index"',
+        `Could not resolve module "svgo" from "${path.resolve(
+          overlayFS.cwd(),
+          '/svgo-version/index',
+        )}"`,
       );
     }
 

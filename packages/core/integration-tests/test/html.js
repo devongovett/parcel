@@ -721,7 +721,10 @@ describe('html', function () {
       // autoinstall is disabled
       assert.equal(
         err.diagnostics[0].message,
-        'Could not resolve module "svgo" from "/htmlnano-svgo-version/index"',
+        `Could not resolve module "svgo" from "${path.resolve(
+          overlayFS.cwd(),
+          '/htmlnano-svgo-version/index',
+        )}"`,
       );
     }
 
@@ -1073,7 +1076,7 @@ describe('html', function () {
     let contents = await outputFS.readFile(b.getBundles()[0].filePath, 'utf8');
     assert(
       contents.includes(
-        '<svg><symbol id="all"><rect width="100" height="100"/></symbol></svg><svg><use xlink:href="#all" href="#all"/></svg>',
+        '<svg><symbol id="all"><rect width="100" height="100"/></symbol></svg><svg><use href="#all"/></svg>',
       ),
     );
   });
@@ -3000,7 +3003,11 @@ describe('html', function () {
 
     let output = await outputFS.readFile(b.getBundles()[0].filePath, 'utf8');
     assert(output.includes('<x-custom stddeviation="0.5"'));
-    assert(output.includes('<svg role="img" viewBox='));
+    assert(
+      output.includes(
+        '<svg preserveAspectRatio="xMinYMin meet" role="img" viewBox=',
+      ),
+    );
     assert(output.includes('<filter'));
     assert(output.includes('<feGaussianBlur in="SourceGraphic" stdDeviation='));
   });
