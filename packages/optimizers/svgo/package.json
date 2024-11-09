@@ -22,7 +22,9 @@
   "dependencies": {
     "@parcel/diagnostic": "2.12.0",
     "@parcel/plugin": "2.12.0",
-    "@parcel/utils": "2.12.0",
-    "svgo": "^2.4.0"
+    "@parcel/utils": "2.12.0"
+  },
+  "devDependencies": {
+    "svgo": "^3.3.2"
   }
 }

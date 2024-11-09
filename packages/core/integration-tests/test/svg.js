@@ -1,6 +1,15 @@
 import assert from 'assert';
-import {assertBundles, bundle, distDir, outputFS} from '@parcel/test-utils';
+import {
+  assertBundles,
+  bundle,
+  distDir,
+  outputFS,
+  overlayFS,
+  fsFixture,
+} from '@parcel/test-utils';
 import path from 'path';
+import Logger from '@parcel/logger';
+import {md} from '@parcel/diagnostic';
 
 describe('svg', function () {
   it('should support bundling SVG', async () => {
@@ -126,6 +135,79 @@ describe('svg', function () {
     assert(file.includes('comment'));
   });
 
+  it('should detect the version of SVGO to use', async function () {
+    // Test is outside parcel so that svgo is not already installed.
+    await fsFixture(overlayFS, '/')`
+      svgo-version
+        icon.svg:
+          <svg></svg>
+
+        index.html:
+          <img src="icon.svg" />
+
+        svgo.config.json:
+          {
+            "full": true
+          }
+
+        yarn.lock:
+    `;
+
+    let messages = [];
+    let loggerDisposable = Logger.onLog(message => {
+      if (message.level !== 'verbose') {
+        messages.push(message);
+      }
+    });
+
+    try {
+      await bundle(path.join('/svgo-version/index.html'), {
+        inputFS: overlayFS,
+        defaultTargetOptions: {
+          shouldOptimize: true,
+        },
+        shouldAutoinstall: false,
+      });
+    } catch (err) {
+      // autoinstall is disabled
+      assert.equal(
+        err.diagnostics[0].message,
+        md`Could not resolve module "svgo" from "${path.resolve(
+          overlayFS.cwd(),
+          '/svgo-version/index',
+        )}"`,
+      );
+    }
+
+    loggerDisposable.dispose();
+    assert(
+      messages[0].diagnostics[0].message.startsWith(
+        'Detected deprecated SVGO v2 options in',
+      ),
+    );
+    assert.deepEqual(messages[0].diagnostics[0].codeFrames, [
+      {
+        filePath: path.resolve(
+          overlayFS.cwd(),
+          '/svgo-version/svgo.config.json',
+        ),
+        codeHighlights: [
+          {
+            message: undefined,
+            start: {
+              line: 2,
+              column: 3,
+            },
+            end: {
+              line: 2,
+              column: 14,
+            },
+          },
+        ],
+      },
+    ]);
+  });
+
   it('should detect xml-stylesheet processing instructions', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/svg-xml-stylesheet/img.svg'),
@@ -222,7 +304,7 @@ describe('svg', function () {
 
     const svg = await outputFS.readFile(path.join(distDir, 'img.svg'), 'utf8');
 
-    assert(svg.includes('<style>:root{fill:red}</style>'));
+    assert(svg.includes('style="fill:red"'));
   });
 
   it('should be in separate bundles', async function () {
