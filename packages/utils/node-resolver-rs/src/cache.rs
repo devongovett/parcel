@@ -214,15 +214,11 @@ impl CachedPath {
           .parent()
           .map(|parent| {
             parent.canonicalize(cache).and_then(|parent_canonical| {
-              if self.as_path().strip_prefix(parent.as_path()).is_err() {
-                println!(
-                  "UNEXPECTED PATH: {:?}, parent: {:?}",
-                  self.as_path(),
-                  parent.as_path()
-                );
-              }
               let path = parent_canonical.join(
-                self.as_path().strip_prefix(parent.as_path()).unwrap(),
+                self
+                  .as_path()
+                  .strip_prefix(parent.as_path())
+                  .map_err(|_| ResolverError::UnknownError)?,
                 cache,
               );
 

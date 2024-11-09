@@ -1043,7 +1043,7 @@ impl<'a> ResolveRequest<'a> {
         let package = unwrap_arc(package)?;
         if let Ok(s) = path
           .as_path()
-          .strip_prefix(package.path.as_path().parent().unwrap())
+          .strip_prefix(package.path.parent().unwrap().as_path())
         {
           let specifier = Specifier::Relative(Cow::Borrowed(s));
           if let Some(res) = self.resolve_aliases(&*package, &specifier, Fields::ALIAS)? {
@@ -1056,7 +1056,7 @@ impl<'a> ResolveRequest<'a> {
       if let Some(package) = package {
         if let Ok(s) = path
           .as_path()
-          .strip_prefix(package.path.as_path().parent().unwrap())
+          .strip_prefix(package.path.parent().unwrap().as_path())
         {
           let specifier = Specifier::Relative(Cow::Borrowed(s));
           let mut fields = Fields::ALIAS;
