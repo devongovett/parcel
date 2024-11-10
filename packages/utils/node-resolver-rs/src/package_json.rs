@@ -18,14 +18,22 @@ use crate::{
 };
 
 bitflags! {
+  /// A package.json top-level entry field.
   #[derive(serde::Serialize)]
   pub struct Fields: u8 {
+    /// The "main" field.
     const MAIN = 1 << 0;
+    /// The "module" field.
     const MODULE = 1 << 1;
+    /// The "source" field.
     const SOURCE = 1 << 2;
+    /// The "browser" field.
     const BROWSER = 1 << 3;
+    /// The "alias" field.
     const ALIAS = 1 << 4;
+    /// The "tsconfig" field.
     const TSCONFIG = 1 << 5;
+    /// The "types" field.
     const TYPES = 1 << 6;
   }
 }
@@ -72,6 +80,7 @@ pub struct PackageJson {
   side_effects: SideEffects,
 }
 
+/// Whether the module is ESM, CommonJS, or JSON according to its extension or the package.json "type" field.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, Default, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ModuleType {
@@ -155,22 +164,39 @@ impl ExportsField {
 }
 
 bitflags! {
+  /// A common package.json "exports" field.
   pub struct ExportsCondition: u16 {
+    /// The "import" condition. True when the package was referenced using the ESM `import` syntax.
     const IMPORT = 1 << 0;
+    /// The "require" condition. True when the package was referenced using the CommonJS `require` function.
     const REQUIRE = 1 << 1;
+    /// The "module" condition. True when the package was referenced from either the ESM `import` syntax or the CommonJS `require` function/
     const MODULE = 1 << 2;
+    /// The "node" condition. True when the module will run in a Node environment.
     const NODE = 1 << 3;
+    /// The "browser" condition. True when the module will run in a browser environment.
     const BROWSER = 1 << 4;
+    /// The "worker" condition. True when the module will run in a web worker or service worker environment.
     const WORKER = 1 << 5;
+    /// The "worklet" condition. True when the module will run in a worklet environment.
     const WORKLET = 1 << 6;
+    /// The "electron" condition. True when the module will run in an Electron environment.
     const ELECTRON = 1 << 7;
+    /// The "development" condition. True when the module will run in a development environment.
     const DEVELOPMENT = 1 << 8;
+    /// The "production" condition. True when the module will run in a production environment.
     const PRODUCTION = 1 << 9;
+    /// The "types" condition. True when loading TypeScript types.
     const TYPES = 1 << 10;
+    /// The "default" condition when no other conditions matched.
     const DEFAULT = 1 << 11;
+    /// The "style" condition. True when the package was referenced from a stylesheet (e.g. CSS, Sass, Stylus, etc.).
     const STYLE = 1 << 12;
+    /// The "sass" condition. True when the package was referenced from a Sass stylesheet.
     const SASS = 1 << 13;
+    /// The "less" condition. True when the package was referenced from a Less stylesheet.
     const LESS = 1 << 14;
+    /// The "stylus" condition. True when the package was referenced from a Stylus stylesheet.
     const STYLUS = 1 << 15;
   }
 }
@@ -261,11 +287,16 @@ pub enum SideEffects {
   Array(Vec<String>),
 }
 
+/// An error that occurred in a package.json.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum PackageJsonError {
+  /// An invalid package.json "exports" or "imports" target.
   InvalidPackageTarget,
+  /// The requested subpath of a package.json was not exported.
   PackagePathNotExported,
+  /// An invalid specifier was requested.
   InvalidSpecifier,
+  /// A package import was not defined.
   ImportNotDefined,
 }
 
@@ -937,9 +968,7 @@ impl<'a> Iterator for EntryIter<'a> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::OsFileSystem;
   use indexmap::indexmap;
-  use std::sync::Arc;
 
   // Based on https://github.com/lukeed/resolve.exports/blob/master/test/resolve.js,
   // https://github.com/privatenumber/resolve-pkg-maps/tree/develop/tests, and
@@ -947,7 +976,7 @@ mod tests {
 
   #[test]
   fn exports_string() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -970,7 +999,7 @@ mod tests {
 
   #[test]
   fn exports_dot() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -998,7 +1027,7 @@ mod tests {
 
   #[test]
   fn exports_dot_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1043,7 +1072,7 @@ mod tests {
 
   #[test]
   fn exports_map_string() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1081,7 +1110,7 @@ mod tests {
 
   #[test]
   fn exports_map_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1126,7 +1155,7 @@ mod tests {
 
   #[test]
   fn nested_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1187,7 +1216,7 @@ mod tests {
 
   #[test]
   fn custom_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1216,7 +1245,7 @@ mod tests {
 
   #[test]
   fn subpath_nested_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1290,7 +1319,7 @@ mod tests {
 
   #[test]
   fn subpath_star() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1374,7 +1403,7 @@ mod tests {
 
   #[test]
   fn exports_null() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1418,7 +1447,7 @@ mod tests {
 
   #[test]
   fn exports_array() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1514,7 +1543,7 @@ mod tests {
 
   #[test]
   fn exports_invalid() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1592,7 +1621,7 @@ mod tests {
 
   #[test]
   fn imports() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1629,7 +1658,7 @@ mod tests {
 
   #[test]
   fn import_conditions() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1671,7 +1700,7 @@ mod tests {
 
   #[test]
   fn aliases() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1786,7 +1815,7 @@ mod tests {
 
   #[test]
   fn side_effects_none() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1803,7 +1832,7 @@ mod tests {
 
   #[test]
   fn side_effects_bool() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1830,7 +1859,7 @@ mod tests {
 
   #[test]
   fn side_effects_glob() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {
@@ -1875,7 +1904,7 @@ mod tests {
 
   #[test]
   fn side_effects_array() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let pkg = PackageJson::from_serialized(
       cache.get_normalized("/foo/package.json"),
       SerializedPackageJson {

@@ -15,7 +15,8 @@ use napi_derive::napi;
 use parcel_resolver::OsFileSystem;
 use parcel_resolver::{
   ExportsCondition, Extensions, Fields, FileCreateInvalidation, FileKind, FileSystem, Flags,
-  IncludeNodeModules, Invalidations, ModuleType, Resolution, ResolverError, SpecifierType,
+  IncludeNodeModules, Invalidations, ModuleType, Resolution, ResolutionAndQuery, ResolverError,
+  SpecifierType,
 };
 
 type NapiSideEffectsVariants = Either3<bool, Vec<String>, HashMap<String, bool>>;
@@ -195,14 +196,12 @@ impl Resolver {
     };
 
     let mut resolver = match options.mode {
-      1 => parcel_resolver::Resolver::parcel(
-        Cow::Owned(project_root.into()),
-        parcel_resolver::CacheCow::Owned(parcel_resolver::Cache::new(fs)),
-      ),
-      2 => parcel_resolver::Resolver::node(
-        Cow::Owned(project_root.into()),
-        parcel_resolver::CacheCow::Owned(parcel_resolver::Cache::new(fs)),
-      ),
+      1 => {
+        parcel_resolver::Resolver::parcel(Path::new(&project_root), parcel_resolver::Cache::new(fs))
+      }
+      2 => {
+        parcel_resolver::Resolver::node(Path::new(&project_root), parcel_resolver::Cache::new(fs))
+      }
       _ => return Err(napi::Error::new(napi::Status::InvalidArg, "Invalid mode")),
     };
 
@@ -315,7 +314,7 @@ impl Resolver {
     match parcel_dev_dep_resolver::build_esm_graph(
       path,
       &self.resolver.project_root.as_path(),
-      &self.resolver.cache,
+      self.resolver.cache(),
       &self.invalidations_cache,
     ) {
       Ok(invalidations) => {
@@ -341,7 +340,7 @@ fn resolve_internal(
   mode: u8,
   options: ResolveOptions,
 ) -> napi::Result<(
-  std::result::Result<(Resolution, Option<String>), ResolverError>,
+  std::result::Result<ResolutionAndQuery, ResolverError>,
   ConvertedInvalidations,
   bool,
   u8,
@@ -373,7 +372,11 @@ fn resolve_internal(
     },
   );
 
-  let side_effects = if let Ok((Resolution::Path(p), _)) = &res.result {
+  let side_effects = if let Ok(ResolutionAndQuery {
+    resolution: Resolution::Path(p),
+    ..
+  }) = &res.result
+  {
     match resolver.resolve_side_effects(p, &res.invalidations) {
       Ok(side_effects) => side_effects,
       Err(err) => {
@@ -388,7 +391,11 @@ fn resolve_internal(
   let mut module_type = 0;
 
   if mode == 2 {
-    if let Ok((Resolution::Path(p), _)) = &res.result {
+    if let Ok(ResolutionAndQuery {
+      resolution: Resolution::Path(p),
+      ..
+    }) = &res.result
+    {
       module_type = match resolver.resolve_module_type(p, &res.invalidations) {
         Ok(t) => match t {
           ModuleType::CommonJs | ModuleType::Json => 1,
@@ -412,7 +419,7 @@ fn resolve_internal(
 
 fn resolve_result_to_js(
   env: Env,
-  res: std::result::Result<(Resolution, Option<String>), ResolverError>,
+  res: std::result::Result<ResolutionAndQuery, ResolverError>,
   invalidations: ConvertedInvalidations,
   side_effects: bool,
   module_type: u8,
@@ -420,12 +427,12 @@ fn resolve_result_to_js(
   let (invalidate_on_file_change, invalidate_on_file_create) = invalidations;
 
   match res {
-    Ok((res, query)) => Ok(ResolveResult {
-      resolution: env.to_js_value(&res)?,
+    Ok(res) => Ok(ResolveResult {
+      resolution: env.to_js_value(&res.resolution)?,
       invalidate_on_file_change,
       invalidate_on_file_create,
       side_effects,
-      query,
+      query: res.query,
       error: env.get_undefined()?.into_unknown(),
       module_type,
     }),

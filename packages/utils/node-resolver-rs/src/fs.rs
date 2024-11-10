@@ -6,19 +6,28 @@ use std::{
 use bitflags::bitflags;
 
 bitflags! {
+  /// Bitflags that describe path metadata.
   pub struct FileKind: u8 {
+    /// If set, the path is a file.
     const IS_FILE = 1 << 0;
+    /// If set, the path is a directory.
     const IS_DIR = 1 << 1;
+    /// If set, the path is a symbolic link.
     const IS_SYMLINK = 1 << 2;
   }
 }
 
+/// A trait that provides the functions needed to read files and retrieve metadata from a file system.
 pub trait FileSystem: Send + Sync {
+  /// Reads the given path as a string.
   fn read_to_string(&self, path: &Path) -> Result<String>;
+  /// Returns the kind of file or directory that the given path represents.
   fn kind(&self, path: &Path) -> FileKind;
+  /// Returns the resolution of a symbolic link.
   fn read_link(&self, path: &Path) -> Result<PathBuf>;
 }
 
+/// Default operating system file system implementation.
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
 pub struct OsFileSystem;

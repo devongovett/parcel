@@ -228,13 +228,11 @@ fn base_url_iter<'a>(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::OsFileSystem;
   use indexmap::indexmap;
-  use std::sync::Arc;
 
   #[test]
   fn test_paths() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let tsconfig = TsConfig::from_serialized(
       cache.get_normalized("/foo/tsconfig.json"),
       SerializedTsConfig {
@@ -291,7 +289,7 @@ mod tests {
 
   #[test]
   fn test_base_url() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let tsconfig = TsConfig::from_serialized(
       cache.get_normalized("/foo/tsconfig.json"),
       SerializedTsConfig {
@@ -318,7 +316,7 @@ mod tests {
 
   #[test]
   fn test_paths_and_base_url() {
-    let cache = Cache::new(Arc::new(OsFileSystem::default()));
+    let cache = Cache::default();
     let tsconfig = TsConfig::from_serialized(
       cache.get_normalized("/foo/tsconfig.json"),
       SerializedTsConfig {

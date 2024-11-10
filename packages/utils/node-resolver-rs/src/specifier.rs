@@ -7,20 +7,31 @@ use percent_encoding::percent_decode_str;
 
 use crate::{builtins::BUILTINS, url_to_path::url_to_path, Flags};
 
+/// Indicates how a specifier should be parsed.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SpecifierType {
+  /// Parse the specifier as an ES module specifier.
+  /// This treats the specifier like a URL, but with support for bare module specifiers.
   Esm,
+  /// Parse the specifier as a CommonJS specifier.
   Cjs,
+  /// Parse the specifier as a URL.
+  /// Bare specifiers are treated like relative URLs.
   Url,
 }
 
+/// An error that occurred while parsing a specifier.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(tag = "kind", content = "value")]
 pub enum SpecifierError {
+  /// Specifier was an empty string.
   EmptySpecifier,
+  /// Invalid specifier for an npm package.
   InvalidPackageSpecifier,
+  /// Error parsing a URL.
   #[serde(serialize_with = "serialize_url_error")]
   UrlError(url::ParseError),
+  /// Invalid `file://` URL.
   InvalidFileUrl,
 }
 
@@ -38,18 +49,27 @@ where
   value.to_string().serialize(serializer)
 }
 
+/// Represents a module specifier.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Specifier<'a> {
+  /// A relative specifier, e.g. './foo'.
   Relative(Cow<'a, Path>),
+  /// An absolute specifier, e.g. '/foo/bar'.
   Absolute(Cow<'a, Path>),
+  /// A tilde specifier, e.g. '~/foo'.
   Tilde(Cow<'a, Path>),
+  /// A hash specifier, e.g. '#foo'.
   Hash(Cow<'a, str>),
+  /// A package specifier and subpath, e.g. 'lodash/clone'.
   Package(Cow<'a, str>, Cow<'a, str>),
+  /// A Node builtin module, e.g. 'path' or 'node:path'.
   Builtin(Cow<'a, str>),
+  /// A URL specifier.
   Url(&'a str),
 }
 
 impl<'a> Specifier<'a> {
+  /// Parses a specifier.
   pub fn parse(
     specifier: &'a str,
     specifier_type: SpecifierType,
@@ -161,6 +181,7 @@ impl<'a> Specifier<'a> {
     })
   }
 
+  /// Converts the specifier to a string.
   pub fn to_string(&'a self) -> Cow<'a, str> {
     match self {
       Specifier::Relative(path) | Specifier::Absolute(path) | Specifier::Tilde(path) => {
@@ -186,7 +207,7 @@ impl<'a> Specifier<'a> {
 
 // https://url.spec.whatwg.org/#scheme-state
 // https://github.com/servo/rust-url/blob/1c1e406874b3d2aa6f36c5d2f3a5c2ea74af9efb/url/src/parser.rs#L387
-pub fn parse_scheme(input: &str) -> Result<(Cow<'_, str>, &str), ()> {
+pub(crate) fn parse_scheme(input: &str) -> Result<(Cow<'_, str>, &str), ()> {
   if input.is_empty() || !input.starts_with(ascii_alpha) {
     return Err(());
   }
@@ -284,7 +305,7 @@ pub fn parse_package_specifier(specifier: &str) -> Result<(&str, &str), Specifie
   }
 }
 
-pub fn decode_path(
+pub(crate) fn decode_path(
   specifier: &str,
   specifier_type: SpecifierType,
 ) -> (Cow<'_, Path>, Option<&str>) {

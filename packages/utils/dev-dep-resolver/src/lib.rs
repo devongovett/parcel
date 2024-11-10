@@ -6,8 +6,8 @@ use std::{
 use dashmap::{DashMap, DashSet};
 use es_module_lexer::{lex, ImportKind};
 use parcel_resolver::{
-  CacheCow, Invalidations, ModuleType, Resolution, ResolveOptions, Resolver, ResolverError,
-  Specifier, SpecifierError, SpecifierType,
+  Invalidations, ModuleType, Resolution, ResolutionAndQuery, ResolveOptions, Resolver,
+  ResolverError, Specifier, SpecifierError, SpecifierType,
 };
 // use rayon::prelude::{ParallelBridge, ParallelIterator};
 
@@ -103,7 +103,7 @@ impl<'a> EsmGraphBuilder<'a> {
       ModuleType::CommonJs | ModuleType::Json => &self.cjs_resolver,
       ModuleType::Module => &self.esm_resolver,
     };
-    let contents = resolver.cache.fs.read_to_string(file)?;
+    let contents = resolver.cache().fs.read_to_string(file)?;
     let module = lex(&contents)?;
     #[allow(clippy::map_collect_result_unit)]
     module
@@ -126,7 +126,10 @@ impl<'a> EsmGraphBuilder<'a> {
               return Ok(());
             }
 
-            if let Ok((Resolution::Path(p), _)) = resolver.resolve_with_invalidations(
+            if let Ok(ResolutionAndQuery {
+              resolution: Resolution::Path(p),
+              ..
+            }) = resolver.resolve_with_invalidations(
               &import.specifier(),
               file,
               SpecifierType::Esm,
@@ -140,7 +143,7 @@ impl<'a> EsmGraphBuilder<'a> {
               //   file,
               //   p
               // );
-              invalidations.invalidate_on_file_change(resolver.cache.get(&p));
+              invalidations.invalidate_on_file_change(resolver.cache().get(&p));
               self.build(&p)?;
             } else {
               // Ignore dependencies that don't resolve to anything.
@@ -184,7 +187,10 @@ impl<'a> EsmGraphBuilder<'a> {
           invalidations,
           ResolveOptions::default(),
         ) {
-          Ok((Resolution::Path(p), _)) => Cow::Owned(p.parent().unwrap().join(subpath.as_ref())),
+          Ok(ResolutionAndQuery {
+            resolution: Resolution::Path(p),
+            ..
+          }) => Cow::Owned(p.parent().unwrap().join(subpath.as_ref())),
           _ => return Ok(()),
         }
       }
@@ -202,7 +208,7 @@ impl<'a> EsmGraphBuilder<'a> {
 
     for path in glob::glob(pattern.to_string_lossy().as_ref())? {
       let path = path?;
-      invalidations.invalidate_on_file_change(resolver.cache.get(&path));
+      invalidations.invalidate_on_file_change(resolver.cache().get(&path));
       self.build(&path)?;
     }
 
@@ -490,14 +496,8 @@ pub fn build_esm_graph(
     visited: DashSet::new(),
     visited_globs: DashSet::new(),
     invalidations: Invalidations::default(),
-    cjs_resolver: Resolver::node(
-      Cow::Borrowed(project_root),
-      CacheCow::Borrowed(resolver_cache),
-    ),
-    esm_resolver: Resolver::node_esm(
-      Cow::Borrowed(project_root),
-      CacheCow::Borrowed(resolver_cache),
-    ),
+    cjs_resolver: Resolver::node(project_root, resolver_cache),
+    esm_resolver: Resolver::node_esm(project_root, resolver_cache),
     cache,
   };
 

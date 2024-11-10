@@ -6,7 +6,7 @@ use crate::{
   fs::FileKind,
   package_json::PackageJson,
   tsconfig::{TsConfig, TsConfigWrapper},
-  FileSystem, ResolverError,
+  FileSystem, OsFileSystem, ResolverError,
 };
 use std::{
   cell::UnsafeCell,
@@ -61,7 +61,14 @@ impl<'a> PartialEq for PathEntry<'a> {
 
 impl<'a> Eq for PathEntry<'a> {}
 
+impl Default for Cache {
+  fn default() -> Self {
+    Cache::new(Arc::new(OsFileSystem))
+  }
+}
+
 impl Cache {
+  /// Creates an empty cache with the given file system.
   pub fn new(fs: Arc<dyn FileSystem>) -> Cache {
     Cache {
       fs,
@@ -69,10 +76,12 @@ impl Cache {
     }
   }
 
+  /// Returns cached info for a pre-normalized path.
   pub fn get<P: AsRef<Path>>(&self, path: P) -> CachedPath {
     self.get_path(path.as_ref())
   }
 
+  /// Normalizes the given path and returns its cached info.
   pub fn get_normalized<P: AsRef<Path>>(&self, path: P) -> CachedPath {
     self.get_path(&normalize_path(path.as_ref()))
   }
@@ -124,20 +133,36 @@ impl Cache {
   }
 }
 
-#[allow(clippy::large_enum_variant)]
-/// Special Cow implementation for a Cache that doesn't require Clone.
-pub enum CacheCow<'a> {
-  Borrowed(&'a Cache),
-  Owned(Cache),
-}
+pub(crate) mod private {
+  use super::*;
 
-impl<'a> Deref for CacheCow<'a> {
-  type Target = Cache;
+  #[allow(clippy::large_enum_variant)]
+  /// Special Cow implementation for a Cache that doesn't require Clone.
+  pub enum CacheCow<'a> {
+    Borrowed(&'a Cache),
+    Owned(Cache),
+  }
 
-  fn deref(&self) -> &Self::Target {
-    match self {
-      CacheCow::Borrowed(c) => c,
-      CacheCow::Owned(c) => c,
+  impl<'a> Deref for CacheCow<'a> {
+    type Target = Cache;
+
+    fn deref(&self) -> &Self::Target {
+      match self {
+        CacheCow::Borrowed(c) => c,
+        CacheCow::Owned(c) => c,
+      }
+    }
+  }
+
+  impl<'a> From<Cache> for CacheCow<'a> {
+    fn from(value: Cache) -> Self {
+      CacheCow::Owned(value)
+    }
+  }
+
+  impl<'a> From<&'a Cache> for CacheCow<'a> {
+    fn from(value: &'a Cache) -> Self {
+      CacheCow::Borrowed(value)
     }
   }
 }
@@ -168,10 +193,12 @@ struct PathInfo {
 pub struct CachedPath(Arc<PathInfo>);
 
 impl CachedPath {
+  /// Returns a std Path.
   pub fn as_path(&self) -> &Path {
     self.0.path.as_path()
   }
 
+  /// Returns the parent path.
   pub fn parent(&self) -> Option<&CachedPath> {
     self.0.parent.as_ref()
   }
@@ -180,22 +207,27 @@ impl CachedPath {
     *self.0.kind.get_or_init(|| fs.kind(self.as_path()))
   }
 
+  /// Returns whether the path is a file.
   pub fn is_file(&self, fs: &dyn FileSystem) -> bool {
     self.kind(fs).contains(FileKind::IS_FILE)
   }
 
+  /// Returns whether the path is a directory.
   pub fn is_dir(&self, fs: &dyn FileSystem) -> bool {
     self.kind(fs).contains(FileKind::IS_DIR)
   }
 
+  /// Returns whether the path is a node_modules directory.
   pub fn is_node_modules(&self) -> bool {
     self.0.flags.contains(PathFlags::IS_NODE_MODULES)
   }
 
+  /// Returns whether the path is inside a node_modules directory.
   pub fn in_node_modules(&self) -> bool {
     self.0.flags.contains(PathFlags::IN_NODE_MODULES)
   }
 
+  /// Returns the canonical path, resolving all symbolic links.
   pub fn canonicalize(&self, cache: &Cache) -> Result<CachedPath, ResolverError> {
     // Check if this thread is already canonicalizing. If so, we have found a circular symlink.
     // If a different thread is canonicalizing, OnceLock will queue this thread to wait for the result.
@@ -242,18 +274,22 @@ impl CachedPath {
       .clone()
   }
 
+  /// Returns an iterator over all ancestor paths.
   pub fn ancestors<'a>(&'a self) -> impl Iterator<Item = &'a CachedPath> {
     std::iter::successors(Some(self), |p| p.parent())
   }
 
+  /// Returns the file name of this path (the final path component).
   pub fn file_name(&self) -> Option<&OsStr> {
     self.as_path().file_name()
   }
 
+  /// Returns the file extension of this path.
   pub fn extension(&self) -> Option<&OsStr> {
     self.as_path().extension()
   }
 
+  /// Returns a new path with the given path segment appended to this path.
   pub fn join<P: AsRef<OsStr>>(&self, segment: P, cache: &Cache) -> CachedPath {
     SCRATCH_PATH.with(|path| {
       let path = unsafe { &mut *path.get() };
@@ -264,6 +300,7 @@ impl CachedPath {
     })
   }
 
+  /// Returns a new path with the given node_modules directory appended to this path.
   pub fn join_module(&self, module: &str, cache: &Cache) -> CachedPath {
     SCRATCH_PATH.with(|path| {
       let path = unsafe { &mut *path.get() };
@@ -275,6 +312,7 @@ impl CachedPath {
     })
   }
 
+  /// Returns a new path with the given node_modules directory and package subpath appended to this path.
   pub fn join_package(&self, module: &str, subpath: &str, cache: &Cache) -> CachedPath {
     SCRATCH_PATH.with(|path| {
       let path = unsafe { &mut *path.get() };
@@ -286,6 +324,7 @@ impl CachedPath {
     })
   }
 
+  /// Returns a new path by resolving the given subpath (including "." and ".." components) with this path.
   pub fn resolve(&self, subpath: &Path, cache: &Cache) -> CachedPath {
     SCRATCH_PATH.with(|path| {
       let path = unsafe { &mut *path.get() };
@@ -311,6 +350,7 @@ impl CachedPath {
     })
   }
 
+  /// Returns a new path by appending the given file extension (without leading ".") with this path.
   pub fn add_extension(&self, ext: &str, cache: &Cache) -> CachedPath {
     SCRATCH_PATH.with(|path| {
       let path = unsafe { &mut *path.get() };
@@ -323,6 +363,7 @@ impl CachedPath {
     })
   }
 
+  /// Returns the parsed package.json at this path.
   pub fn package_json(&self, cache: &Cache) -> Arc<Result<PackageJson, ResolverError>> {
     self
       .0
@@ -331,6 +372,7 @@ impl CachedPath {
       .clone()
   }
 
+  /// Returns the parsed tsconfig.json at this path.
   pub fn tsconfig<F: FnOnce(&mut TsConfigWrapper) -> Result<(), ResolverError>>(
     &self,
     cache: &Cache,
