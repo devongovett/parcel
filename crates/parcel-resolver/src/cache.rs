@@ -6,7 +6,7 @@ use crate::{
   fs::FileKind,
   package_json::PackageJson,
   tsconfig::{TsConfig, TsConfigWrapper},
-  FileSystem, OsFileSystem, ResolverError,
+  FileSystem, ResolverError,
 };
 use std::{
   cell::UnsafeCell,
@@ -61,9 +61,10 @@ impl<'a> PartialEq for PathEntry<'a> {
 
 impl<'a> Eq for PathEntry<'a> {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Cache {
   fn default() -> Self {
-    Cache::new(Arc::new(OsFileSystem))
+    Cache::new(Arc::new(crate::fs::OsFileSystem))
   }
 }
 
