@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-parcel-resolver = { path = "../node-resolver-rs" }
+parcel-resolver = { path = "../parcel-resolver" }
 es-module-lexer = { git = "https://github.com/devongovett/es-module-lexer" }
 serde_json = "1.0.91"
 rayon = "1.7.0"

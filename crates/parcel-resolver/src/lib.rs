@@ -9,16 +9,16 @@
 //!
 //! # Example
 //!
-//! To create a resolver, first create a [Cache](Cache). This stores information about the files
-//! in a [FileSystem](FileSystem), and can be reused between multiple resolvers. A fresh cache
+//! To create a resolver, first create a [Cache]. This stores information about the files
+//! in a [FileSystem], and can be reused between multiple resolvers. A fresh cache
 //! should generally be created once per build to ensure information is up to date.
 //!
-//! Next, create a [Resolver](Resolver) using one of the constructors. For example, `Resolver::node`
+//! Next, create a [Resolver] using one of the constructors. For example, `Resolver::node`
 //! creates a Node.js compatible CommonJS resolver, `Resolver::node_esm` creates an ESM resolver,
 //! and `Resolver::parcel` creates a Parcel-compatible resolver. From there you can customize individual
 //! features such as extensions or index files by setting properties on the resolver.
 //!
-//! Finally, call `resolver.resolve` to resolve a specifier. This returns a result, along with [Invalidations](Invalidations)
+//! Finally, call `resolver.resolve` to resolve a specifier. This returns a result, along with [Invalidations]
 //! describing the files that should invalidate any resolution caches.
 //!
 //! ```
@@ -68,6 +68,7 @@ mod cache;
 mod error;
 mod fs;
 mod invalidations;
+mod json_comments_rs;
 mod package_json;
 mod specifier;
 mod tsconfig;
@@ -1394,7 +1395,9 @@ mod tests {
     Path::new(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .unwrap()
-      .join("node-resolver-core/test/fixture")
+      .parent()
+      .unwrap()
+      .join("packages/utils/node-resolver-core/test/fixture")
   }
 
   fn test_resolver<'a>() -> Resolver<'a> {

@@ -10,7 +10,6 @@ dashmap = { version = "6.1.0", features = ["raw-api"] }
 glob-match = "0.2.1"
 indexmap = { version = "1.9.2", features = ["serde"] }
 itertools = "0.10.5"
-json_comments = { path = "../../../crates/json-comments-rs" }
 parking_lot = "0.12"
 percent-encoding = "2.2.0"
 serde = { version = "1.0.152", features = ["derive"] }

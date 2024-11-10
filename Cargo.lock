@@ -947,13 +947,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "json_comments"
-version = "0.2.1"
-dependencies = [
- "serde_json",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1322,7 +1315,6 @@ dependencies = [
  "indexmap 1.9.3",
  "is_elevated",
  "itertools 0.10.5",
- "json_comments",
  "parking_lot",
  "percent-encoding",
  "rustc-hash 2.0.0",

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! `json_comments` is a library to strip out comments from JSON-like test. By processing text
 //! through a [`StripComments`] adapter first, it is possible to use a standard JSON parser (such
 //! as [serde_json](https://crates.io/crates/serde_json) with quasi-json input that contains
@@ -11,35 +12,6 @@
 //!   - C style block comments (`/* ... */`)
 //!   - C style line comments (`// ...`)
 //!   - Shell style line comments (`# ...`)
-//!
-//! ## Example using serde_json
-//!
-//! ```
-//! use serde_json::{Result, Value};
-//! use json_comments::StripComments;
-//!
-//! # fn main() -> Result<()> {
-//! // Some JSON input data as a &str. Maybe this comes form the user.
-//! let data = r#"
-//!     {
-//!         "name": /* full */ "John Doe",
-//!         "age": 43,
-//!         "phones": [
-//!             "+44 1234567", // work phone
-//!             "+44 2345678"  // home phone
-//!         ]
-//!     }"#;
-//!
-//! // Strip the comments from the input (use `as_bytes()` to get a `Read`).
-//! let stripped = StripComments::new(data.as_bytes());
-//! // Parse the string of data into serde_json::Value.
-//! let v: Value = serde_json::from_reader(stripped)?;
-//!
-//! println!("Please call {} at the number {}", v["name"], v["phones"][0]);
-//!
-//! # Ok(())
-//! # }
-//! ```
 //!
 use std::{
   io::{ErrorKind, Read, Result},
@@ -66,27 +38,6 @@ use State::*;
 ///   - C style block comments (`/* ... */`)
 ///   - C style line comments (`// ...`)
 ///   - Shell style line comments (`# ...`)
-///
-/// ## Example
-/// ```
-/// use json_comments::StripComments;
-/// use std::io::Read;
-///
-/// let input = r#"{
-/// // c line comment
-/// "a": "comment in string /* a */",
-/// ## shell line comment
-/// } /** end */"#;
-///
-/// let mut stripped = String::new();
-/// StripComments::new(input.as_bytes()).read_to_string(&mut stripped).unwrap();
-///
-/// assert_eq!(stripped, "{
-///                  \n\"a\": \"comment in string /* a */\",
-///                     \n}           ");
-///
-/// ```
-///
 pub struct StripComments<T: Read> {
   inner: T,
   state: State,
@@ -197,24 +148,6 @@ fn strip_buf(
 }
 
 /// Strips comments from a string in place, replacing it with whitespaces.
-///
-/// /// ## Example
-/// ```
-/// use json_comments::strip_comments_in_place;
-///
-/// let mut string = String::from(r#"{
-/// // c line comment
-/// "a": "comment in string /* a */",
-/// ## shell line comment
-/// } /** end */"#);
-///
-/// strip_comments_in_place(&mut string, Default::default(), false).unwrap();
-///
-/// assert_eq!(string, "{
-///                  \n\"a\": \"comment in string /* a */\",
-///                     \n}           ");
-///
-/// ```
 pub fn strip_comments_in_place(
   s: &mut str,
   settings: CommentSettings,
@@ -281,43 +214,6 @@ impl CommentSettings {
   /// Transform `input` into a [`Read`] that strips out comments.
   /// The types of comments to support are determined by the configuration of
   /// `self`.
-  ///
-  /// ## Examples
-  ///
-  /// ```
-  /// use json_comments::CommentSettings;
-  /// use std::io::Read;
-  ///
-  /// let input = r#"{
-  /// // c line comment
-  /// "a": "b"
-  /// /** multi line
-  /// comment
-  /// */ }"#;
-  ///
-  /// let mut stripped = String::new();
-  /// CommentSettings::c_style().strip_comments(input.as_bytes()).read_to_string(&mut stripped).unwrap();
-  ///
-  /// assert_eq!(stripped, "{
-  ///                  \n\"a\": \"b\"
-  ///                           }");
-  /// ```
-  ///
-  /// ```
-  /// use json_comments::CommentSettings;
-  /// use std::io::Read;
-  ///
-  /// let input = r#"{
-  /// ## shell line comment
-  /// "a": "b"
-  /// }"#;
-  ///
-  /// let mut stripped = String::new();
-  /// CommentSettings::hash_only().strip_comments(input.as_bytes()).read_to_string(&mut stripped).unwrap();
-  ///
-  /// assert_eq!(stripped, "{
-  ///                     \n\"a\": \"b\"\n}");
-  /// ```
   #[inline]
   pub fn strip_comments<I: Read>(self, input: I) -> StripComments<I> {
     StripComments::with_settings(self, input)

@@ -116,7 +116,7 @@ export const Priority = {
   lazy: 2,
 };
 
-// Must match package_json.rs in node-resolver-rs.
+// Must match package_json.rs in the parcel-resolver crate.
 export const ExportsCondition = {
   import: 1 << 0,
   require: 1 << 1,

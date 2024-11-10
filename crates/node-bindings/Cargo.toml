@@ -10,13 +10,13 @@ crate-type = ["cdylib"]
 [dependencies]
 napi-derive = "2.16.3"
 parcel-js-swc-core = { path = "../../packages/transformers/js/core" }
-parcel-resolver = { path = "../../packages/utils/node-resolver-rs" }
+parcel-resolver = { path = "../parcel-resolver" }
 dashmap = "6.1.0"
 xxhash-rust = { version = "0.8.2", features = ["xxh3"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 napi = { version = "2.16.4", features = ["serde-json", "napi4", "napi5"] }
-parcel-dev-dep-resolver = { path = "../../packages/utils/dev-dep-resolver" }
+parcel-dev-dep-resolver = { path = "../dev-dep-resolver" }
 parcel-macros = { path = "../macros", features = ["napi"] }
 oxipng = "8.0.0"
 mozjpeg-sys = "2.0.0"
