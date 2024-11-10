@@ -2,6 +2,10 @@
 authors = ["Devon Govett <devongovett@gmail.com>"]
 name = "parcel-resolver"
 version = "0.1.0"
+license = "MIT"
+repository = "https://github.com/parcel-bundler/parcel"
+keywords = ["resolver", "node", "cjs", "esm", "bundler"]
+description = "Node.js compatible module resolver used by the Parcel bundler"
 edition = "2021"
 
 [dependencies]
