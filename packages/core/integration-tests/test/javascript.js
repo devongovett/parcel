@@ -4945,6 +4945,43 @@ describe('javascript', function () {
     );
   });
 
+  it('should generate valid dependency specifiers for Node with dynamic imports and HMR', async function () {
+    await fsFixture(overlayFS, __dirname)`
+      node-dynamic-import-hmr
+        package.json:
+          {
+            "engines": {
+              "node": ">= 10.0.0"
+            }
+          }
+
+        index.js:
+          output(import("./foo"));
+
+        foo.js:
+          export const foo = 123;
+
+        yarn.lock:
+
+    `;
+
+    let b = await bundle(
+      path.join(__dirname, 'node-dynamic-import-hmr/index.js'),
+      {
+        inputFS: overlayFS,
+        hmrOptions: {},
+      },
+    );
+
+    let output;
+    await run(b, {
+      output(v) {
+        output = v;
+      },
+    });
+    assert.deepEqual(await output, {foo: 123});
+  });
+
   for (let shouldScopeHoist of [false, true]) {
     let options = {
       defaultTargetOptions: {

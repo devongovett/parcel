@@ -636,7 +636,7 @@ function getRelativePathExpr(
 ): string {
   let relativePath = relativeBundlePath(from, to, {leadingDotSlash: false});
   let res = JSON.stringify(relativePath);
-  if (options.hmrOptions) {
+  if (options.hmrOptions && from.env.outputFormat !== 'commonjs') {
     res += ' + "?" + Date.now()';
   }
 
