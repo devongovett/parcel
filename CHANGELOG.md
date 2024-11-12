@@ -5,27 +5,33 @@ All notable changes to Parcel will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and Parcel adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [2.13.0] - 2024-XX-XX
+## [2.13.0] - 2024-11-12
 
 ### Added
 
 - Core
+
   - Expose watcher ignore and watcher backend options – [Details](https://github.com/parcel-bundler/parcel/pull/9547)
   - Improve large watcher events payload experience – [Details](https://github.com/parcel-bundler/parcel/pull/9583)
   - Add support for globs in package.json#source – [Details](https://github.com/parcel-bundler/parcel/pull/9590)
+  - Add config key invalidation – [Details](https://github.com/parcel-bundler/parcel/pull/9597)
 
 - Bundler
+
   - Add library bundler – [Details](https://github.com/parcel-bundler/parcel/pull/9489)
 
 - Dev Server
+
   - Support .proxyrc.ts – [Details](https://github.com/parcel-bundler/parcel/pull/9654)
 
 - Resolver
+  - 12x faster resolver cache – [Details](https://github.com/parcel-bundler/parcel/pull/9984)
   - Correctly handle empty resolver diagnostics array – [Details](https://github.com/parcel-bundler/parcel/pull/9407)
 
 ### Fixed
 
 - Core
+
   - Remove abortcontroller-polyfill – [Details](https://github.com/parcel-bundler/parcel/pull/9592)
   - Fix missing content key in symbol propagation when asset is removed – [Details](https://github.com/parcel-bundler/parcel/pull/9627)
   - Update minimum supported node version to 16 – [Details](https://github.com/parcel-bundler/parcel/pull/9645)
@@ -38,61 +44,90 @@ and Parcel adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
   - Fix request tracker incremental cache write for new nodes – [Details](https://github.com/parcel-bundler/parcel/pull/9719)
   - Improve request graph cache reading – [Details](https://github.com/parcel-bundler/parcel/pull/9721)
   - Exit process with error code when reporters fail – [Details](https://github.com/parcel-bundler/parcel/pull/9735)
+  - Write tmp files to the OS tmp directory - [Details](https://github.com/parcel-bundler/parcel/pull/9580)
+  - Fix small HMR issues – [Details](https://github.com/parcel-bundler/parcel/pull/9869)
+  - Fix crash in EntryRequest with multiple globs in the source field – [Details](https://github.com/parcel-bundler/parcel/pull/9901)
+  - Revert split manifest runtime bundles – [Details](https://github.com/parcel-bundler/parcel/pull/9955)
+  - Revert chunked cache blobs for improved stability – [Details](https://github.com/parcel-bundler/parcel/pull/9965)
+  - Update dependencies – [Details](https://github.com/parcel-bundler/parcel/pull/9968)
 
 - Bundler
+
   - Fix assets outside project root with Manual Shared Bundles – [Details](https://github.com/parcel-bundler/parcel/pull/9734)
 
 - JavaScript
+
   - Avoid non-identifier export names in non-entry library bundles – [Details](https://github.com/parcel-bundler/parcel/pull/9587)
   - Relax react-refresh version range – [Details](https://github.com/parcel-bundler/parcel/pull/9624)
   - Also emit swc recoverable errors – [Details](https://github.com/parcel-bundler/parcel/pull/9650)
-  - Bump swc – [Details](https://github.com/parcel-bundler/parcel/pull/9574), [Details](https://github.com/parcel-bundler/parcel/pull/9818)
+  - Bump swc – [Details](https://github.com/parcel-bundler/parcel/pull/9574), [Details](https://github.com/parcel-bundler/parcel/pull/9818), [Details](https://github.com/parcel-bundler/parcel/pull/9967), [Details](https://github.com/parcel-bundler/parcel/commit/cfd26ec900b2dc8f85818d2a5a212d60b1036d39)
   - Bump swc and browserslist-rs – [Details](https://github.com/parcel-bundler/parcel/pull/9838)
   - Replace std::sync locks with parking_lot locks for better stability – [Details](https://github.com/parcel-bundler/parcel/pull/9731)
   - Ensure const modules in async bundles are wrapped – [Details](https://github.com/parcel-bundler/parcel/pull/9740)
   - Fix dev packager global reference – [Details](https://github.com/parcel-bundler/parcel/pull/9814)
   - Fix import usage tracking for destructure defaulting – [Details](https://github.com/parcel-bundler/parcel/pull/9842)
+  - Update Node.js globals replacer to use SWC VisitMut – [Details](https://github.com/parcel-bundler/parcel/pull/9830)
+  - Update `process.env` replacer to use SWC VisitMut – [Details](https://github.com/parcel-bundler/parcel/pull/9852)
+  - Update Node.js `__filename` and `__dirname` replace to use SWC VisitMut – [Details](https://github.com/parcel-bundler/parcel/pull/9855)
+  - Fix parcelRequire being added to multi-target libraries – [Details](https://github.com/parcel-bundler/parcel/pull/9904)
+  - Handle TypeScript expressions in macro evaluator – [Details](https://github.com/parcel-bundler/parcel/commit/0bebfa6c53d0cc7b50c12a384ccc8fb13dc4de31)
 
 - Resolver
+
   - Fix NUL byte crash in resolver – [Details](https://github.com/parcel-bundler/parcel/pull/9640)
   - Change default resolver error message for custom specifiers – [Details](https://github.com/parcel-bundler/parcel/pull/9378)
 
 - TypeScript
+
   - Handle dynamic import type references in TS types transformer – [Details](https://github.com/parcel-bundler/parcel/pull/9573)
   - Correctly handle qualified names in TS types import() – [Details](https://github.com/parcel-bundler/parcel/pull/9579)
 
+- SASS
+
+  - Migrate to new sass API – [Details](https://github.com/parcel-bundler/parcel/pull/9966)
+
+- SVG
+
+  - Load svgo version from project – [Details](https://github.com/parcel-bundler/parcel/pull/9969)
+  - Update svgr and use project svgo version – [Details](https://github.com/parcel-bundler/parcel/commit/71acf875ede7dfcf3d12b8d25fd50b56339aa43a)
+
+- Image
+
+  - Bump oxipng – [Details](https://github.com/parcel-bundler/parcel/commit/6b8c8643a5f3aa44723bcde3c1318b68cd5f6999)
+
 - Vue
+
   - Upgrade consolidate to v1 – [Details](https://github.com/parcel-bundler/parcel/pull/9570)
 
 - Web Extensions
   - Allow both service_worker and scripts in MV3 Web Extensions – [Details](https://github.com/parcel-bundler/parcel/pull/9673)
-
-### Unstable
-
-- Optimise the Inline Requires plugin – [Details](https://github.com/parcel-bundler/parcel/pull/9664)
-- Fix issue in async bundle runtime where it would not always add the runtime code – [Details](https://github.com/parcel-bundler/parcel/pull/9736)
 
 ## [2.12.0] - 2024-02-28
 
 ### Added
 
 - Core
+
   - Add REPL playground for Parcel to the website – [Details](https://github.com/parcel-bundler/parcel/pull/9365)
   - Improve package manager detection for auto install – [Details](https://github.com/parcel-bundler/parcel/pull/9505)
 
 - JavaScript
+
   - Add support for JS macros – [Details](https://github.com/parcel-bundler/parcel/pull/9299)
   - Statically evaluate constants referenced by macros – [Details](https://github.com/parcel-bundler/parcel/pull/9487)
   - Upgrade to ESLint 8 – [Details](https://github.com/parcel-bundler/parcel/pull/8580)
   - Bump swc – [Details](https://github.com/parcel-bundler/parcel/pull/9498)
 
 - CSS
+
   - Use lightningcss to implement CSS packager – [Details](https://github.com/parcel-bundler/parcel/pull/8492)
 
 - Bundler
+
   - Rename "parentAsset" to "root" for Manual Shared Bundle config and remove unstable prefix – [Details](https://github.com/parcel-bundler/parcel/pull/9486)
 
 - Web Extensions
+
   - Add content script world property to manifest schema validation – [Details](https://github.com/parcel-bundler/parcel/pull/9510)
 
 - Performance
@@ -102,11 +137,13 @@ and Parcel adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Core
+
   - Drop per-pipeline transformation cache – [Details](https://github.com/parcel-bundler/parcel/pull/9459)
   - Clippy and use napi's Either3 – [Details](https://github.com/parcel-bundler/parcel/pull/9047)
   - Add lazy/eager cache key to avoid invalid change when switching modes – [Details](https://github.com/parcel-bundler/parcel/pull/9518)
 
 - JavaScript
+
   - Remove decl_collector pass and use SWC's unresolved_mark instead – [Details](https://github.com/parcel-bundler/parcel/pull/9520)
 
 - Bundler
