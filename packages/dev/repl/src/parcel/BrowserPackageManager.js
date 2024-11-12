@@ -80,6 +80,10 @@ const ENTRIES =
     ? SOURCE
     : 0);
 
+const IS_FILE = 1 << 0;
+const IS_DIR = 1 << 1;
+const IS_SYMLINK = 1 << 2;
+
 export class BrowserPackageManager implements PackageManager {
   resolver: ?ResolverBase;
   fs: FileSystem;
@@ -96,10 +100,26 @@ export class BrowserPackageManager implements PackageManager {
     await init?.();
     this.resolver = new ResolverBase(this.projectRoot, {
       fs: {
-        canonicalize: path => this.fs.realpathSync(path),
         read: path => this.fs.readFileSync(path),
-        isFile: path => this.fs.statSync(path).isFile(),
-        isDir: path => this.fs.statSync(path).isDirectory(),
+        kind: path => {
+          let flags = 0;
+          try {
+            let stat = this.fs.lstatSync(path);
+            if (stat.isSymbolicLink()) {
+              flags |= IS_SYMLINK;
+              stat = this.fs.statSync(path);
+            }
+            if (stat.isFile()) {
+              flags |= IS_FILE;
+            } else if (stat.isDirectory()) {
+              flags |= IS_DIR;
+            }
+          } catch (err) {
+            // ignore
+          }
+          return flags;
+        },
+        readLink: path => this.fs.readlinkSync(path),
       },
       mode: 2,
       entries: ENTRIES,

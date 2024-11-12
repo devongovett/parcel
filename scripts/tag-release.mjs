@@ -4,7 +4,7 @@ import {execSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
 import {URL} from 'node:url';
 
-import program from 'commander';
+import {program} from 'commander';
 
 async function main(tag) {
   let publishSummary = JSON.parse(
@@ -27,7 +27,8 @@ let {tag} = program
     '--tag <tag>',
     'The npm tag to add to every package published in the latest release',
   )
-  .parse(process.argv);
+  .parse(process.argv)
+  .opts();
 
 if (!tag) {
   throw new Error('Required option `tag` not specified');

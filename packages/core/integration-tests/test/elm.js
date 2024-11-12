@@ -1,9 +1,9 @@
 import assert from 'assert';
 import path from 'path';
 import {
+  assertBundles,
   bundle,
   distDir,
-  assertBundles,
   run,
   outputFS,
 } from '@parcel/test-utils';

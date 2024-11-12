@@ -2,10 +2,13 @@
 
 import {Runtime} from '@parcel/plugin';
 import {loadConfig} from '@parcel/utils';
+// $FlowFixMe Package json is untyped
+import {version} from 'react-refresh/package.json';
 
 const CODE = `
 var Refresh = require('react-refresh/runtime');
 var ErrorOverlay = require('react-error-overlay');
+window.__REACT_REFRESH_VERSION_RUNTIME = '${version}';
 
 Refresh.injectIntoGlobalHook(window);
 window.$RefreshReg$ = function() {};

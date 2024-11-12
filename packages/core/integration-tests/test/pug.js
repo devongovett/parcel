@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, assertBundles, outputFS, distDir} from '@parcel/test-utils';
+import {assertBundles, bundle, outputFS, distDir} from '@parcel/test-utils';
 
 describe('pug', function () {
   it('should support bundling HTML', async function () {

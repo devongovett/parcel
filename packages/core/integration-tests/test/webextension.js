@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, assertBundles, outputFS, distDir} from '@parcel/test-utils';
+import {assertBundles, bundle, distDir, outputFS} from '@parcel/test-utils';
 
 describe('webextension', function () {
   it('should resolve a full webextension bundle', async function () {

@@ -7,7 +7,10 @@ type ProcessingInstruction = CharacterData;
 
 module.exports = {
   'xml-stylesheet': (node: ProcessingInstruction, asset: MutableAsset) => {
-    const pseudo = new DOMParser().parseFromString(`<ψ ${node.data} />`);
+    const pseudo = new DOMParser().parseFromString(
+      `<ψ ${node.data} />`,
+      'application/xml',
+    );
 
     const input = pseudo.firstChild.getAttribute('href');
     const output = asset.addURLDependency(input, {priority: 'parallel'});

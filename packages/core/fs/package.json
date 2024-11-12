@@ -25,20 +25,24 @@
     "main": {
       "includeNodeModules": {
         "@parcel/core": false,
+        "@parcel/feature-flags": false,
         "@parcel/rust": false,
         "@parcel/types-internal": false,
         "@parcel/utils": false,
         "@parcel/watcher": false,
+        "@parcel/watcher-watchman-js": false,
         "@parcel/workers": false
       }
     },
     "browser": {
       "includeNodeModules": {
         "@parcel/core": false,
+        "@parcel/feature-flags": false,
         "@parcel/rust": false,
         "@parcel/types-internal": false,
         "@parcel/utils": false,
         "@parcel/watcher": false,
+        "@parcel/watcher-watchman-js": false,
         "@parcel/workers": false
       }
     }
@@ -48,6 +52,7 @@
     "check-ts": "tsc --noEmit index.d.ts"
   },
   "dependencies": {
+    "@parcel/feature-flags": "2.12.0",
     "@parcel/rust": "2.12.0",
     "@parcel/types-internal": "2.12.0",
     "@parcel/utils": "2.12.0",
@@ -55,6 +60,7 @@
     "@parcel/workers": "2.12.0"
   },
   "devDependencies": {
+    "@parcel/watcher-watchman-js": "2.12.0",
     "graceful-fs": "^4.2.4",
     "ncp": "^2.0.0",
     "nullthrows": "^1.1.1",

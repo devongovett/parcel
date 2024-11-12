@@ -9,16 +9,12 @@
     "type": "opencollective",
     "url": "https://opencollective.com/parcel"
   },
-  "scripts": {
-    "prepack": "./ensure-no-dev-lib.sh",
-    "dev:prepare": "rimraf ./lib/ && mkdir -p lib && cp ./bin/dev-bin.js ./lib/bin.js"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
   "bin": {
-    "parcel-query": "bin/parcel-query.js"
+    "parcel-query": "src/bin.js"
   },
   "main": "src/index.js",
   "dependencies": {
@@ -31,7 +27,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.22.11",
-    "@parcel/babel-register": "2.12.0",
-    "rimraf": "^5.0.5"
+    "@parcel/babel-register": "2.12.0"
   }
 }

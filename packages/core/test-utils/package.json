@@ -18,12 +18,12 @@
     "@parcel/fs": "2.12.0",
     "@parcel/package-manager": "2.12.0",
     "@parcel/utils": "2.12.0",
-    "chalk": "^4.1.0",
+    "chalk": "^4.1.2",
     "ncp": "^2.0.0",
     "nullthrows": "^1.1.1",
     "posthtml": "^0.16.5",
-    "posthtml-parser": "^0.10.1",
+    "posthtml-parser": "^0.12.1",
     "resolve": "^1.12.0",
-    "ws": "^7.0.0"
+    "ws": "^8.18.0"
   }
 }

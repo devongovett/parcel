@@ -473,7 +473,7 @@ describe('typescript types', function () {
         export function foo() {
           return 'foo' + baz();
         }
-      
+
       ErrorBoundaryContext.ts:
         import { createContext } from "react";
         export type ErrorBoundaryContextType = {};
@@ -482,11 +482,11 @@ describe('typescript types', function () {
       ErrorBoundary.ts:
         import { Component, createElement, PropsWithChildren } from "react";
         import { ErrorBoundaryContext } from "./ErrorBoundaryContext";
-        
+
         export class ErrorBoundary extends Component<PropsWithChildren> {
           render() {
             const { children } = this.props;
-        
+
             return createElement(
               ErrorBoundaryContext.Provider,
               {

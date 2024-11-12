@@ -46,7 +46,7 @@ import {createEnvironment} from './Environment';
 import {createDependency} from './Dependency';
 import {Disposable} from '@parcel/events';
 import {init as initSourcemaps} from '@parcel/source-map';
-import {init as initRust, initSentry, closeSentry} from '@parcel/rust';
+import {init as initRust} from '@parcel/rust';
 import {
   fromProjectPath,
   toProjectPath,
@@ -101,20 +101,12 @@ export default class Parcel {
 
     await initSourcemaps;
     await initRust?.();
-    try {
-      initSentry?.();
-      process.on('exit', () => {
-        closeSentry?.();
-      });
-    } catch (e) {
-      // Fallthrough
-      logger.warn(e);
-    }
 
     let resolvedOptions: ParcelOptions = await resolveOptions(
       this.#initialOptions,
     );
     this.#resolvedOptions = resolvedOptions;
+
     let {config} = await loadParcelConfig(resolvedOptions);
     this.#config = new ParcelConfig(config, resolvedOptions);
 
@@ -162,6 +154,7 @@ export default class Parcel {
       origin: '@parcel/core',
       message: 'Intializing request tracker...',
     });
+
     this.#requestTracker = await RequestTracker.init({
       farm: this.#farm,
       options: resolvedOptions,
@@ -178,7 +171,6 @@ export default class Parcel {
 
     let result = await this._build({startTime});
 
-    await this.#requestTracker.writeToCache();
     await this._end();
 
     if (result.type === 'buildFailure') {
@@ -191,29 +183,8 @@ export default class Parcel {
   async _end(): Promise<void> {
     this.#initialized = false;
 
+    await this.#requestTracker.writeToCache();
     await this.#disposable.dispose();
-  }
-
-  async writeRequestTrackerToCache(): Promise<void> {
-    if (this.#watchQueue.getNumWaiting() === 0) {
-      // If there's no queued events, we are safe to write the request graph to disk
-      const abortController = new AbortController();
-
-      const unsubscribe = this.#watchQueue.subscribeToAdd(() => {
-        abortController.abort();
-      });
-
-      try {
-        await this.#requestTracker.writeToCache(abortController.signal);
-      } catch (err) {
-        if (!abortController.signal.aborted) {
-          // We expect abort errors if we interrupt the cache write
-          throw err;
-        }
-      }
-
-      unsubscribe();
-    }
   }
 
   async _startNextBuild(): Promise<?BuildEvent> {
@@ -235,9 +206,6 @@ export default class Parcel {
       if (!(err instanceof BuildAbortError)) {
         throw err;
       }
-    } finally {
-      // If the build passes or fails, we want to cache the request graph
-      await this.writeRequestTrackerToCache();
     }
   }
 

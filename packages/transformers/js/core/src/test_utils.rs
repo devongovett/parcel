@@ -1,13 +1,15 @@
-use swc_core::common::input::StringInput;
-use swc_core::common::sync::Lrc;
-use swc_core::common::util::take::Take;
-use swc_core::common::{FileName, Globals, Mark, SourceMap, GLOBALS};
-use swc_core::ecma::ast::Module;
-use swc_core::ecma::codegen::text_writer::JsWriter;
-use swc_core::ecma::parser::lexer::Lexer;
-use swc_core::ecma::parser::Parser;
-use swc_core::ecma::transforms::base::resolver;
-use swc_core::ecma::visit::{Fold, FoldWith, VisitMut, VisitMutWith};
+use swc_core::{
+  common::{
+    input::StringInput, sync::Lrc, util::take::Take, FileName, Globals, Mark, SourceMap, GLOBALS,
+  },
+  ecma::{
+    ast::Module,
+    codegen::text_writer::JsWriter,
+    parser::{lexer::Lexer, Parser},
+    transforms::base::resolver,
+    visit::{Fold, FoldWith, VisitMut, VisitMutWith},
+  },
+};
 
 pub(crate) struct RunTestContext {
   /// Source-map in use
@@ -75,7 +77,7 @@ fn run_with_transformation<R>(
   transform: impl FnOnce(RunTestContext, &mut Module) -> R,
 ) -> (String, R) {
   let source_map = Lrc::new(SourceMap::default());
-  let source_file = source_map.new_source_file(FileName::Anon, code.into());
+  let source_file = source_map.new_source_file(Lrc::new(FileName::Anon), code.into());
 
   let lexer = Lexer::new(
     Default::default(),
@@ -85,12 +87,12 @@ fn run_with_transformation<R>(
   );
 
   let mut parser = Parser::new_from(lexer);
-  let module = parser.parse_module().unwrap();
+  let mut module = parser.parse_module().unwrap();
 
   GLOBALS.set(&Globals::new(), || {
     let global_mark = Mark::new();
     let unresolved_mark = Mark::new();
-    let mut module = module.fold_with(&mut resolver(unresolved_mark, global_mark, false));
+    module.visit_mut_with(&mut resolver(unresolved_mark, global_mark, false));
 
     let context = RunTestContext {
       source_map: source_map.clone(),
@@ -116,8 +118,10 @@ fn run_with_transformation<R>(
 
 #[cfg(test)]
 mod test {
-  use swc_core::ecma::ast::{Lit, Str};
-  use swc_core::ecma::visit::VisitMut;
+  use swc_core::ecma::{
+    ast::{Lit, Str},
+    visit::VisitMut,
+  };
 
   use super::*;
 
@@ -132,6 +136,24 @@ mod test {
 
     let code = r#"console.log('test!')"#;
     let RunVisitResult { output_code, .. } = run_visit(code, |_: RunTestContext| Visitor);
+    assert_eq!(
+      output_code,
+      r#"console.log("replacement");
+"#
+    );
+  }
+
+  #[test]
+  fn test_fold() {
+    struct Folder;
+    impl Fold for Folder {
+      fn fold_lit(&mut self, _n: Lit) -> Lit {
+        Lit::Str(Str::from("replacement"))
+      }
+    }
+
+    let code = r#"console.log('test!')"#;
+    let RunVisitResult { output_code, .. } = run_fold(code, |_: RunTestContext| Folder);
     assert_eq!(
       output_code,
       r#"console.log("replacement");

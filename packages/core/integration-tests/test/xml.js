@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, assertBundles, outputFS} from '@parcel/test-utils';
+import {assertBundles, bundle, outputFS} from '@parcel/test-utils';
 
 describe('xml', function () {
   it('should transform an atom feed', async function () {
@@ -139,7 +139,7 @@ describe('xml', function () {
       contents.includes(
         `&lt;img src="http://example.org/${path.basename(
           b.getBundles().find(b => b.type === 'png').filePath,
-        )}">`,
+        )}"&gt;`,
       ),
     );
     assert(contents.includes(`<link>http://example.org/post.html</link>`));

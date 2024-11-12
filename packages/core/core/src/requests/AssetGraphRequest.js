@@ -35,7 +35,7 @@ import dumpGraphToGraphViz from '../dumpGraphToGraphViz';
 import {propagateSymbols} from '../SymbolPropagation';
 import {requestTypes} from '../RequestTracker';
 
-type AssetGraphRequestInput = {|
+export type AssetGraphRequestInput = {|
   entries?: Array<ProjectPath>,
   assetGroups?: Array<AssetGroup>,
   optionsRef: SharedReference,
@@ -70,11 +70,11 @@ type AssetGraphRequest = {|
 |};
 
 export default function createAssetGraphRequest(
-  input: AssetGraphRequestInput,
+  requestInput: AssetGraphRequestInput,
 ): AssetGraphRequest {
   return {
     type: requestTypes.asset_graph_request,
-    id: input.name,
+    id: requestInput.name,
     run: async input => {
       let prevResult =
         await input.api.getPreviousResult<AssetGraphRequestResult>();
@@ -92,7 +92,7 @@ export default function createAssetGraphRequest(
 
       return assetGraphRequest;
     },
-    input,
+    input: requestInput,
   };
 }
 
@@ -143,6 +143,7 @@ export class AssetGraphBuilder {
       entries,
       assetGroups,
     });
+    assetGraph.undeferredDependencies.clear();
     this.assetGroupsWithRemovedParents =
       prevResult?.assetGroupsWithRemovedParents ?? new Set();
     this.previousSymbolPropagationErrors =

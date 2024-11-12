@@ -20,7 +20,7 @@ describe('feature flags', () => {
 
     index.js:
         module.exports = "MARKER";
-    
+
     .parcelrc:
         {
             extends: "@parcel/config-default",
@@ -35,7 +35,7 @@ describe('feature flags', () => {
           transformers: {
               '*.js': ['./transformer-client.js', '...']
           },
-      }        
+      }
 
     transformer.js:
         const {Transformer} = require('@parcel/plugin');

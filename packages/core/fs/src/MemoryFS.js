@@ -145,22 +145,30 @@ export class MemoryFS implements FileSystem {
     }
 
     // get realpath by following symlinks
-    if (realpath) {
-      let {root, dir, base} = path.parse(filePath);
-      let parts = dir.slice(root.length).split(path.sep).concat(base);
-      let res = root;
-      for (let part of parts) {
-        res = path.join(res, part);
-        let symlink = this.symlinks.get(res);
-        if (symlink) {
-          res = symlink;
-        }
-      }
+    let {root, dir, base} = path.parse(filePath);
+    let parts = dir.slice(root.length).split(path.sep).concat(base);
 
-      return res;
+    // If the realpath option is not true, don't follow the final link
+    let last;
+    if (!realpath) {
+      last = parts[parts.length - 1];
+      parts = parts.slice(0, -1);
     }
 
-    return filePath;
+    let res = root;
+    for (let part of parts) {
+      res = path.join(res, part);
+      let symlink = this.symlinks.get(res);
+      if (symlink) {
+        res = symlink;
+      }
+    }
+
+    if (last) {
+      res = path.join(res, last);
+    }
+
+    return res;
   }
 
   async writeFile(
@@ -244,6 +252,33 @@ export class MemoryFS implements FileSystem {
   // eslint-disable-next-line require-await
   async stat(filePath: FilePath): Promise<Stat> {
     return this.statSync(filePath);
+  }
+
+  lstatSync(filePath: FilePath): Stat {
+    filePath = this._normalizePath(filePath, false);
+
+    if (this.symlinks.has(filePath)) {
+      let stat = new Stat();
+      stat.mode = S_IFLNK;
+      return stat;
+    }
+
+    let dir = this.dirs.get(filePath);
+    if (dir) {
+      return dir.stat();
+    }
+
+    let file = this.files.get(filePath);
+    if (file == null) {
+      throw new FSError('ENOENT', filePath, 'does not exist');
+    }
+
+    return file.stat();
+  }
+
+  // eslint-disable-next-line require-await
+  async lstat(filePath: FilePath): Promise<Stat> {
+    return this.lstatSync(filePath);
   }
 
   readdirSync(dir: FilePath, opts?: ReaddirOptions): any {
@@ -507,6 +542,19 @@ export class MemoryFS implements FileSystem {
   // eslint-disable-next-line require-await
   async realpath(filePath: FilePath): Promise<FilePath> {
     return this.realpathSync(filePath);
+  }
+
+  readlinkSync(filePath: FilePath): FilePath {
+    let symlink = this.symlinks.get(filePath);
+    if (!symlink) {
+      throw new FSError('EINVAL', filePath, 'is not a symlink');
+    }
+    return symlink;
+  }
+
+  // eslint-disable-next-line require-await
+  async readlink(filePath: FilePath): Promise<FilePath> {
+    return this.readlinkSync(filePath);
   }
 
   async symlink(target: FilePath, path: FilePath) {
@@ -786,49 +834,51 @@ class Entry {
   }
 
   stat(): Stat {
-    return new Stat(this);
+    return Stat.fromEntry(this);
   }
 }
 
 class Stat {
   dev: number = 0;
   ino: number = 0;
-  mode: number;
+  mode: number = 0;
   nlink: number = 0;
   uid: number = 0;
   gid: number = 0;
   rdev: number = 0;
-  size: number;
+  size: number = 0;
   blksize: number = 0;
   blocks: number = 0;
-  atimeMs: number;
-  mtimeMs: number;
-  ctimeMs: number;
-  birthtimeMs: number;
-  atime: Date;
-  mtime: Date;
-  ctime: Date;
-  birthtime: Date;
+  atimeMs: number = 0;
+  mtimeMs: number = 0;
+  ctimeMs: number = 0;
+  birthtimeMs: number = 0;
+  atime: Date = new Date();
+  mtime: Date = new Date();
+  ctime: Date = new Date();
+  birthtime: Date = new Date();
 
-  constructor(entry: Entry) {
-    this.mode = entry.mode;
-    this.size = entry.getSize();
-    this.atimeMs = entry.atime;
-    this.mtimeMs = entry.mtime;
-    this.ctimeMs = entry.ctime;
-    this.birthtimeMs = entry.birthtime;
-    this.atime = new Date(entry.atime);
-    this.mtime = new Date(entry.mtime);
-    this.ctime = new Date(entry.ctime);
-    this.birthtime = new Date(entry.birthtime);
+  static fromEntry(entry: Entry): Stat {
+    let stat = new Stat();
+    stat.mode = entry.mode;
+    stat.size = entry.getSize();
+    stat.atimeMs = entry.atime;
+    stat.mtimeMs = entry.mtime;
+    stat.ctimeMs = entry.ctime;
+    stat.birthtimeMs = entry.birthtime;
+    stat.atime = new Date(entry.atime);
+    stat.mtime = new Date(entry.mtime);
+    stat.ctime = new Date(entry.ctime);
+    stat.birthtime = new Date(entry.birthtime);
+    return stat;
   }
 
   isFile(): boolean {
-    return Boolean(this.mode & S_IFREG);
+    return (this.mode & S_IFREG) === S_IFREG;
   }
 
   isDirectory(): boolean {
-    return Boolean(this.mode & S_IFDIR);
+    return (this.mode & S_IFDIR) === S_IFDIR;
   }
 
   isBlockDevice(): boolean {
@@ -840,7 +890,7 @@ class Stat {
   }
 
   isSymbolicLink(): boolean {
-    return false;
+    return (this.mode & S_IFMT) === S_IFLNK;
   }
 
   isFIFO(): boolean {

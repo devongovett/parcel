@@ -1,24 +1,19 @@
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::path::Path;
+use std::{collections::HashMap, ffi::OsStr, path::Path};
 
-use swc_core::common::sync::Lrc;
-use swc_core::common::Mark;
-use swc_core::common::SourceMap;
-use swc_core::common::SyntaxContext;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast;
-use swc_core::ecma::ast::MemberProp;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::{
+  common::{sync::Lrc, Mark, SourceMap, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast,
+    ast::MemberProp,
+    atoms::JsWord,
+    visit::{VisitMut, VisitMutWith},
+  },
+};
 
-use crate::dependency_collector::DependencyDescriptor;
-use crate::dependency_collector::DependencyKind;
-use crate::utils::create_global_decl_stmt;
-use crate::utils::create_require;
-use crate::utils::is_unresolved;
-use crate::utils::SourceLocation;
-use crate::utils::SourceType;
+use crate::{
+  dependency_collector::{DependencyDescriptor, DependencyKind},
+  utils::{create_global_decl_stmt, create_require, is_unresolved, SourceLocation, SourceType},
+};
 
 /// Replaces __filename and __dirname with globals that reference to string literals for the
 /// file-path of this file.
@@ -63,6 +58,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
               };
               Call(ast::CallExpr {
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 type_args: None,
                 args: vec![
                   ast::ExprOrSpread {
@@ -70,6 +66,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     expr: Box::new(ast::Expr::Ident(ast::Ident {
                       optional: false,
                       span: DUMMY_SP,
+                      ctxt: SyntaxContext::empty(),
                       // This also uses __dirname as later in the path.join call the hierarchy is then correct
                       // Otherwise path.join(__filename, '..') would be one level to shallow (due to the /filename.js at the end)
                       sym: swc_core::ecma::atoms::JsWord::from("__dirname"),
@@ -98,7 +95,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     path_module_specifier.clone(),
                     unresolved_mark,
                   )))),
-                  prop: MemberProp::Ident(ast::Ident::new("resolve".into(), DUMMY_SP)),
+                  prop: MemberProp::Ident(ast::IdentName::new("resolve".into(), DUMMY_SP)),
                 }))),
               })
             };
@@ -125,6 +122,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
             if self.update_binding(id, "$parcel$__dirname".into(), |_| {
               Call(ast::CallExpr {
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 type_args: None,
                 args: vec![
                   ast::ExprOrSpread {
@@ -132,6 +130,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     expr: Box::new(ast::Expr::Ident(ast::Ident {
                       optional: false,
                       span: DUMMY_SP,
+                      ctxt: SyntaxContext::empty(),
                       sym: swc_core::ecma::atoms::JsWord::from("__dirname"),
                     })),
                   },
@@ -150,7 +149,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
                     path_module_specifier.clone(),
                     unresolved_mark,
                   )))),
-                  prop: MemberProp::Ident(ast::Ident::new("resolve".into(), DUMMY_SP)),
+                  prop: MemberProp::Ident(ast::IdentName::new("resolve".into(), DUMMY_SP)),
                 }))),
               })
             }) {
@@ -194,8 +193,8 @@ impl<'a> VisitMut for NodeReplacer<'a> {
       0..0,
       self
         .globals
-        .values()
-        .map(|(_, stmt)| ast::ModuleItem::Stmt(stmt.clone())),
+        .drain()
+        .map(|(_, (_, stmt))| ast::ModuleItem::Stmt(stmt)),
     );
   }
 }
@@ -207,13 +206,13 @@ impl NodeReplacer<'_> {
   {
     if let Some((ctxt, _)) = self.globals.get(&new_name) {
       id_ref.sym = new_name;
-      id_ref.span.ctxt = *ctxt;
+      id_ref.ctxt = *ctxt;
       false
     } else {
       id_ref.sym = new_name;
 
       let (decl, ctxt) = create_global_decl_stmt(id_ref.sym.clone(), expr(self), self.global_mark);
-      id_ref.span.ctxt = ctxt;
+      id_ref.ctxt = ctxt;
 
       self.globals.insert(id_ref.sym.clone(), (ctxt, decl));
       true

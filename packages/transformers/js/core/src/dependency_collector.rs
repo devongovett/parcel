@@ -1,29 +1,24 @@
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::path::Path;
-use swc_core::ecma::utils::stack_size::maybe_grow_default;
+use std::{
+  collections::{hash_map::DefaultHasher, HashMap},
+  fmt,
+  hash::{Hash, Hasher},
+  path::Path,
+};
 
 use path_slash::PathBufExt;
-use serde::Deserialize;
-use serde::Serialize;
-use swc_core::common::Mark;
-use swc_core::common::SourceMap;
-use swc_core::common::Span;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::Callee;
-use swc_core::ecma::ast::MemberProp;
-use swc_core::ecma::ast::{self};
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::visit::Fold;
-use swc_core::ecma::visit::FoldWith;
+use serde::{Deserialize, Serialize};
+use swc_core::{
+  common::{sync::Lrc, Mark, SourceMap, Span, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast::{self, Callee, IdentName, MemberProp},
+    atoms::{js_word, JsWord},
+    utils::stack_size::maybe_grow_default,
+    visit::{Fold, FoldWith},
+  },
+};
 
-use crate::fold_member_expr_skip_prop;
-use crate::utils::*;
-use crate::Config;
+use crate::{fold_member_expr_skip_prop, utils::*, Config};
+
 macro_rules! hash {
   ($str:expr) => {{
     let mut hasher = DefaultHasher::new();
@@ -121,7 +116,7 @@ pub struct DependencyDescriptor {
 
 /// This pass collects dependencies in a module and compiles references as needed to work with Parcel's JSRuntime.
 pub fn dependency_collector<'a>(
-  source_map: &'a SourceMap,
+  source_map: Lrc<SourceMap>,
   items: &'a mut Vec<DependencyDescriptor>,
   ignore_mark: swc_core::common::Mark,
   unresolved_mark: swc_core::common::Mark,
@@ -143,7 +138,7 @@ pub fn dependency_collector<'a>(
 }
 
 struct DependencyCollector<'a> {
-  source_map: &'a SourceMap,
+  source_map: Lrc<SourceMap>,
   items: &'a mut Vec<DependencyDescriptor>,
   in_try: bool,
   in_promise: bool,
@@ -200,7 +195,7 @@ impl<'a> DependencyCollector<'a> {
 
     self.items.push(DependencyDescriptor {
       kind,
-      loc: SourceLocation::from(self.source_map, span),
+      loc: SourceLocation::from(&self.source_map, span),
       specifier,
       attributes,
       is_optional,
@@ -247,7 +242,7 @@ impl<'a> DependencyCollector<'a> {
     };
     self.items.push(DependencyDescriptor {
       kind,
-      loc: SourceLocation::from(self.source_map, span),
+      loc: SourceLocation::from(&self.source_map, span),
       specifier,
       attributes: None,
       is_optional: false,
@@ -268,7 +263,7 @@ impl<'a> DependencyCollector<'a> {
     // For scripts, we replace with __parcel__require__, which is later replaced
     // by a real parcelRequire of the resolved asset in the packager.
     if self.config.source_type == SourceType::Script {
-      res.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
+      res.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new_no_ctxt(
         "__parcel__require__".into(),
         DUMMY_SP,
       ))));
@@ -286,7 +281,7 @@ impl<'a> DependencyCollector<'a> {
       message: "SCRIPT_ERROR".to_string(),
       code_highlights: Some(vec![CodeHighlight {
         message: None,
-        loc: SourceLocation::from(self.source_map, span),
+        loc: SourceLocation::from(&self.source_map, span),
       }]),
       hints: None,
       show_environment: true,
@@ -422,7 +417,6 @@ impl<'a> Fold for DependencyCollector<'a> {
 
   fn fold_call_expr(&mut self, node: ast::CallExpr) -> ast::CallExpr {
     use ast::Expr::*;
-    use ast::Ident;
 
     let kind = match &node.callee {
       Callee::Import(_) => DependencyKind::DynamicImport,
@@ -480,7 +474,7 @@ impl<'a> Fold for DependencyCollector<'a> {
                     message: msg.to_string(),
                     code_highlights: Some(vec![CodeHighlight {
                       message: None,
-                      loc: SourceLocation::from(self.source_map, span),
+                      loc: SourceLocation::from(&self.source_map, span),
                     }]),
                     hints: Some(vec![String::from(
                       "Use a static `import`, or dynamic `import()` instead.",
@@ -499,7 +493,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "require".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -507,7 +502,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "import".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -515,7 +511,8 @@ impl<'a> Fold for DependencyCollector<'a> {
                 let mut call = node.fold_children_with(self);
                 call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
                   "importScripts".into(),
-                  DUMMY_SP.apply_mark(self.ignore_mark),
+                  DUMMY_SP,
+                  SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
                 return call;
               }
@@ -569,10 +566,10 @@ impl<'a> Fold for DependencyCollector<'a> {
                 if let Callee::Expr(e) = &call.callee {
                   if let Member(m) = &**e {
                     if match_member_expr(m, vec!["Promise", "resolve"], self.unresolved_mark) &&
-                      // Make sure the arglist is empty.
-                      // I.e. do not proceed with the below unless Promise.resolve has an empty arglist
-                      // because build_promise_chain() will not work in this case.
-                      call.args.is_empty()
+                        // Make sure the arglist is empty.
+                        // I.e. do not proceed with the below unless Promise.resolve has an empty arglist
+                        // because build_promise_chain() will not work in this case.
+                        call.args.is_empty()
                     {
                       if let MemberProp::Ident(id) = &member.prop {
                         if id.sym.to_string().as_str() == "then" {
@@ -580,8 +577,7 @@ impl<'a> Fold for DependencyCollector<'a> {
                             match &*arg.expr {
                               Fn(_) | Arrow(_) => {
                                 self.in_promise = true;
-                                let node =
-                                  swc_core::ecma::visit::fold_call_expr(self, node.clone());
+                                let node = node.clone().fold_children_with(self);
                                 self.in_promise = was_in_promise;
 
                                 // Transform Promise.resolve().then(() => __importStar(require('foo')))
@@ -628,7 +624,7 @@ impl<'a> Fold for DependencyCollector<'a> {
             };
 
             let k = match &kv.key {
-              ast::PropName::Ident(Ident { sym, .. })
+              ast::PropName::Ident(IdentName { sym, .. })
               | ast::PropName::Str(ast::Str { value: sym, .. }) => sym.clone(),
               _ => continue,
             };
@@ -674,7 +670,7 @@ impl<'a> Fold for DependencyCollector<'a> {
             message: msg.to_string(),
             code_highlights: Some(vec![CodeHighlight {
               message: None,
-              loc: SourceLocation::from(self.source_map, str_.span),
+              loc: SourceLocation::from(&self.source_map, str_.span),
             }]),
             hints: Some(vec![format!(
               "Replace with: new URL('{}', import.meta.url)",
@@ -744,7 +740,7 @@ impl<'a> Fold for DependencyCollector<'a> {
           SourceType::Module => "require",
           SourceType::Script => "__parcel__require__",
         };
-        call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new(
+        call.callee = ast::Callee::Expr(Box::new(ast::Expr::Ident(ast::Ident::new_no_ctxt(
           name.into(),
           DUMMY_SP,
         ))));
@@ -836,7 +832,7 @@ impl<'a> Fold for DependencyCollector<'a> {
             ),
             code_highlights: Some(vec![CodeHighlight {
               message: None,
-              loc: SourceLocation::from(self.source_map, str_.span),
+              loc: SourceLocation::from(&self.source_map, str_.span),
             }]),
             hints: Some(vec![format!(
               "Replace with: new URL('{}', import.meta.url)",
@@ -910,7 +906,8 @@ impl<'a> Fold for DependencyCollector<'a> {
       if !self.config.is_library && !self.config.standalone {
         return Expr::New(NewExpr {
           span: DUMMY_SP,
-          callee: Box::new(Expr::Ident(Ident::new(js_word!("URL"), DUMMY_SP))),
+          callee: Box::new(Expr::Ident(Ident::new_no_ctxt(js_word!("URL"), DUMMY_SP))),
+          ctxt: SyntaxContext::empty(),
           args: Some(vec![ExprOrSpread {
             expr: Box::new(url),
             spread: None,
@@ -1046,7 +1043,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
           f.function.params.insert(
             0,
             ast::Param {
-              pat: ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new(
+              pat: ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new_no_ctxt(
                 "res".into(),
                 DUMMY_SP,
               ))),
@@ -1060,7 +1057,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
           let mut f = f.clone();
           f.params.insert(
             0,
-            ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new(
+            ast::Pat::Ident(ast::BindingIdent::from(ast::Ident::new_no_ctxt(
               "res".into(),
               DUMMY_SP,
             ))),
@@ -1085,6 +1082,7 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
                       span: DUMMY_SP,
                       arg: Some(Box::new(ast::Expr::Call(require_node.clone()))),
                     })],
+                    ctxt: SyntaxContext::empty(),
                   }),
                   params: vec![],
                   decorators: vec![],
@@ -1093,20 +1091,23 @@ fn build_promise_chain(node: ast::CallExpr, require_node: ast::CallExpr) -> ast:
                   return_type: None,
                   type_params: None,
                   span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
                 }),
               })),
               spread: None,
             }],
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             type_args: None,
           }))),
-          prop: MemberProp::Ident(ast::Ident::new("then".into(), DUMMY_SP)),
+          prop: MemberProp::Ident(ast::IdentName::new("then".into(), DUMMY_SP)),
         }))),
         args: vec![ast::ExprOrSpread {
           expr: Box::new(f),
           spread: None,
         }],
         span: DUMMY_SP,
+        ctxt: SyntaxContext::empty(),
         type_args: None,
       };
     }
@@ -1125,7 +1126,7 @@ fn create_url_constructor(url: ast::Expr, use_import_meta: bool) -> ast::Expr {
         kind: MetaPropKind::ImportMeta,
         span: DUMMY_SP,
       })),
-      prop: MemberProp::Ident(Ident::new(js_word!("url"), DUMMY_SP)),
+      prop: MemberProp::Ident(IdentName::new(js_word!("url"), DUMMY_SP)),
     })
   } else {
     // CJS output: "file:" + __filename
@@ -1133,13 +1134,17 @@ fn create_url_constructor(url: ast::Expr, use_import_meta: bool) -> ast::Expr {
       span: DUMMY_SP,
       left: Box::new(Expr::Lit(Lit::Str("file:".into()))),
       op: BinaryOp::Add,
-      right: Box::new(Expr::Ident(Ident::new("__filename".into(), DUMMY_SP))),
+      right: Box::new(Expr::Ident(Ident::new_no_ctxt(
+        "__filename".into(),
+        DUMMY_SP,
+      ))),
     })
   };
 
   Expr::New(NewExpr {
     span: DUMMY_SP,
-    callee: Box::new(Expr::Ident(Ident::new(js_word!("URL"), DUMMY_SP))),
+    ctxt: SyntaxContext::empty(),
+    callee: Box::new(Expr::Ident(Ident::new_no_ctxt(js_word!("URL"), DUMMY_SP))),
     args: Some(vec![
       ExprOrSpread {
         expr: Box::new(url),
@@ -1171,7 +1176,7 @@ impl Fold for PromiseTransformer {
       }
     }
 
-    swc_core::ecma::visit::fold_return_stmt(self, node)
+    node.fold_children_with(self)
   }
 
   fn fold_arrow_expr(&mut self, node: ast::ArrowExpr) -> ast::ArrowExpr {
@@ -1185,18 +1190,18 @@ impl Fold for PromiseTransformer {
       }
     }
 
-    swc_core::ecma::visit::fold_arrow_expr(self, node)
+    node.fold_children_with(self)
   }
 
   fn fold_expr(&mut self, node: ast::Expr) -> ast::Expr {
-    let node = swc_core::ecma::visit::fold_expr(self, node);
+    let node = node.fold_children_with(self);
 
     // Replace the original require node with a reference to a variable `res`,
     // which will be added as a parameter to the parent function.
     if let ast::Expr::Call(call) = &node {
       if let Some(require_node) = &self.require_node {
         if require_node == call {
-          return ast::Expr::Ident(ast::Ident::new("res".into(), DUMMY_SP));
+          return ast::Expr::Ident(ast::Ident::new_no_ctxt("res".into(), DUMMY_SP));
         }
       }
     }
@@ -1299,7 +1304,7 @@ impl<'a> DependencyCollector<'a> {
             message: "`import.meta` is not supported outside a module.".to_string(),
             code_highlights: Some(vec![CodeHighlight {
               message: None,
-              loc: SourceLocation::from(self.source_map, *span),
+              loc: SourceLocation::from(&self.source_map, *span),
             }]),
             hints: None,
             show_environment: true,
@@ -1345,9 +1350,9 @@ impl<'a> DependencyCollector<'a> {
     } else {
       // Declares a variable at the top of the module:
       // var import_meta = Object.assign(Object.create(null), {url: 'file:///src/foo.js'});
-      let ident = Ident::new(
+      let ident = Ident::new_private(
         format!("${}$import_meta", self.config.module_id).into(),
-        DUMMY_SP.apply_mark(Mark::fresh(Mark::root())),
+        DUMMY_SP,
       );
       self.import_meta = Some(VarDecl {
         kind: VarDeclKind::Var,
@@ -1357,16 +1362,22 @@ impl<'a> DependencyCollector<'a> {
           name: Pat::Ident(BindingIdent::from(ident.clone())),
           init: Some(Box::new(Expr::Call(CallExpr {
             callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-              obj: Box::new(Expr::Ident(Ident::new(js_word!("Object"), DUMMY_SP))),
-              prop: MemberProp::Ident(Ident::new("assign".into(), DUMMY_SP)),
+              obj: Box::new(Expr::Ident(Ident::new_no_ctxt(
+                js_word!("Object"),
+                DUMMY_SP,
+              ))),
+              prop: MemberProp::Ident(IdentName::new("assign".into(), DUMMY_SP)),
               span: DUMMY_SP,
             }))),
             args: vec![
               ExprOrSpread {
                 expr: Box::new(Expr::Call(CallExpr {
                   callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-                    obj: (Box::new(Expr::Ident(Ident::new(js_word!("Object"), DUMMY_SP)))),
-                    prop: MemberProp::Ident(Ident::new("create".into(), DUMMY_SP)),
+                    obj: (Box::new(Expr::Ident(Ident::new_no_ctxt(
+                      js_word!("Object"),
+                      DUMMY_SP,
+                    )))),
+                    prop: MemberProp::Ident(IdentName::new("create".into(), DUMMY_SP)),
                     span: DUMMY_SP,
                   }))),
                   args: vec![ExprOrSpread {
@@ -1374,6 +1385,7 @@ impl<'a> DependencyCollector<'a> {
                     spread: None,
                   }],
                   span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
                   type_args: None,
                 })),
                 spread: None,
@@ -1381,7 +1393,7 @@ impl<'a> DependencyCollector<'a> {
               ExprOrSpread {
                 expr: Box::new(Expr::Object(ObjectLit {
                   props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Ident::new(js_word!("url"), DUMMY_SP)),
+                    key: PropName::Ident(IdentName::new(js_word!("url"), DUMMY_SP)),
                     value: Box::new(self.get_import_meta_url()),
                   })))],
                   span: DUMMY_SP,
@@ -1390,11 +1402,13 @@ impl<'a> DependencyCollector<'a> {
               },
             ],
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             type_args: None,
           }))),
           span: DUMMY_SP,
           definite: false,
         }],
+        ctxt: SyntaxContext::empty(),
       });
       Expr::Ident(ident)
     }
@@ -1423,7 +1437,7 @@ fn match_worker_type(expr: Option<&ast::ExprOrSpread>) -> (SourceType, Option<as
           };
 
           match &kv.key {
-            PropName::Ident(Ident { sym, .. }) if sym == "type" => {}
+            PropName::Ident(IdentName { sym, .. }) if sym == "type" => {}
             PropName::Str(Str { value, .. }) if value == "type" => {}
             _ => return true,
           };
@@ -1464,4 +1478,709 @@ fn match_worker_type(expr: Option<&ast::ExprOrSpread>) -> (SourceType, Option<as
   }
 
   (SourceType::Script, expr.cloned())
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use crate::{
+    test_utils::{run_fold, RunTestContext, RunVisitResult},
+    DependencyDescriptor,
+  };
+
+  fn make_dependency_collector<'a>(
+    context: RunTestContext,
+    items: &'a mut Vec<DependencyDescriptor>,
+    diagnostics: &'a mut Vec<Diagnostic>,
+    config: &'a Config,
+  ) -> DependencyCollector<'a> {
+    DependencyCollector {
+      source_map: context.source_map.clone(),
+      items,
+      in_try: false,
+      in_promise: false,
+      require_node: None,
+      ignore_mark: Mark::new(),
+      unresolved_mark: context.unresolved_mark,
+      config,
+      diagnostics,
+      import_meta: None,
+    }
+  }
+
+  fn make_config() -> Config {
+    let mut config = Config::default();
+    config.is_browser = true;
+    config
+  }
+
+  fn make_placeholder_hash(specifier: &str, dependency_kind: DependencyKind) -> String {
+    format!(
+      "{:x}",
+      hash!(format!("{}:{}:{}", "", specifier, dependency_kind))
+    )
+  }
+
+  #[test]
+  fn test_dynamic_import_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = Config::default();
+    let input_code = r#"
+      const { x } = await import('other');
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+      const {{ x }} = await require("{}");
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_import_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = Config::default();
+    let input_code = r#"
+      import { x } from 'other';
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let expected_code = r#"
+      import { x } from 'other';
+    "#
+    .trim_start()
+    .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Import,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: None,
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_export_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = Config::default();
+    let input_code = r#"
+      export { x } from 'other';
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let expected_code = r#"
+      export { x } from 'other';
+    "#
+    .trim_start()
+    .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Export,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: None,
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_export_star_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = Config::default();
+    let input_code = r#"
+      export * from 'other';
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let expected_code = r#"
+      export * from 'other';
+    "#
+    .trim_start()
+    .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Export,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: None,
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_require_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+      const { x } = require('other');
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::Require);
+    let expected_code = format!(
+      r#"
+      const {{ x }} = require("{}");
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Require,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_optional_require_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+try {
+    const { x } = require('other');
+} catch (err) {}
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::Require);
+    let expected_code = format!(
+      r#"
+try {{
+    const {{ x }} = require("{}");
+}} catch (err) {{}}
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Require,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: true,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_compiled_dynamic_imports() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+Promise.resolve().then(() => require('other'));
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+Promise.resolve().then(()=>require("{}"));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_compiled_dynamic_imports_with_chain() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+Promise.resolve().then(() => doSomething(require('other')));
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+Promise.resolve().then(function() {{
+    return require("{}");
+}}).then((res)=>doSomething(res));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_compiled_dynamic_imports_with_function_chain() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+Promise.resolve().then(function() { return doSomething(require('other')); });
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+Promise.resolve().then(function() {{
+    return require("{}");
+}}).then(function(res) {{
+    return doSomething(res);
+}});
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_new_promise_require_imports() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+new Promise((resolve) => resolve(require("other")));
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+new Promise((resolve)=>resolve(require("{}")));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_new_promise_require_imports_with_function_expr() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+new Promise(function(resolve) { return resolve(require("other")) });
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+new Promise(function(resolve) {{
+    return resolve(require("{}"));
+}});
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  // Require is treated as dynamic import
+  #[test]
+  fn test_promise_resolve_require_dynamic_import() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+Promise.resolve(require("other"));
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::DynamicImport);
+    let expected_code = format!(
+      r#"
+Promise.resolve(require("{}"));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::DynamicImport,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_worker_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+      new Worker(new URL('other', import.meta.url), {type: 'module'});
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::WebWorker);
+    let expected_code = format!(
+      r#"
+      new Worker(require("{}"));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::WebWorker,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_service_worker_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+      navigator.serviceWorker.register(new URL('other', import.meta.url), {type: 'module'});
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::ServiceWorker);
+    let expected_code = format!(
+      r#"
+      navigator.serviceWorker.register(require("{}"));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::ServiceWorker,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_worklet_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+      CSS.paintWorklet.addModule(new URL('other', import.meta.url));
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("other", DependencyKind::Worklet);
+    let expected_code = format!(
+      r#"
+      CSS.paintWorklet.addModule(require("{}"));
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Worklet,
+        specifier: "other".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
+
+  #[test]
+  fn test_url_dependency() {
+    let mut items = vec![];
+    let mut diagnostics = vec![];
+    let config = make_config();
+    let input_code = r#"
+let img = document.createElement('img');
+img.src = new URL('hero.jpg', import.meta.url);
+document.body.appendChild(img);
+    "#;
+
+    let RunVisitResult { output_code, .. } = run_fold(input_code, |context| {
+      make_dependency_collector(context, &mut items, &mut diagnostics, &config)
+    });
+
+    let hash = make_placeholder_hash("hero.jpg", DependencyKind::Url);
+    let expected_code = format!(
+      r#"
+let img = document.createElement('img');
+img.src = new URL(require("{}"));
+document.body.appendChild(img);
+    "#,
+      hash
+    );
+    let expected_code = expected_code
+      .trim_start()
+      .trim_end_matches(|p: char| p == ' ');
+
+    assert_eq!(output_code, expected_code);
+    assert_eq!(diagnostics, []);
+    assert_eq!(
+      items,
+      [DependencyDescriptor {
+        kind: DependencyKind::Url,
+        specifier: "hero.jpg".into(),
+        attributes: None,
+        is_optional: false,
+        is_helper: false,
+        source_type: Some(SourceType::Module),
+        placeholder: Some(hash),
+        ..items[0].clone()
+      }]
+    );
+  }
 }

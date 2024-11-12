@@ -101,14 +101,14 @@ export class DevPackager {
         let dependencies = this.bundleGraph.getDependencies(asset);
         for (let dep of dependencies) {
           let resolved = this.bundleGraph.getResolvedAsset(dep, this.bundle);
+          let specifier = getSpecifier(dep);
           if (this.bundleGraph.isDependencySkipped(dep)) {
-            deps[getSpecifier(dep)] = false;
+            deps[specifier] = false;
           } else if (resolved) {
-            deps[getSpecifier(dep)] =
-              this.bundleGraph.getAssetPublicId(resolved);
+            deps[specifier] = this.bundleGraph.getAssetPublicId(resolved);
           } else {
             // An external module - map placeholder to original specifier.
-            deps[getSpecifier(dep)] = dep.specifier;
+            deps[specifier] = dep.specifier;
           }
         }
 

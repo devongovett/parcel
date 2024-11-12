@@ -1,39 +1,29 @@
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::hash::Hasher;
+use std::{
+  collections::{hash_map::DefaultHasher, HashMap, HashSet},
+  hash::Hasher,
+};
 
 use indexmap::IndexMap;
-use serde::Deserialize;
-use serde::Serialize;
-use swc_core::common::Mark;
-use swc_core::common::Span;
-use swc_core::common::SyntaxContext;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::*;
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::utils::stack_size::maybe_grow_default;
-use swc_core::ecma::visit::Fold;
-use swc_core::ecma::visit::FoldWith;
+use serde::{Deserialize, Serialize};
+use swc_core::{
+  common::{Mark, Span, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast::*,
+    atoms::{js_word, JsWord},
+    utils::stack_size::maybe_grow_default,
+    visit::{Fold, FoldWith},
+  },
+};
 
-use crate::collect::Collect;
-use crate::collect::Export;
-use crate::collect::Import;
-use crate::collect::ImportKind;
-use crate::id;
-use crate::utils::get_undefined_ident;
-use crate::utils::is_unresolved;
-use crate::utils::match_export_name;
-use crate::utils::match_export_name_ident;
-use crate::utils::match_import;
-use crate::utils::match_member_expr;
-use crate::utils::match_property_name;
-use crate::utils::match_require;
-use crate::utils::CodeHighlight;
-use crate::utils::Diagnostic;
-use crate::utils::DiagnosticSeverity;
-use crate::utils::SourceLocation;
+use crate::{
+  collect::{Collect, Export, Import, ImportKind},
+  id,
+  utils::{
+    get_undefined_ident, is_unresolved, match_export_name, match_export_name_ident, match_import,
+    match_member_expr, match_property_name, match_require, CodeHighlight, Diagnostic,
+    DiagnosticSeverity, SourceLocation,
+  },
+};
 
 macro_rules! hash {
   ($str:expr) => {{
@@ -564,6 +554,7 @@ impl<'a> Fold for Hoist<'a> {
                   declare: false,
                   kind: VarDeclKind::Var,
                   span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
                   decls: vec![VarDeclarator {
                     definite: false,
                     span: DUMMY_SP,
@@ -632,6 +623,7 @@ impl<'a> Fold for Hoist<'a> {
                           if !decls.is_empty() {
                             let var = VarDecl {
                               span: var.span,
+                              ctxt: var.ctxt,
                               kind: var.kind,
                               declare: var.declare,
                               decls: std::mem::take(&mut decls),
@@ -675,6 +667,7 @@ impl<'a> Fold for Hoist<'a> {
                             if !decls.is_empty() {
                               let var = VarDecl {
                                 span: var.span,
+                                ctxt: var.ctxt,
                                 kind: var.kind,
                                 declare: var.declare,
                                 decls: std::mem::take(&mut decls),
@@ -716,6 +709,7 @@ impl<'a> Fold for Hoist<'a> {
                     if self.module_items.len() > items_len && !decls.is_empty() {
                       let var = VarDecl {
                         span: var.span,
+                        ctxt: var.ctxt,
                         kind: var.kind,
                         declare: var.declare,
                         decls: std::mem::take(&mut decls),
@@ -732,6 +726,7 @@ impl<'a> Fold for Hoist<'a> {
                   if !decls.is_empty() {
                     let var = VarDecl {
                       span: var.span,
+                      ctxt: var.ctxt,
                       kind: var.kind,
                       declare: var.declare,
                       decls,
@@ -937,7 +932,7 @@ impl<'a> Fold for Hoist<'a> {
           ));
         }
 
-        if let Some(source) = match_import(&node, self.collect.ignore_mark) {
+        if let Some(source) = match_import(&node) {
           self.add_require(&source, ImportKind::DynamicImport);
           let name: JsWord = format!("${}$importAsync${:x}", self.module_id, hash!(source)).into();
           self.dynamic_imports.insert(name.clone(), source.clone());
@@ -950,7 +945,7 @@ impl<'a> Fold for Hoist<'a> {
               kind: ImportKind::DynamicImport,
             });
           }
-          return Expr::Ident(Ident::new(name, call.span));
+          return Expr::Ident(Ident::new(name, call.span, call.ctxt));
         }
       }
       Expr::This(this) => {
@@ -1099,15 +1094,15 @@ impl<'a> Fold for Hoist<'a> {
     }
 
     if node.sym == js_word!("global") && is_unresolved(&node, self.unresolved_mark) {
-      return Ident::new("$parcel$global".into(), node.span);
+      return Ident::new("$parcel$global".into(), node.span, node.ctxt);
     }
 
-    if node.span.has_mark(self.collect.global_mark)
+    if node.ctxt.has_mark(self.collect.global_mark)
       && !is_unresolved(&node, self.unresolved_mark)
       && !self.collect.should_wrap
     {
       let new_name: JsWord = format!("${}$var${}", self.module_id, node.sym).into();
-      return Ident::new(new_name, node.span);
+      return Ident::new(new_name, node.span, node.ctxt);
     }
 
     node
@@ -1159,12 +1154,14 @@ impl<'a> Fold for Hoist<'a> {
               declare: false,
               kind: VarDeclKind::Var,
               span: node.span,
+              ctxt: ident.ctxt,
               decls: vec![VarDeclarator {
                 definite: false,
                 span: node.span,
                 name: Pat::Ident(BindingIdent::from(Ident::new(
                   ident.id.sym.clone(),
                   DUMMY_SP,
+                  ident.ctxt,
                 ))),
                 init: None,
               }],
@@ -1195,7 +1192,7 @@ impl<'a> Fold for Hoist<'a> {
   fn fold_prop(&mut self, node: Prop) -> Prop {
     match node {
       Prop::Shorthand(ident) => Prop::KeyValue(KeyValueProp {
-        key: PropName::Ident(Ident::new(ident.sym.clone(), DUMMY_SP)),
+        key: PropName::Ident(IdentName::new(ident.sym.clone(), DUMMY_SP)),
         value: Box::new(Expr::Ident(ident.fold_with(self))),
       }),
       _ => node.fold_children_with(self),
@@ -1217,7 +1214,7 @@ impl<'a> Fold for Hoist<'a> {
     // var {a, b} = foo; -> var {a: $id$var$a, b: $id$var$b} = foo;
     match node {
       ObjectPatProp::Assign(assign) => ObjectPatProp::KeyValue(KeyValuePatProp {
-        key: PropName::Ident(Ident::new(assign.key.sym.clone(), DUMMY_SP)),
+        key: PropName::Ident(IdentName::new(assign.key.sym.clone(), DUMMY_SP)),
         value: Box::new(match assign.value {
           Some(value) => Pat::Assign(AssignPat {
             left: Box::new(Pat::Ident(BindingIdent::from(assign.key.fold_with(self)))),
@@ -1280,11 +1277,11 @@ impl<'a> Hoist<'a> {
       loc,
       kind,
     });
-    Ident::new(new_name, span)
+    Ident::new_no_ctxt(new_name, span)
   }
 
   fn get_require_ident(&self, local: &JsWord) -> Ident {
-    Ident::new(
+    Ident::new_no_ctxt(
       format!("${}$require${}", self.module_id, local).into(),
       DUMMY_SP,
     )
@@ -1309,9 +1306,7 @@ impl<'a> Hoist<'a> {
       is_esm,
     });
 
-    let mut span = span;
-    span.ctxt = SyntaxContext::empty();
-    Ident::new(new_name, span)
+    Ident::new_no_ctxt(new_name, span)
   }
 
   fn handle_non_const_require(&mut self, v: &VarDeclarator, source: &JsWord) {
@@ -1343,6 +1338,7 @@ impl<'a> Hoist<'a> {
             declare: false,
             kind: VarDeclKind::Var,
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             decls: vec![VarDeclarator {
               definite: false,
               span: DUMMY_SP,
@@ -1357,20 +1353,15 @@ impl<'a> Hoist<'a> {
 
 #[cfg(test)]
 mod tests {
-  use swc_core::common::chain;
-  use swc_core::common::comments::SingleThreadedComments;
-  use swc_core::common::sync::Lrc;
-  use swc_core::common::FileName;
-  use swc_core::common::Globals;
-  use swc_core::common::SourceMap;
-  use swc_core::ecma::codegen::text_writer::JsWriter;
-  use swc_core::ecma::parser::lexer::Lexer;
-  use swc_core::ecma::parser::Parser;
-  use swc_core::ecma::parser::StringInput;
-  use swc_core::ecma::transforms::base::fixer::fixer;
-  use swc_core::ecma::transforms::base::hygiene::hygiene;
-  use swc_core::ecma::transforms::base::resolver;
-  use swc_core::ecma::visit::VisitWith;
+  use swc_core::{
+    common::{comments::SingleThreadedComments, sync::Lrc, FileName, Globals, SourceMap},
+    ecma::{
+      codegen::text_writer::JsWriter,
+      parser::{lexer::Lexer, Parser, StringInput},
+      transforms::base::{fixer::fixer, hygiene::hygiene, resolver},
+      visit::{VisitMutWith, VisitWith},
+    },
+  };
 
   use super::*;
   use crate::utils::BailoutReason;
@@ -1379,7 +1370,7 @@ mod tests {
 
   fn parse(code: &str) -> (Collect, String, HoistResult) {
     let source_map = Lrc::new(SourceMap::default());
-    let source_file = source_map.new_source_file(FileName::Anon, code.into());
+    let source_file = source_map.new_source_file(Lrc::new(FileName::Anon), code.into());
 
     let comments = SingleThreadedComments::default();
     let lexer = Lexer::new(
@@ -1391,11 +1382,15 @@ mod tests {
 
     let mut parser = Parser::new_from(lexer);
     match parser.parse_program() {
-      Ok(program) => swc_core::common::GLOBALS.set(&Globals::new(), || {
+      Ok(mut program) => swc_core::common::GLOBALS.set(&Globals::new(), || {
         swc_core::ecma::transforms::base::helpers::HELPERS.set(
           &swc_core::ecma::transforms::base::helpers::Helpers::new(false),
           || {
             let is_module = program.is_module();
+            let unresolved_mark = Mark::fresh(Mark::root());
+            let global_mark = Mark::fresh(Mark::root());
+            program.mutate(&mut resolver(unresolved_mark, global_mark, false));
+
             let module = match program {
               Program::Module(module) => module,
               Program::Script(script) => Module {
@@ -1404,10 +1399,6 @@ mod tests {
                 body: script.body.into_iter().map(ModuleItem::Stmt).collect(),
               },
             };
-
-            let unresolved_mark = Mark::fresh(Mark::root());
-            let global_mark = Mark::fresh(Mark::root());
-            let module = module.fold_with(&mut resolver(unresolved_mark, global_mark, false));
 
             let mut collect = Collect::new(
               source_map.clone(),
@@ -1419,13 +1410,13 @@ mod tests {
             );
             module.visit_with(&mut collect);
 
-            let (module, res) = {
+            let (mut module, res) = {
               let mut hoist = Hoist::new("abc", unresolved_mark, &collect);
               let module = module.fold_with(&mut hoist);
               (module, hoist.get_result())
             };
 
-            let module = module.fold_with(&mut chain!(hygiene(), fixer(Some(&comments))));
+            module.visit_mut_with(&mut (hygiene(), fixer(Some(&comments))));
 
             let code = emit(source_map, comments, &module);
             (collect, code, res)

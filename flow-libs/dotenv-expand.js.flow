@@ -6,9 +6,13 @@ declare module 'dotenv-expand' {
   declare type DotenvConfig = {
     error?: Error,
     parsed?: { [string]: string, ... },
+    processEnv?: {...},
     ...
   };
 
   // See: https://github.com/motdotla/dotenv-expand/blob/ddb73d02322fe8522b4e05b73e1c1ad24ea7c14a/lib/main.js
-  declare module.exports: (config: DotenvConfig) => DotenvConfig;
+  declare module.exports: {
+    expand: (config: DotenvConfig) => void,
+    ...
+  };
 }

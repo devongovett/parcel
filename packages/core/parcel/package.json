@@ -14,13 +14,9 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
-  "bin": "bin/parcel.js",
+  "bin": "src/bin.js",
   "main": "lib/bin.js",
   "source": "src/bin.js",
-  "scripts": {
-    "prepack": "./ensure-no-dev-lib.sh",
-    "dev:prepare": "rimraf ./lib/ && mkdir -p lib && cp ./bin/dev-bin.js ./lib/bin.js"
-  },
   "engines": {
     "node": ">= 16.0.0"
   },
@@ -37,13 +33,12 @@
     "@parcel/reporter-dev-server": "2.12.0",
     "@parcel/reporter-tracer": "2.12.0",
     "@parcel/utils": "2.12.0",
-    "chalk": "^4.1.0",
-    "commander": "^7.0.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
     "get-port": "^4.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.11",
-    "@parcel/babel-register": "2.12.0",
-    "rimraf": "^5.0.5"
+    "@parcel/babel-register": "2.12.0"
   }
 }

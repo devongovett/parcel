@@ -11,12 +11,7 @@ import type {
 } from '@parcel/types';
 
 import {Runtime} from '@parcel/plugin';
-import {
-  relativeBundlePath,
-  validateSchema,
-  type SchemaEntity,
-} from '@parcel/utils';
-import {encodeJSONKeyComponent} from '@parcel/diagnostic';
+import {relativeBundlePath} from '@parcel/utils';
 import path from 'path';
 import nullthrows from 'nullthrows';
 
@@ -70,52 +65,8 @@ let bundleDependencies = new WeakMap<
   |},
 >();
 
-type JSRuntimeConfig = {|
-  splitManifestThreshold: number,
-|};
-
-let defaultConfig: JSRuntimeConfig = {
-  splitManifestThreshold: 100000,
-};
-
-const CONFIG_SCHEMA: SchemaEntity = {
-  type: 'object',
-  properties: {
-    splitManifestThreshold: {
-      type: 'number',
-    },
-  },
-  additionalProperties: false,
-};
-
 export default (new Runtime({
-  async loadConfig({config, options}): Promise<JSRuntimeConfig> {
-    let packageKey = '@parcel/runtime-js';
-    let conf = await config.getConfig<JSRuntimeConfig>([], {
-      packageKey,
-    });
-
-    if (!conf) {
-      return defaultConfig;
-    }
-    validateSchema.diagnostic(
-      CONFIG_SCHEMA,
-      {
-        data: conf?.contents,
-        source: await options.inputFS.readFile(conf.filePath, 'utf8'),
-        filePath: conf.filePath,
-        prependKey: `/${encodeJSONKeyComponent(packageKey)}`,
-      },
-      packageKey,
-      `Invalid config for ${packageKey}`,
-    );
-
-    return {
-      ...defaultConfig,
-      ...conf?.contents,
-    };
-  },
-  apply({bundle, bundleGraph, options, config}) {
+  apply({bundle, bundleGraph, options}) {
     // Dependency ids in code replaced with referenced bundle names
     // Loader runtime added for bundle groups that don't have a native loader (e.g. HTML/CSS/Worker - isURL?),
     // and which are not loaded by a parent bundle.
@@ -285,11 +236,6 @@ export default (new Runtime({
         code: getRegisterCode(bundle, bundleGraph),
         isEntry: true,
         env: {sourceType: 'module'},
-        priority: getManifestBundlePriority(
-          bundleGraph,
-          bundle,
-          config.splitManifestThreshold,
-        ),
       });
     }
 
@@ -482,6 +428,24 @@ function getLoaderRuntime({
     loaderCode += `.then(() => ${parcelRequire}('${bundleGraph.getAssetPublicId(
       bundleGraph.getAssetById(bundleGroup.entryAssetId),
     )}'))`;
+  }
+
+  if (needsEsmLoadPrelude && options.featureFlags.importRetry) {
+    loaderCode = `
+      Object.defineProperty(module, 'exports', { get: () => {
+        let load = require('./helpers/browser/esm-js-loader-retry');
+        return ${loaderCode}.then((v) => {
+          Object.defineProperty(module, "exports", { value: Promise.resolve(v) })
+          return v
+        });
+      }})`;
+
+    return {
+      filePath: __filename,
+      code: loaderCode,
+      dependency,
+      env: {sourceType: 'module'},
+    };
   }
 
   let code = [];
@@ -703,22 +667,4 @@ function shouldUseRuntimeManifest(
     env.isBrowser() &&
     options.mode === 'production'
   );
-}
-
-function getManifestBundlePriority(
-  bundleGraph: BundleGraph<NamedBundle>,
-  bundle: NamedBundle,
-  threshold: number,
-): $PropertyType<RuntimeAsset, 'priority'> {
-  let bundleSize = 0;
-
-  bundle.traverseAssets((asset, _, actions) => {
-    bundleSize += asset.stats.size;
-
-    if (bundleSize > threshold) {
-      actions.stop();
-    }
-  });
-
-  return bundleSize > threshold ? 'parallel' : 'sync';
 }

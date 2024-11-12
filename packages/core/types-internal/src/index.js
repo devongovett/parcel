@@ -100,7 +100,11 @@ export type GlobMap<T> = {[Glob]: T, ...};
 
 export type RawParcelConfigPipeline = Array<PackageName>;
 
-export type HMROptions = {port?: number, host?: string, ...};
+export type HMROptions = {
+  port?: number,
+  host?: string,
+  ...
+};
 
 /** The format of .parcelrc  */
 export type RawParcelConfig = {|
@@ -1707,8 +1711,6 @@ export type Namer<ConfigType> = {|
   |}): Async<?FilePath>,
 |};
 
-type RuntimeAssetPriority = 'sync' | 'parallel';
-
 /**
  * A "synthetic" asset that will be inserted into the bundle graph.
  * @section runtime
@@ -1719,7 +1721,6 @@ export type RuntimeAsset = {|
   +dependency?: Dependency,
   +isEntry?: boolean,
   +env?: EnvironmentOptions,
-  +priority?: RuntimeAssetPriority,
 |};
 
 /**

@@ -1,16 +1,10 @@
 use std::collections::HashSet;
 
-use swc_core::ecma::ast::Decl;
-use swc_core::ecma::ast::Expr;
-use swc_core::ecma::ast::Lit;
-use swc_core::ecma::ast::Module;
-use swc_core::ecma::ast::ModuleDecl;
-use swc_core::ecma::ast::ModuleItem;
-use swc_core::ecma::ast::Stmt;
-use swc_core::ecma::ast::VarDeclKind;
-use swc_core::ecma::ast::VarDeclarator;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::visit::Visit;
+use swc_core::ecma::{
+  ast::{Decl, Expr, Lit, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind, VarDeclarator},
+  atoms::JsWord,
+  visit::Visit,
+};
 
 fn is_safe_literal(lit: &Lit) -> bool {
   matches!(
@@ -157,22 +151,20 @@ impl Visit for ConstantModule {
 
 #[cfg(test)]
 mod tests {
-  use swc_core::common::comments::SingleThreadedComments;
-  use swc_core::common::sync::Lrc;
-  use swc_core::common::FileName;
-  use swc_core::common::Globals;
-  use swc_core::common::SourceMap;
-  use swc_core::ecma::parser::lexer::Lexer;
-  use swc_core::ecma::parser::Parser;
-  use swc_core::ecma::parser::StringInput;
-  use swc_core::ecma::visit::VisitWith;
+  use swc_core::{
+    common::{comments::SingleThreadedComments, sync::Lrc, FileName, Globals, SourceMap},
+    ecma::{
+      parser::{lexer::Lexer, Parser, StringInput},
+      visit::VisitWith,
+    },
+  };
 
   use super::*;
   extern crate indoc;
 
   fn is_constant_module(code: &str) -> bool {
     let source_map = Lrc::new(SourceMap::default());
-    let source_file = source_map.new_source_file(FileName::Anon, code.into());
+    let source_file = source_map.new_source_file(Lrc::new(FileName::Anon), code.into());
 
     let comments = SingleThreadedComments::default();
     let lexer = Lexer::new(

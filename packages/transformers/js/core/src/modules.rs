@@ -1,25 +1,21 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use inflector::Inflector;
-use swc_core::common::Mark;
-use swc_core::common::Span;
-use swc_core::common::SyntaxContext;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::*;
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::preset_env::Feature;
-use swc_core::ecma::preset_env::Versions;
-use swc_core::ecma::utils::stack_size::maybe_grow_default;
-use swc_core::ecma::visit::Fold;
-use swc_core::ecma::visit::FoldWith;
+use swc_core::{
+  common::{Mark, Span, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast::*,
+    atoms::{js_word, JsWord},
+    preset_env::{Feature, Versions},
+    utils::stack_size::maybe_grow_default,
+    visit::{Fold, FoldWith},
+  },
+};
 
-use crate::fold_member_expr_skip_prop;
-use crate::id;
-use crate::utils::get_undefined_ident;
-use crate::utils::match_export_name;
-use crate::utils::match_export_name_ident;
+use crate::{
+  fold_member_expr_skip_prop, id,
+  utils::{get_undefined_ident, match_export_name, match_export_name_ident},
+};
 
 pub fn esm2cjs(node: Module, unresolved_mark: Mark, versions: Option<Versions>) -> (Module, bool) {
   let mut fold = ESMFold {
@@ -70,19 +66,13 @@ fn local_name_for_src(src: &JsWord) -> JsWord {
 impl ESMFold {
   fn get_require_name(&mut self, src: &JsWord, span: Span) -> Ident {
     if let Some((name, mark)) = self.require_names.get(src) {
-      return Ident::new(
-        name.clone(),
-        span.with_ctxt(SyntaxContext::empty()).apply_mark(*mark),
-      );
+      return Ident::new(name.clone(), span, SyntaxContext::empty().apply_mark(*mark));
     }
 
     let name = local_name_for_src(src);
     let mark = Mark::fresh(Mark::root());
     self.require_names.insert(src.clone(), (name.clone(), mark));
-    Ident::new(
-      name,
-      span.with_ctxt(SyntaxContext::empty()).apply_mark(mark),
-    )
+    Ident::new(name, span, SyntaxContext::empty().apply_mark(mark))
   }
 
   fn get_interop_default_name(&mut self, src: &JsWord) -> Ident {
@@ -90,7 +80,8 @@ impl ESMFold {
     let (name, mark) = self.require_names.get(src).unwrap();
     Ident::new(
       format!("{}Default", name).into(),
-      DUMMY_SP.apply_mark(*mark),
+      DUMMY_SP,
+      SyntaxContext::empty().apply_mark(*mark),
     )
   }
 
@@ -102,6 +93,7 @@ impl ESMFold {
     let ident = self.get_require_name(&src, DUMMY_SP);
     let require = ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
       span,
+      ctxt: SyntaxContext::empty(),
       kind: VarDeclKind::Var,
       decls: vec![VarDeclarator {
         span: DUMMY_SP,
@@ -127,6 +119,7 @@ impl ESMFold {
     let ident = self.get_interop_default_name(&src);
     let interop = ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
       span: DUMMY_SP,
+      ctxt: SyntaxContext::empty(),
       kind: VarDeclKind::Var,
       decls: vec![VarDeclarator {
         span: DUMMY_SP,
@@ -147,11 +140,15 @@ impl ESMFold {
 
   fn create_helper_call(&mut self, name: JsWord, args: Vec<Expr>, span: Span) -> Expr {
     self.needs_helpers = true;
-    let ident = Ident::new("parcelHelpers".into(), DUMMY_SP.apply_mark(self.mark));
+    let ident = Ident::new(
+      "parcelHelpers".into(),
+      DUMMY_SP,
+      SyntaxContext::empty().apply_mark(self.mark),
+    );
     Expr::Call(CallExpr {
       callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
         obj: Box::new(Expr::Ident(ident)),
-        prop: MemberProp::Ident(Ident::new(name, DUMMY_SP)),
+        prop: MemberProp::Ident(IdentName::new(name, DUMMY_SP)),
         span: DUMMY_SP,
       }))),
       args: args
@@ -162,6 +159,7 @@ impl ESMFold {
         })
         .collect(),
       span,
+      ctxt: SyntaxContext::empty(),
       type_args: None,
     })
   }
@@ -177,7 +175,7 @@ impl ESMFold {
     let export = self.call_helper(
       js_word!("export"),
       vec![
-        Expr::Ident(Ident::new("exports".into(), DUMMY_SP)),
+        Expr::Ident(Ident::new_no_ctxt("exports".into(), DUMMY_SP)),
         Expr::Lit(Lit::Str(exported.into())),
         if matches!(self.versions, Some(versions) if Feature::ArrowFunctions.should_enable(versions, true, false)) {
           Expr::Fn(FnExpr {
@@ -185,6 +183,7 @@ impl ESMFold {
             function: Box::new(Function {
               body: Some(BlockStmt {
                 span: DUMMY_SP,
+                ctxt: SyntaxContext::empty(),
                 stmts: vec![Stmt::Return({
                   ReturnStmt {
                     span: DUMMY_SP,
@@ -197,6 +196,7 @@ impl ESMFold {
               params: vec![],
               decorators: vec![],
               span: DUMMY_SP,
+              ctxt: SyntaxContext::empty(),
               return_type: None,
               type_params: None,
             }),
@@ -208,6 +208,7 @@ impl ESMFold {
             is_generator: false,
             params: vec![],
             span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
             return_type: None,
             type_params: None,
           })
@@ -223,8 +224,8 @@ impl ESMFold {
       expr: Box::new(Expr::Assign(AssignExpr {
         op: AssignOp::Assign,
         left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
-          obj: Box::new(Expr::Ident(Ident::new("exports".into(), DUMMY_SP))),
-          prop: MemberProp::Ident(Ident::new(name, DUMMY_SP)),
+          obj: Box::new(Expr::Ident(Ident::new_no_ctxt("exports".into(), DUMMY_SP))),
+          prop: MemberProp::Ident(IdentName::new(name, DUMMY_SP)),
           span: DUMMY_SP,
         })),
         right: Box::new(right),
@@ -254,7 +255,7 @@ impl ESMFold {
         0.into(),
         Box::new(Expr::Member(MemberExpr {
           obj: Box::new(Expr::Ident(obj)),
-          prop: MemberProp::Ident(Ident::new(imported.clone(), DUMMY_SP)),
+          prop: MemberProp::Ident(IdentName::new(imported.clone(), DUMMY_SP)),
           span,
         })),
       ],
@@ -375,7 +376,7 @@ impl Fold for ESMFold {
               "exportAll".into(),
               vec![
                 Expr::Ident(require_name),
-                Expr::Ident(Ident::new("exports".into(), DUMMY_SP)),
+                Expr::Ident(Ident::new_no_ctxt("exports".into(), DUMMY_SP)),
               ],
               export.span,
             );
@@ -547,7 +548,7 @@ impl Fold for ESMFold {
     if needs_interop_flag {
       let helper = self.call_helper(
         "defineInteropFlag".into(),
-        vec![Expr::Ident(Ident::new("exports".into(), DUMMY_SP))],
+        vec![Expr::Ident(Ident::new_no_ctxt("exports".into(), DUMMY_SP))],
         DUMMY_SP,
       );
       self.exports.insert(0, helper);
@@ -562,11 +563,17 @@ impl Fold for ESMFold {
         0,
         ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
           span: DUMMY_SP,
+          ctxt: SyntaxContext::empty(),
           kind: VarDeclKind::Var,
           decls: vec![VarDeclarator {
             span: DUMMY_SP,
             name: Pat::Ident(
-              Ident::new("parcelHelpers".into(), DUMMY_SP.apply_mark(self.mark)).into(),
+              Ident::new(
+                "parcelHelpers".into(),
+                DUMMY_SP,
+                SyntaxContext::empty().apply_mark(self.mark),
+              )
+              .into(),
             ),
             init: Some(Box::new(Expr::Call(crate::utils::create_require(
               "@parcel/transformer-js/src/esmodule-helpers.js".into(),
@@ -623,7 +630,7 @@ impl Fold for ESMFold {
       Prop::Shorthand(ident) => {
         if let Some((source, imported)) = self.imports.get(&id!(ident)).cloned() {
           Prop::KeyValue(KeyValueProp {
-            key: PropName::Ident(Ident::new(ident.sym.clone(), DUMMY_SP)),
+            key: PropName::Ident(IdentName::new(ident.sym.clone(), DUMMY_SP)),
             value: Box::new(self.create_import_access(&source, &imported, ident.span)),
           })
         } else {

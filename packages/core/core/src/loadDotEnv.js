@@ -4,6 +4,7 @@ import type {FileSystem} from '@parcel/fs';
 import type {EnvMap, FilePath} from '@parcel/types';
 
 import {resolveConfig} from '@parcel/utils';
+// $FlowFixMe
 import dotenv from 'dotenv';
 import variableExpansion from 'dotenv-expand';
 
@@ -39,16 +40,14 @@ export default async function loadEnv(
 
       // `ignoreProcessEnv` prevents dotenv-expand from writing values into `process.env`:
       // https://github.com/motdotla/dotenv-expand/blob/ddb73d02322fe8522b4e05b73e1c1ad24ea7c14a/lib/main.js#L5
-      let output = variableExpansion({
+      let output = {};
+      variableExpansion.expand({
+        processEnv: output,
         parsed: dotenv.parse(await fs.readFile(envPath)),
         ignoreProcessEnv: true,
       });
 
-      if (output.error != null) {
-        throw output.error;
-      }
-
-      return output.parsed;
+      return output;
     }),
   );
 

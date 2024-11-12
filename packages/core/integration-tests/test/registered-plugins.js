@@ -16,16 +16,16 @@ describe('plugins with "registered" languages', () => {
         }
 
       yarn.lock:
-      
+
       index.js:
         console.log("Hi, mum!");
-      
+
       .parcelrc:
         {
           extends: "@parcel/config-default",
           reporters: ["...", "./reporter-plugin.js"],
         }
-      
+
       reporter-plugin.js:
         require('esbuild-register/dist/node').register();
         const plugin = require('./reporter-plugin.ts');
@@ -42,7 +42,7 @@ describe('plugins with "registered" languages', () => {
                 }
             }
         });
-      
+
       some-string.ts:
         export const someString = 'something';
         `;

@@ -1,7 +1,7 @@
 // @flow
 import assert from 'assert';
 import path from 'path';
-import {overlayFS, bundle, fsFixture} from '@parcel/test-utils';
+import {bundle, fsFixture, overlayFS} from '@parcel/test-utils';
 import {loadGraphs} from '../../../dev/query/src';
 
 describe('parcel-query', () => {

@@ -1010,6 +1010,63 @@ describe('monorepos', function () {
     }
   });
 
+  it('should support multiple globs in the source field', async function () {
+    const dir = path.join(__dirname, 'source-glob');
+    overlayFS.mkdirp(dir);
+
+    await fsFixture(overlayFS, dir)`
+      yarn.lock:
+
+      package.json:
+        {
+          "source": ["foo/*.js", "bar/*.js"],
+          "targets": {
+            "default": {
+              "outputFormat": "esmodule",
+              "isLibrary": true
+            }
+          }
+        }
+
+      foo/a.js:
+        export default 'a';
+
+      foo/b.js:
+        export default 'b';
+
+      bar/c.js:
+        export default 'c';
+
+      bar/d.js:
+        export default 'd';
+    `;
+
+    let b = await bundle(dir, {
+      inputFS: overlayFS,
+      mode: 'production',
+    });
+
+    assertBundles(b, [
+      {
+        assets: ['a.js'],
+      },
+      {
+        assets: ['b.js'],
+      },
+      {
+        assets: ['c.js'],
+      },
+      {
+        assets: ['d.js'],
+      },
+    ]);
+
+    for (let bundle of b.getBundles()) {
+      let res = await runBundle(b, bundle);
+      assert.equal(res.default, bundle.name[4]);
+    }
+  });
+
   it('should support globs in target-specific source field', async function () {
     const dir = path.join(__dirname, 'source-target-glob');
     overlayFS.mkdirp(dir);

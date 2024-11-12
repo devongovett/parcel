@@ -2,13 +2,19 @@
 import type {PostHTMLNode} from 'posthtml';
 
 import htmlnano from 'htmlnano';
+import {
+  md,
+  generateJSONCodeHighlights,
+  errorToDiagnostic,
+} from '@parcel/diagnostic';
 import {Optimizer} from '@parcel/plugin';
+import {detectSVGOVersion} from '@parcel/utils';
 import posthtml from 'posthtml';
 import path from 'path';
 import {SVG_ATTRS, SVG_TAG_NAMES} from './svgMappings';
 
 export default (new Optimizer({
-  async loadConfig({config, options}) {
+  async loadConfig({config, options, logger}) {
     let userConfig = await config.getConfigFrom(
       path.join(options.projectRoot, 'index.html'),
       [
@@ -26,9 +32,72 @@ export default (new Optimizer({
       },
     );
 
-    return userConfig?.contents;
+    let contents = userConfig?.contents;
+
+    // See if svgo is already installed.
+    let resolved;
+    try {
+      resolved = await options.packageManager.resolve(
+        'svgo',
+        path.join(options.projectRoot, 'index'),
+        {shouldAutoInstall: false},
+      );
+    } catch (err) {
+      // ignore.
+    }
+
+    // If so, use the existing installed version.
+    let svgoVersion = 3;
+    if (resolved) {
+      if (resolved.pkg?.version) {
+        svgoVersion = parseInt(resolved.pkg.version);
+      }
+    } else if (contents?.minifySvg) {
+      // Otherwise try to detect the version based on the config file.
+      let v = detectSVGOVersion(contents.minifySvg);
+      if (userConfig != null && v.version === 2) {
+        logger.warn({
+          message: md`Detected deprecated SVGO v2 options in ${path.relative(
+            process.cwd(),
+            userConfig.filePath,
+          )}`,
+          codeFrames: [
+            {
+              filePath: userConfig.filePath,
+              codeHighlights:
+                path.basename(userConfig.filePath) === '.htmlnanorc' ||
+                path.extname(userConfig.filePath) === '.json'
+                  ? generateJSONCodeHighlights(
+                      await options.inputFS.readFile(
+                        userConfig.filePath,
+                        'utf8',
+                      ),
+                      [
+                        {
+                          key: `${
+                            path.basename(userConfig.filePath) ===
+                            'package.json'
+                              ? '/htmlnano'
+                              : ''
+                          }/minifySvg${v.path}`,
+                        },
+                      ],
+                    )
+                  : [],
+            },
+          ],
+        });
+      }
+
+      svgoVersion = v.version;
+    }
+
+    return {
+      contents,
+      svgoVersion,
+    };
   },
-  async optimize({bundle, contents, map, config}) {
+  async optimize({bundle, contents, map, config, options, logger}) {
     if (!bundle.env.shouldOptimize) {
       return {contents, map};
     }
@@ -39,7 +108,7 @@ export default (new Optimizer({
       );
     }
 
-    const clonedConfig = config || {};
+    const clonedConfig = config.contents || {};
 
     // $FlowFixMe
     const presets = htmlnano.presets;
@@ -54,35 +123,11 @@ export default (new Optimizer({
       // minified before they are re-inserted by the packager.
       minifyJs: false,
       minifyCss: false,
-      minifySvg: {
-        plugins: [
-          {
-            name: 'preset-default',
-            params: {
-              overrides: {
-                // Copied from htmlnano defaults.
-                collapseGroups: false,
-                convertShapeToPath: false,
-                // Additional defaults to preserve accessibility information.
-                removeTitle: false,
-                removeDesc: false,
-                removeUnknownsAndDefaults: {
-                  keepAriaAttrs: true,
-                  keepRoleAttr: true,
-                },
-                // Do not minify ids or remove unreferenced elements in
-                // inline SVGs because they could actually be referenced
-                // by a separate inline SVG.
-                cleanupIDs: false,
-              },
-            },
-          },
-          // XML namespaces are not required in HTML.
-          'removeXMLNS',
-        ],
-      },
       ...(preset || {}),
       ...clonedConfig,
+      // Never use htmlnano's builtin svgo transform.
+      // We need to control the version of svgo that is used.
+      minifySvg: false,
       // TODO: Uncomment this line once we update htmlnano, new version isn't out yet
       // skipConfigLoading: true,
     };
@@ -90,8 +135,17 @@ export default (new Optimizer({
     let plugins = [htmlnano(htmlNanoConfig)];
 
     // $FlowFixMe
-    if (htmlNanoConfig.minifySvg !== false) {
-      plugins.unshift(mapSVG);
+    if (clonedConfig.minifySvg !== false) {
+      plugins.push(mapSVG);
+      plugins.push(tree =>
+        minifySvg(
+          tree,
+          options,
+          config.svgoVersion,
+          clonedConfig.minifySvg,
+          logger,
+        ),
+      );
     }
 
     return {
@@ -157,4 +211,77 @@ function mapSVG(
   }
 
   return node;
+}
+
+async function minifySvg(tree, options, svgoVersion, svgoOptions, logger) {
+  let svgNodes = [];
+  tree.match({tag: 'svg'}, node => {
+    svgNodes.push(node);
+    return node;
+  });
+
+  if (!svgNodes.length) {
+    return tree;
+  }
+
+  const svgo = await options.packageManager.require(
+    'svgo',
+    path.join(options.projectRoot, 'index'),
+    {
+      range: `^${svgoVersion}`,
+      saveDev: true,
+      shouldAutoInstall: options.shouldAutoInstall,
+    },
+  );
+
+  let opts = svgoOptions;
+  if (!svgoOptions) {
+    let cleanupIds: string = svgoVersion === 2 ? 'cleanupIDs' : 'cleanupIds';
+    opts = {
+      plugins: [
+        {
+          name: 'preset-default',
+          params: {
+            overrides: {
+              // Copied from htmlnano defaults.
+              collapseGroups: false,
+              convertShapeToPath: false,
+              // Additional defaults to preserve accessibility information.
+              removeTitle: false,
+              removeDesc: false,
+              removeUnknownsAndDefaults: {
+                keepAriaAttrs: true,
+                keepRoleAttr: true,
+              },
+              // Do not minify ids or remove unreferenced elements in
+              // inline SVGs because they could actually be referenced
+              // by a separate inline SVG.
+              [cleanupIds]: false,
+              removeHiddenElems: false,
+            },
+          },
+        },
+        // XML namespaces are not required in HTML.
+        'removeXMLNS',
+        'removeXlink',
+      ],
+    };
+  }
+
+  for (let node of svgNodes) {
+    let svgStr = tree.render(node, {
+      closingSingleTag: 'slash',
+      quoteAllAttributes: true,
+    });
+    try {
+      let result = svgo.optimize(svgStr, opts);
+      node.tag = false;
+      node.attrs = {};
+      node.content = [result.data];
+    } catch (error) {
+      logger.warn(errorToDiagnostic(error));
+    }
+  }
+
+  return tree;
 }

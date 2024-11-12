@@ -5,6 +5,7 @@ import {
   inputFS,
   overlayFS,
   run,
+  fsFixture,
 } from '@parcel/test-utils';
 import assert from 'assert';
 import path from 'path';
@@ -712,21 +713,33 @@ console.log('index.js');`,
 
     it('changing bundler options', async () => {
       let subscription;
-      let fixture = path.join(__dirname, '/integration/incremental-bundling');
       try {
-        let b = bundler(path.join(fixture, 'index.js'), {
+        await fsFixture(overlayFS, __dirname)`
+          index.js:
+            export default 1;
+
+          package.json:
+            {
+              "@parcel/bundler-default": {
+                "http": 2
+              }
+            }
+
+          yarn.lock:`;
+
+        let b = bundler(path.join(__dirname, 'index.js'), {
           inputFS: overlayFS,
           shouldDisableCache: false,
           shouldBundleIncrementally: true,
         });
 
-        await overlayFS.mkdirp(fixture);
+        await overlayFS.mkdirp(__dirname);
         subscription = await b.watch();
 
         let event = await getNextBuildSuccess(b);
         assertTimesBundled(defaultBundlerSpy.callCount, 1);
 
-        let pkgFile = path.join(fixture, 'package.json');
+        let pkgFile = path.join(__dirname, 'package.json');
         let pkg = JSON.parse(await overlayFS.readFile(pkgFile));
         await overlayFS.writeFile(
           pkgFile,
@@ -741,7 +754,7 @@ console.log('index.js');`,
         event = await getNextBuildSuccess(b);
 
         // should contain all the assets
-        assertChangedAssets(event.changedAssets.size, 3);
+        assertChangedAssets(event.changedAssets.size, 2);
         assertTimesBundled(defaultBundlerSpy.callCount, 2);
       } finally {
         if (subscription) {
@@ -995,7 +1008,7 @@ console.log('index.js');`,
 
 console.log('index.js');
 console.log(a);
-module.exports = {a};
+module.exports = {a}
 `,
       );
 

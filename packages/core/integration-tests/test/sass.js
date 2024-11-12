@@ -284,9 +284,25 @@ describe('sass', function () {
     assert(css.includes('.external'));
   });
 
-  it('should support imports from includePaths', async function () {
+  it('should support imports from includePaths (legacy)', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/sass-include-paths-import/index.sass'),
+    );
+
+    assertBundles(b, [
+      {
+        name: 'index.css',
+        assets: ['index.sass'],
+      },
+    ]);
+
+    let css = await outputFS.readFile(path.join(distDir, 'index.css'), 'utf8');
+    assert(css.includes('.included'));
+  });
+
+  it('should support imports from loadPaths (modern)', async function () {
+    let b = await bundle(
+      path.join(__dirname, '/integration/sass-load-paths-import/index.sass'),
     );
 
     assertBundles(b, [

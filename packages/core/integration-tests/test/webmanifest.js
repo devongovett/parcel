@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, assertBundles, inputFS, outputFS} from '@parcel/test-utils';
+import {assertBundles, bundle, inputFS, outputFS} from '@parcel/test-utils';
 import {md} from '@parcel/diagnostic';
 
 describe('webmanifest', function () {

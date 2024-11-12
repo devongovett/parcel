@@ -14,7 +14,7 @@ const {
   BundleGraph: {default: BundleGraph},
   RequestTracker: {
     default: RequestTracker,
-    readAndDeserializeRequestGraph,
+    RequestGraph,
     requestGraphEdgeTypes,
   },
   LMDBCache,
@@ -39,17 +39,15 @@ export async function loadGraphs(cacheDir: string): Promise<{|
     |}> = [
       {
         name: 'requestGraphBlob',
-        check: basename =>
-          basename.startsWith('requestGraph-') &&
-          !basename.startsWith('requestGraph-nodes'),
+        check: basename => basename.endsWith('RequestGraph'),
       },
       {
         name: 'bundleGraphBlob',
-        check: basename => basename.endsWith('BundleGraph-0'),
+        check: basename => basename.endsWith('BundleGraph'),
       },
       {
         name: 'assetGraphBlob',
-        check: basename => basename.endsWith('AssetGraph-0'),
+        check: basename => basename.endsWith('AssetGraph'),
       },
     ];
 
@@ -80,23 +78,19 @@ export async function loadGraphs(cacheDir: string): Promise<{|
   let requestTracker;
   if (requestGraphBlob) {
     try {
-      let requestGraphKey = requestGraphBlob.slice(0, -'-0'.length);
-      let date = Date.now();
-      let {requestGraph, bufferLength} = await readAndDeserializeRequestGraph(
-        cache,
-        requestGraphKey,
-        requestGraphKey.replace('requestGraph-', ''),
-      );
+      let file = await cache.getLargeBlob(path.basename(requestGraphBlob));
+      let timeToDeserialize = Date.now();
+      let obj = v8.deserialize(file);
+      timeToDeserialize = Date.now() - timeToDeserialize;
 
       requestTracker = new RequestTracker({
-        graph: requestGraph,
+        graph: RequestGraph.deserialize(obj.value),
         // $FlowFixMe
         farm: null,
         // $FlowFixMe
         options: null,
       });
-      let timeToDeserialize = Date.now() - date;
-      cacheInfo.set('RequestGraph', [bufferLength]);
+      cacheInfo.set('RequestGraph', [Buffer.byteLength(file)]);
       cacheInfo.get('RequestGraph')?.push(timeToDeserialize);
     } catch (e) {
       console.log('Error loading Request Graph\n', e);
@@ -107,9 +101,7 @@ export async function loadGraphs(cacheDir: string): Promise<{|
   let bundleGraph;
   if (bundleGraphBlob) {
     try {
-      let file = await cache.getLargeBlob(
-        path.basename(bundleGraphBlob).slice(0, -'-0'.length),
-      );
+      let file = await cache.getLargeBlob(path.basename(bundleGraphBlob));
 
       let timeToDeserialize = Date.now();
       let obj = v8.deserialize(file);
@@ -128,9 +120,7 @@ export async function loadGraphs(cacheDir: string): Promise<{|
   let assetGraph;
   if (assetGraphBlob) {
     try {
-      let file = await cache.getLargeBlob(
-        path.basename(assetGraphBlob).slice(0, -'-0'.length),
-      );
+      let file = await cache.getLargeBlob(path.basename(assetGraphBlob));
 
       let timeToDeserialize = Date.now();
       let obj = v8.deserialize(file);

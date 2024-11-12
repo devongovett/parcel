@@ -1,5 +1,5 @@
-@import 'foo';
-@import './bar.scss';
+@use 'foo' as *;
+@use './bar.scss' as *;
 
 .index {
   color: $foo;

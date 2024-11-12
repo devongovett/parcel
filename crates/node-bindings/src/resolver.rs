@@ -1,47 +1,31 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::path::Path;
-use std::path::PathBuf;
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::{
+  borrow::Cow,
+  collections::HashMap,
+  path::{Path, PathBuf},
+  sync::Arc,
+};
 
-use dashmap::DashMap;
-use napi::bindgen_prelude::Either3;
-use napi::Env;
-use napi::JsBoolean;
-use napi::JsBuffer;
-use napi::JsFunction;
-use napi::JsObject;
-use napi::JsString;
-use napi::JsUnknown;
-use napi::Ref;
-use napi::Result;
+use napi::{
+  bindgen_prelude::Either3, Env, JsBuffer, JsFunction, JsNumber, JsObject, JsString, JsUnknown,
+  Ref, Result,
+};
 use napi_derive::napi;
-use parcel::file_system::FileSystemRef;
-use parcel_resolver::ExportsCondition;
-use parcel_resolver::Extensions;
-use parcel_resolver::Fields;
-use parcel_resolver::FileCreateInvalidation;
-use parcel_resolver::FileSystem;
-use parcel_resolver::Flags;
-use parcel_resolver::IncludeNodeModules;
-use parcel_resolver::Invalidations;
-use parcel_resolver::ModuleType;
+
 #[cfg(not(target_arch = "wasm32"))]
 use parcel_resolver::OsFileSystem;
-use parcel_resolver::Resolution;
-use parcel_resolver::ResolverError;
-use parcel_resolver::SpecifierType;
+use parcel_resolver::{
+  ExportsCondition, Extensions, Fields, FileCreateInvalidation, FileKind, FileSystem, Flags,
+  IncludeNodeModules, Invalidations, ModuleType, Resolution, ResolutionAndQuery, ResolverError,
+  SpecifierType,
+};
 
 type NapiSideEffectsVariants = Either3<bool, Vec<String>, HashMap<String, bool>>;
 
 #[napi(object)]
 pub struct JsFileSystemOptions {
-  pub canonicalize: JsFunction,
   pub read: JsFunction,
-  pub is_file: JsFunction,
-  pub is_dir: JsFunction,
+  pub read_link: JsFunction,
+  pub kind: JsFunction,
   pub include_node_modules: Option<NapiSideEffectsVariants>,
 }
 
@@ -87,29 +71,12 @@ impl Drop for FunctionRef {
 }
 
 pub struct JsFileSystem {
-  pub canonicalize: FunctionRef,
   pub read: FunctionRef,
-  pub is_file: FunctionRef,
-  pub is_dir: FunctionRef,
+  pub kind: FunctionRef,
+  pub read_link: FunctionRef,
 }
 
 impl FileSystem for JsFileSystem {
-  fn canonicalize(
-    &self,
-    path: &Path,
-    _cache: &DashMap<PathBuf, Option<PathBuf>>,
-  ) -> std::io::Result<std::path::PathBuf> {
-    let canonicalize = || -> napi::Result<_> {
-      let path = path.to_string_lossy();
-      let path = self.canonicalize.env.create_string(path.as_ref())?;
-      let res: JsString = self.canonicalize.get()?.call(None, &[path])?.try_into()?;
-      let utf8 = res.into_utf8()?;
-      Ok(utf8.into_owned()?.into())
-    };
-
-    canonicalize().map_err(|err| std::io::Error::new(std::io::ErrorKind::NotFound, err.to_string()))
-  }
-
   fn read_to_string(&self, path: &Path) -> std::io::Result<String> {
     let read = || -> napi::Result<_> {
       let path = path.to_string_lossy();
@@ -122,26 +89,30 @@ impl FileSystem for JsFileSystem {
     read().map_err(|err| std::io::Error::new(std::io::ErrorKind::NotFound, err.to_string()))
   }
 
-  fn is_file(&self, path: &Path) -> bool {
-    let is_file = || -> napi::Result<_> {
+  fn kind(&self, path: &Path) -> FileKind {
+    let kind = || -> napi::Result<u32> {
       let path = path.to_string_lossy();
-      let p = self.is_file.env.create_string(path.as_ref())?;
-      let res: JsBoolean = self.is_file.get()?.call(None, &[p])?.try_into()?;
-      res.get_value()
+      let p = self.kind.env.create_string(path.as_ref())?;
+      let res: JsNumber = self.kind.get()?.call(None, &[p])?.try_into()?;
+      res.get_uint32()
     };
 
-    is_file().unwrap_or(false)
+    match kind() {
+      Ok(num) => FileKind::from_bits_truncate(num as u8),
+      _ => FileKind::empty(),
+    }
   }
 
-  fn is_dir(&self, path: &Path) -> bool {
-    let is_dir = || -> napi::Result<_> {
+  fn read_link(&self, path: &Path) -> std::io::Result<PathBuf> {
+    let canonicalize = || -> napi::Result<_> {
       let path = path.to_string_lossy();
-      let path = self.is_dir.env.create_string(path.as_ref())?;
-      let res: JsBoolean = self.is_dir.get()?.call(None, &[path])?.try_into()?;
-      res.get_value()
+      let path = self.read_link.env.create_string(path.as_ref())?;
+      let res: JsString = self.read_link.get()?.call(None, &[path])?.try_into()?;
+      let utf8 = res.into_utf8()?;
+      Ok(utf8.into_owned()?.into())
     };
 
-    is_dir().unwrap_or(false)
+    canonicalize().map_err(|err| std::io::Error::new(std::io::ErrorKind::NotFound, err.to_string()))
   }
 }
 
@@ -204,12 +175,11 @@ impl Resolver {
   pub fn new(project_root: String, options: JsResolverOptions, env: Env) -> Result<Self> {
     let mut supports_async = false;
     #[cfg(not(target_arch = "wasm32"))]
-    let fs: FileSystemRef = if let Some(fs) = options.fs {
+    let fs: Arc<dyn FileSystem> = if let Some(fs) = options.fs {
       Arc::new(JsFileSystem {
-        canonicalize: FunctionRef::new(env, fs.canonicalize)?,
         read: FunctionRef::new(env, fs.read)?,
-        is_file: FunctionRef::new(env, fs.is_file)?,
-        is_dir: FunctionRef::new(env, fs.is_dir)?,
+        kind: FunctionRef::new(env, fs.kind)?,
+        read_link: FunctionRef::new(env, fs.read_link)?,
       })
     } else {
       supports_async = true;
@@ -219,22 +189,19 @@ impl Resolver {
     let fs = {
       let fsjs = options.fs.unwrap();
       Arc::new(JsFileSystem {
-        canonicalize: FunctionRef::new(env, fsjs.canonicalize)?,
         read: FunctionRef::new(env, fsjs.read)?,
-        is_file: FunctionRef::new(env, fsjs.is_file)?,
-        is_dir: FunctionRef::new(env, fsjs.is_dir)?,
+        kind: FunctionRef::new(env, fsjs.kind)?,
+        read_link: FunctionRef::new(env, fsjs.read_link)?,
       })
     };
 
     let mut resolver = match options.mode {
-      1 => parcel_resolver::Resolver::parcel(
-        Cow::Owned(project_root.into()),
-        parcel_resolver::CacheCow::Owned(parcel_resolver::Cache::new(fs)),
-      ),
-      2 => parcel_resolver::Resolver::node(
-        Cow::Owned(project_root.into()),
-        parcel_resolver::CacheCow::Owned(parcel_resolver::Cache::new(fs)),
-      ),
+      1 => {
+        parcel_resolver::Resolver::parcel(Path::new(&project_root), parcel_resolver::Cache::new(fs))
+      }
+      2 => {
+        parcel_resolver::Resolver::node(Path::new(&project_root), parcel_resolver::Cache::new(fs))
+      }
       _ => return Err(napi::Error::new(napi::Status::InvalidArg, "Invalid mode")),
     };
 
@@ -292,105 +259,11 @@ impl Resolver {
     })
   }
 
-  fn resolve_internal(
-    &self,
-    options: ResolveOptions,
-  ) -> napi::Result<(parcel_resolver::ResolveResult, bool, u8)> {
-    let mut res = self.resolver.resolve_with_options(
-      &options.filename,
-      Path::new(&options.parent),
-      match options.specifier_type.as_ref() {
-        "esm" => SpecifierType::Esm,
-        "commonjs" => SpecifierType::Cjs,
-        "url" => SpecifierType::Url,
-        "custom" => {
-          return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            "Unsupported specifier type: custom",
-          ))
-        }
-        _ => {
-          return Err(napi::Error::new(
-            napi::Status::InvalidArg,
-            format!("Invalid specifier type: {}", options.specifier_type),
-          ))
-        }
-      },
-      if let Some(conditions) = options.package_conditions {
-        get_resolve_options(conditions)
-      } else {
-        Default::default()
-      },
-    );
-
-    let side_effects = if let Ok((Resolution::Path(p), _)) = &res.result {
-      match self.resolver.resolve_side_effects(p, &res.invalidations) {
-        Ok(side_effects) => side_effects,
-        Err(err) => {
-          res.result = Err(err);
-          true
-        }
-      }
-    } else {
-      true
-    };
-
-    let mut module_type = 0;
-
-    if self.mode == 2 {
-      if let Ok((Resolution::Path(p), _)) = &res.result {
-        module_type = match self.resolver.resolve_module_type(p, &res.invalidations) {
-          Ok(t) => match t {
-            ModuleType::CommonJs | ModuleType::Json => 1,
-            ModuleType::Module => 2,
-          },
-          Err(err) => {
-            res.result = Err(err);
-            0
-          }
-        }
-      }
-    }
-
-    Ok((res, side_effects, module_type))
-  }
-
-  fn resolve_result_to_js(
-    &self,
-    env: Env,
-    res: parcel_resolver::ResolveResult,
-    side_effects: bool,
-    module_type: u8,
-  ) -> napi::Result<ResolveResult> {
-    let (invalidate_on_file_change, invalidate_on_file_create) =
-      convert_invalidations(res.invalidations);
-
-    match res.result {
-      Ok((res, query)) => Ok(ResolveResult {
-        resolution: env.to_js_value(&res)?,
-        invalidate_on_file_change,
-        invalidate_on_file_create,
-        side_effects,
-        query,
-        error: env.get_undefined()?.into_unknown(),
-        module_type,
-      }),
-      Err(err) => Ok(ResolveResult {
-        resolution: env.get_undefined()?.into_unknown(),
-        invalidate_on_file_change,
-        invalidate_on_file_create,
-        side_effects: true,
-        query: None,
-        error: env.to_js_value(&err)?,
-        module_type: 0,
-      }),
-    }
-  }
-
   #[napi]
   pub fn resolve(&self, options: ResolveOptions, env: Env) -> Result<ResolveResult> {
-    let (res, side_effects, module_type) = self.resolve_internal(options)?;
-    self.resolve_result_to_js(env, res, side_effects, module_type)
+    let (res, invalidations, side_effects, module_type) =
+      resolve_internal(&self.resolver, self.mode, options)?;
+    resolve_result_to_js(env, res, invalidations, side_effects, module_type)
   }
 
   #[cfg(target_arch = "wasm32")]
@@ -404,6 +277,7 @@ impl Resolver {
   pub fn resolve_async(&'static self, options: ResolveOptions, env: Env) -> Result<JsObject> {
     let (deferred, promise) = env.create_deferred()?;
     let resolver = &self.resolver;
+    let mode = self.mode;
 
     if !self.supports_async || resolver.module_dir_resolver.is_some() {
       return Err(napi::Error::new(
@@ -413,12 +287,15 @@ impl Resolver {
     }
 
     rayon::spawn(move || {
-      let (res, side_effects, module_type) = match self.resolve_internal(options) {
-        Ok(r) => r,
-        Err(e) => return deferred.reject(e),
-      };
+      let (res, invalidations, side_effects, module_type) =
+        match resolve_internal(&resolver, mode, options) {
+          Ok(r) => r,
+          Err(e) => return deferred.reject(e),
+        };
 
-      deferred.resolve(move |env| self.resolve_result_to_js(env, res, side_effects, module_type));
+      deferred.resolve(move |env| {
+        resolve_result_to_js(env, res, invalidations, side_effects, module_type)
+      });
     });
 
     Ok(promise)
@@ -436,12 +313,12 @@ impl Resolver {
     let path = Path::new(&path);
     match parcel_dev_dep_resolver::build_esm_graph(
       path,
-      &self.resolver.project_root,
-      &self.resolver.cache,
+      &self.resolver.project_root.as_path(),
+      self.resolver.cache(),
       &self.invalidations_cache,
     ) {
       Ok(invalidations) => {
-        let invalidate_on_startup = invalidations.invalidate_on_startup.load(Ordering::Relaxed);
+        let invalidate_on_startup = invalidations.invalidate_on_startup.get();
         let (invalidate_on_file_change, invalidate_on_file_create) =
           convert_invalidations(invalidations);
         Ok(JsInvalidations {
@@ -458,31 +335,148 @@ impl Resolver {
   }
 }
 
-fn convert_invalidations(
-  invalidations: Invalidations,
-) -> (
+fn resolve_internal(
+  resolver: &parcel_resolver::Resolver,
+  mode: u8,
+  options: ResolveOptions,
+) -> napi::Result<(
+  std::result::Result<ResolutionAndQuery, ResolverError>,
+  ConvertedInvalidations,
+  bool,
+  u8,
+)> {
+  let mut res = resolver.resolve_with_options(
+    &options.filename,
+    Path::new(&options.parent),
+    match options.specifier_type.as_ref() {
+      "esm" => SpecifierType::Esm,
+      "commonjs" => SpecifierType::Cjs,
+      "url" => SpecifierType::Url,
+      "custom" => {
+        return Err(napi::Error::new(
+          napi::Status::InvalidArg,
+          "Unsupported specifier type: custom",
+        ))
+      }
+      _ => {
+        return Err(napi::Error::new(
+          napi::Status::InvalidArg,
+          format!("Invalid specifier type: {}", options.specifier_type),
+        ))
+      }
+    },
+    if let Some(conditions) = options.package_conditions {
+      get_resolve_options(conditions)
+    } else {
+      Default::default()
+    },
+  );
+
+  let side_effects = if let Ok(ResolutionAndQuery {
+    resolution: Resolution::Path(p),
+    ..
+  }) = &res.result
+  {
+    match resolver.resolve_side_effects(p, &res.invalidations) {
+      Ok(side_effects) => side_effects,
+      Err(err) => {
+        res.result = Err(err);
+        true
+      }
+    }
+  } else {
+    true
+  };
+
+  let mut module_type = 0;
+
+  if mode == 2 {
+    if let Ok(ResolutionAndQuery {
+      resolution: Resolution::Path(p),
+      ..
+    }) = &res.result
+    {
+      module_type = match resolver.resolve_module_type(p, &res.invalidations) {
+        Ok(t) => match t {
+          ModuleType::CommonJs | ModuleType::Json => 1,
+          ModuleType::Module => 2,
+        },
+        Err(err) => {
+          res.result = Err(err);
+          0
+        }
+      }
+    }
+  }
+
+  Ok((
+    res.result,
+    convert_invalidations(res.invalidations),
+    side_effects,
+    module_type,
+  ))
+}
+
+fn resolve_result_to_js(
+  env: Env,
+  res: std::result::Result<ResolutionAndQuery, ResolverError>,
+  invalidations: ConvertedInvalidations,
+  side_effects: bool,
+  module_type: u8,
+) -> napi::Result<ResolveResult> {
+  let (invalidate_on_file_change, invalidate_on_file_create) = invalidations;
+
+  match res {
+    Ok(res) => Ok(ResolveResult {
+      resolution: env.to_js_value(&res.resolution)?,
+      invalidate_on_file_change,
+      invalidate_on_file_create,
+      side_effects,
+      query: res.query,
+      error: env.get_undefined()?.into_unknown(),
+      module_type,
+    }),
+    Err(err) => Ok(ResolveResult {
+      resolution: env.get_undefined()?.into_unknown(),
+      invalidate_on_file_change,
+      invalidate_on_file_create,
+      side_effects: true,
+      query: None,
+      error: env.to_js_value(&err)?,
+      module_type: 0,
+    }),
+  }
+}
+
+type ConvertedInvalidations = (
   Vec<String>,
   Vec<Either3<FilePathCreateInvalidation, FileNameCreateInvalidation, GlobCreateInvalidation>>,
-) {
+);
+
+fn convert_invalidations(invalidations: Invalidations) -> ConvertedInvalidations {
   let invalidate_on_file_change = invalidations
     .invalidate_on_file_change
-    .into_iter()
-    .map(|p| p.to_string_lossy().into_owned())
+    .borrow()
+    .iter()
+    .map(|p| p.as_path().to_string_lossy().into_owned())
     .collect();
   let invalidate_on_file_create = invalidations
     .invalidate_on_file_create
-    .into_iter()
+    .borrow()
+    .iter()
     .map(|i| match i {
       FileCreateInvalidation::Path(p) => Either3::A(FilePathCreateInvalidation {
-        file_path: p.to_string_lossy().into_owned(),
+        file_path: p.as_path().to_string_lossy().into_owned(),
       }),
       FileCreateInvalidation::FileName { file_name, above } => {
         Either3::B(FileNameCreateInvalidation {
-          file_name,
-          above_file_path: above.to_string_lossy().into_owned(),
+          file_name: file_name.clone(),
+          above_file_path: above.as_path().to_string_lossy().into_owned(),
         })
       }
-      FileCreateInvalidation::Glob(glob) => Either3::C(GlobCreateInvalidation { glob }),
+      FileCreateInvalidation::Glob(glob) => {
+        Either3::C(GlobCreateInvalidation { glob: glob.clone() })
+      }
     })
     .collect();
   (invalidate_on_file_change, invalidate_on_file_create)

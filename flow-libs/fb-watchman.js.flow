@@ -1,0 +1,38 @@
+// @flow
+
+// Derived from TypeScript typings and source code from
+// https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/fb-watchman/index.d.ts
+
+declare module 'fb-watchman' {
+  // Emit the responses to these when they get sent down to us
+  declare type UnilateralTags = "unilateralTags" | "log";
+
+  declare interface ClientOptions {
+      /**
+      * Absolute path to the watchman binary.
+      * If not provided, the Client locates the binary using the PATH specified
+      * by the node child_process's default env.
+      */
+      watchmanBinaryPath?: string | void;
+  }
+
+  declare interface Capabilities {
+      optional: any[];
+      required: any[];
+  }
+
+  declare type doneCallback = (error?: Error | null, resp?: any) => any;
+
+  declare class Client extends events$EventEmitter {
+      constructor(options?: ClientOptions): this;
+      sendNextCommand(): void;
+      cancelCommands(why: string): void;
+      connect(): void;
+      command(args: any, done: doneCallback): void;
+      capabilityCheck(
+          caps: Capabilities,
+          done: doneCallback,
+      ): void;
+      end(): void;
+  }
+}

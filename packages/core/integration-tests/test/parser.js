@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, assertBundleTree, inputFS as fs} from '@parcel/test-utils';
+import {assertBundleTree, bundle, inputFS as fs} from '@parcel/test-utils';
 
 describe.skip('parser', function () {
   it('should support case-insensitive file extension', async function () {

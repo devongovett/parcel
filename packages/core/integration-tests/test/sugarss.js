@@ -1,5 +1,5 @@
 import assert from 'assert';
-import {bundle, assertBundles, outputFS, distDir} from '@parcel/test-utils';
+import {assertBundles, bundle, distDir, outputFS} from '@parcel/test-utils';
 import path from 'path';
 
 describe('sugarss', function () {

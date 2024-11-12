@@ -499,7 +499,10 @@ async function normalizeOptions(
     let hmrport = command.hmrPort ? parsePort(command.hmrPort) : port;
     let hmrhost = command.hmrHost ? command.hmrHost : host;
 
-    hmrOptions = {port: hmrport, host: hmrhost};
+    hmrOptions = {
+      port: hmrport,
+      host: hmrhost,
+    };
   }
 
   if (command.detailedReport === true) {

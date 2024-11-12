@@ -1,75 +1,8 @@
 // @flow
-import type {
-  Encoding,
-  FileCreateInvalidation,
-  FilePath,
-  InitialParcelOptions,
-  PackageManager,
-  FileSystem as ParcelFileSystem,
-} from '@parcel/types';
+import type {FileCreateInvalidation} from '@parcel/types';
 
 declare export var init: void | (() => void);
 
-export type ProjectPath = any;
-export interface ConfigRequest {
-  id: string;
-  invalidateOnFileChange: Array<ProjectPath>;
-  invalidateOnConfigKeyChange: Array<any>;
-  invalidateOnFileCreate: Array<any>;
-  invalidateOnEnvChange: Array<string>;
-  invalidateOnOptionChange: Array<string>;
-  invalidateOnStartup: boolean;
-  invalidateOnBuild: boolean;
-}
-export interface RequestOptions {}
-
-export interface FileSystem {
-  canonicalize(path: FilePath): FilePath;
-  cwd(): FilePath;
-  isDir(path: FilePath): boolean;
-  isFile(path: FilePath): boolean;
-  readFile(path: FilePath, encoding?: Encoding): string;
-}
-
-export type ParcelNapiOptions = {|
-  fs?: FileSystem,
-  nodeWorkers?: number,
-  options: {|
-    corePath?: string,
-    // TODO Use Omit when available in flow >0.210.0
-    ...$Diff<
-      InitialParcelOptions,
-      {|
-        inputFS: InitialParcelOptions['inputFS'],
-        outputFS: InitialParcelOptions['outputFS'],
-        packageManager: InitialParcelOptions['packageManager'],
-      |},
-    >,
-  |},
-  packageManager?: PackageManager,
-  threads?: number,
-|};
-
-declare export class ParcelNapi {
-  nodeWorkerCount: number;
-  constructor(options: ParcelNapiOptions): ParcelNapi;
-  build(): Promise<void>;
-  static defaultThreadCount(): number;
-  testingTempFsReadToString(path: string): string;
-  testingTempFsIsDir(path: string): boolean;
-  testingTempFsIsFile(path: string): boolean;
-  testingRpcPing(): void;
-}
-
-declare export function registerWorker(worker: any): void;
-
-declare export function initSentry(): void;
-declare export function closeSentry(): void;
-declare export function napiRunConfigRequest(
-  configRequest: ConfigRequest,
-  api: any,
-  options: any,
-): void;
 declare export function findAncestorFile(
   filenames: Array<string>,
   from: string,
@@ -84,11 +17,20 @@ declare export function hashString(s: string): string;
 declare export function hashBuffer(buf: Buffer): string;
 declare export function optimizeImage(kind: string, buf: Buffer): Buffer;
 export interface JsFileSystemOptions {
-  canonicalize: string => string;
+  readLink: string => string;
   read: string => Buffer;
-  isFile: string => boolean;
-  isDir: string => boolean;
+  kind: string => number;
   includeNodeModules?: boolean | Array<string> | {|[string]: boolean|};
+}
+export interface FileSystem {
+  fs?: JsFileSystemOptions,
+  includeNodeModules?: boolean | Array<string> | {|[string]: boolean|};
+  conditions?: number,
+  moduleDirResolver?: (...args: any[]) => any,
+  mode: number,
+  entries?: number,
+  extensions?: Array<string>,
+  packageExports: boolean
 }
 export interface ResolveOptions {
   filename: string;

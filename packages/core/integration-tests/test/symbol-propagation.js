@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundler, run, overlayFS, fsFixture} from '@parcel/test-utils';
+import {bundler, fsFixture, overlayFS, run} from '@parcel/test-utils';
 
 describe('symbol propagation', () => {
   it('should handle removed assets from previous failed builds', async () => {

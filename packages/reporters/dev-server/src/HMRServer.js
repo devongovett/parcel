@@ -1,5 +1,4 @@
 // @flow
-
 import type {
   Asset,
   BundleGraph,
@@ -46,6 +45,9 @@ export type HMRMessage =
       assets: Array<HMRAsset>,
     |}
   | {|
+      type: 'reload',
+    |}
+  | {|
       type: 'error',
       diagnostics: {|
         ansi: Array<AnsiDiagnosticResult>,
@@ -55,6 +57,7 @@ export type HMRMessage =
 
 const FS_CONCURRENCY = 64;
 const HMR_ENDPOINT = '/__parcel_hmr';
+const BROADCAST_MAX_ASSETS = 10000;
 
 export default class HMRServer {
   wss: WebSocket.Server;
@@ -72,6 +75,10 @@ export default class HMRServer {
     let server = this.options.devServer;
     if (!server) {
       let result = await createHTTPServer({
+        https: this.options.https,
+        inputFS: this.options.inputFS,
+        outputFS: this.options.outputFS,
+        cacheDir: this.options.cacheDir,
         listener: (req, res) => {
           setHeaders(res);
           if (!this.handle(req, res)) {
@@ -119,6 +126,9 @@ export default class HMRServer {
       this.stopServer = null;
     }
     this.wss.close();
+    for (const ws of this.wss.clients) {
+      ws.terminate();
+    }
   }
 
   async emitError(options: PluginOptions, diagnostics: Array<Diagnostic>) {
@@ -217,10 +227,16 @@ export default class HMRServer {
     }
 
     let assets = await queue.run();
-    this.broadcast({
-      type: 'update',
-      assets: assets,
-    });
+
+    if (assets.length >= BROADCAST_MAX_ASSETS) {
+      // Too many assets to send via an update without errors, just reload instead
+      this.broadcast({type: 'reload'});
+    } else {
+      this.broadcast({
+        type: 'update',
+        assets,
+      });
+    }
   }
 
   async getHotAssetContents(asset: Asset): Promise<string> {

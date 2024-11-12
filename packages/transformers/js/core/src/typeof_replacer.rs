@@ -1,10 +1,11 @@
-use swc_core::common::Mark;
-use swc_core::ecma::ast::Expr;
-use swc_core::ecma::ast::Lit;
-use swc_core::ecma::ast::Str;
-use swc_core::ecma::ast::UnaryOp;
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::visit::{VisitMut, VisitMutWith};
+use swc_core::{
+  common::Mark,
+  ecma::{
+    ast::{Expr, Lit, Str, UnaryOp},
+    atoms::js_word,
+    visit::{VisitMut, VisitMutWith},
+  },
+};
 
 use crate::utils::is_unresolved;
 

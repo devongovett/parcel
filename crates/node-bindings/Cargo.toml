@@ -7,56 +7,27 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
-[features]
-canary = ["sentry", "whoami", "rustls"]
-
-rustls = ["sentry/rustls"]
-openssl = ["sentry/native-tls"]
-
 [dependencies]
-parcel = { path = "../parcel" }
-parcel_core = { path = "../parcel_core" }
-parcel-js-swc-core = { path = "../../packages/transformers/js/core" }
-parcel-resolver = { path = "../../packages/utils/node-resolver-rs" }
-parcel_package_manager = { path = "../parcel_package_manager" }
-parcel_plugin_transformer_js = { path = "../parcel_plugin_transformer_js" }
-parcel_napi_helpers = { path = "../parcel_napi_helpers" }
-
-anyhow = "1.0.82"
-dashmap = "5.4.0"
-glob = "0.3.1"
-log = "0.4.21"
-mockall = "0.12.1"
 napi-derive = "2.16.3"
-num_cpus = "1.16.0"
-parking_lot = "0.12"
-serde = { version = "1.0.200", features = ["derive"] }
-serde_json = "1.0.116"
-toml = "0.8.12"
-tracing = "0.1.40"
-tracing-appender = "0.2.3"
-tracing-subscriber = "0.3.18"
+parcel-js-swc-core = { path = "../../packages/transformers/js/core" }
+parcel-resolver = { path = "../parcel-resolver" }
+dashmap = "6.1.0"
 xxhash-rust = { version = "0.8.2", features = ["xxh3"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-parcel = { path = "../parcel", features = ["nodejs"] }
-parcel-dev-dep-resolver = { path = "../../packages/utils/dev-dep-resolver" }
+napi = { version = "2.16.4", features = ["serde-json", "napi4", "napi5"] }
+parcel-dev-dep-resolver = { path = "../dev-dep-resolver" }
 parcel-macros = { path = "../macros", features = ["napi"] }
-
+oxipng = "9.1.2"
+mozjpeg-sys = "2.0.0"
+libc = "0.2"
+rayon = "1.7.0"
 crossbeam-channel = "0.5.6"
 indexmap = "1.9.2"
-libc = "0.2"
-mozjpeg-sys = "1.0.0"
-napi = { version = "2.16.4", features = ["async", "napi4", "napi5", "serde-json"] }
-once_cell = { version = "1.19.0" }
-oxipng = "8.0.0"
-rayon = "1.7.0"
-sentry = { version = "0.32.2", optional = true, default-features = false, features = ["anyhow", "backtrace", "contexts", "debug-images", "panic", "reqwest"] }
-whoami = { version = "1.5.1", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["custom"], default-features = false }
 napi = { version = "2.16.4", features = ["serde-json"] }
+getrandom = { version = "0.2", features = ["custom"], default-features = false }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 jemallocator = { version = "0.3.2", features = ["disable_initial_exec_tls"] }

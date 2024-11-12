@@ -1,4 +1,4 @@
-import {bundle, assertBundles, distDir, outputFS} from '@parcel/test-utils';
+import {assertBundles, bundle, distDir, outputFS} from '@parcel/test-utils';
 import path from 'path';
 import assert from 'assert';
 

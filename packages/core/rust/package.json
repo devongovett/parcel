@@ -31,11 +31,11 @@
   ],
   "devDependencies": {
     "@napi-rs/cli": "^2.15.2",
-    "napi-wasm": "^1.0.1"
+    "napi-wasm": "^1.1.2"
   },
   "scripts": {
     "build": "napi build --platform --cargo-cwd ../../../crates/node-bindings",
-    "build-canary": "napi build --platform --profile canary --features canary --cargo-cwd ../../../crates/node-bindings",
+    "build-canary": "napi build --platform --profile canary --cargo-cwd ../../../crates/node-bindings",
     "build-release": "napi build --platform --release --cargo-cwd ../../../crates/node-bindings",
     "wasm:build": "cargo build -p parcel-node-bindings --target wasm32-unknown-unknown && cp ../../../target/wasm32-unknown-unknown/debug/parcel_node_bindings.wasm .",
     "wasm:build-release": "CARGO_PROFILE_RELEASE_LTO=true cargo build -p parcel-node-bindings --target wasm32-unknown-unknown --release && wasm-opt --strip-debug -O ../../../target/wasm32-unknown-unknown/release/parcel_node_bindings.wasm -o parcel_node_bindings.wasm"

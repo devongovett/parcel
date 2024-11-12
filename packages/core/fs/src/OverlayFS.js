@@ -172,6 +172,11 @@ export class OverlayFS implements FileSystem {
     return this.statSync(filePath);
   }
 
+  // eslint-disable-next-line require-await
+  async lstat(filePath: FilePath): Promise<FileStats> {
+    return this.lstatSync(filePath);
+  }
+
   async symlink(target: FilePath, filePath: FilePath): Promise<void> {
     target = this._normalizePath(target);
     filePath = this._normalizePath(filePath);
@@ -301,6 +306,18 @@ export class OverlayFS implements FileSystem {
     }
   }
 
+  lstatSync(filePath: FilePath): FileStats {
+    filePath = this._normalizePath(filePath);
+    try {
+      return this.writable.lstatSync(filePath);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return this.readable.lstatSync(filePath);
+      }
+      throw e;
+    }
+  }
+
   realpathSync(filePath: FilePath): FilePath {
     filePath = this._deletedThrows(filePath);
     filePath = this._deletedThrows(this.writable.realpathSync(filePath));
@@ -308,6 +325,20 @@ export class OverlayFS implements FileSystem {
       return this.readable.realpathSync(filePath);
     }
     return filePath;
+  }
+
+  readlinkSync(filePath: FilePath): FilePath {
+    filePath = this._deletedThrows(filePath);
+    try {
+      return this.writable.readlinkSync(filePath);
+    } catch (err) {
+      return this.readable.readlinkSync(filePath);
+    }
+  }
+
+  // eslint-disable-next-line require-await
+  async readlink(filePath: FilePath): Promise<FilePath> {
+    return this.readlinkSync(filePath);
   }
 
   // eslint-disable-next-line require-await

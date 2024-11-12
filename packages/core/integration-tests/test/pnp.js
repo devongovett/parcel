@@ -1,10 +1,7 @@
 import assert from 'assert';
 import Module from 'module';
 import path from 'path';
-import fs from 'fs';
-import {bundle, run, assertBundles, inputFS} from '@parcel/test-utils';
-
-const ZIPFS = `${path.sep}zipfs`;
+import {bundle, run, assertBundles} from '@parcel/test-utils';
 
 describe('pnp', function () {
   it('should defer to the pnp resolution when needed', async function () {
@@ -19,21 +16,6 @@ describe('pnp', function () {
       name === 'pnpapi'
         ? path.join(dir, '.pnp.js')
         : origModuleResolveFilename(name, ...args);
-
-    let origReadFileSync = inputFS.readFileSync;
-    inputFS.readFileSync = (p, ...args) => {
-      return origReadFileSync.call(inputFS, p.replace(ZIPFS, ''), ...args);
-    };
-
-    let origRealpathSync = fs.realpathSync;
-    inputFS.realpathSync = (p, ...args) => {
-      return origRealpathSync.call(inputFS, p.replace(ZIPFS, ''), ...args);
-    };
-
-    let origStatSync = inputFS.statSync;
-    inputFS.statSync = (p, ...args) => {
-      return origStatSync.call(inputFS, p.replace(ZIPFS, ''), ...args);
-    };
 
     try {
       let b = await bundle(path.join(dir, 'index.js'));
@@ -50,9 +32,6 @@ describe('pnp', function () {
     } finally {
       process.versions.pnp = origPnpVersion;
       Module._resolveFilename = origModuleResolveFilename;
-      inputFS.readFileSync = origReadFileSync;
-      inputFS.statSync = origStatSync;
-      inputFS.realpathSync = origRealpathSync;
     }
   });
 

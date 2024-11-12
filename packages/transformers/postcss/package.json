@@ -31,6 +31,6 @@
   },
   "devDependencies": {
     "postcss": "^8.4.5",
-    "postcss-modules": "^4.3.1"
+    "postcss-modules": "^6.0.0"
   }
 }

@@ -1,6 +1,6 @@
 import assert from 'assert';
 import path from 'path';
-import {bundle, run, outputFS, distDir} from '@parcel/test-utils';
+import {bundle, distDir, outputFS, run} from '@parcel/test-utils';
 
 describe('vue', function () {
   it('should produce a basic vue bundle', async function () {

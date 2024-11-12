@@ -2,8 +2,8 @@ import path from 'path';
 import assert from 'assert';
 import Logger from '@parcel/logger';
 import {
-  bundle,
   assertBundles,
+  bundle,
   findAsset,
   overlayFS,
   fsFixture,
@@ -842,108 +842,6 @@ describe('bundler', function () {
         .getReferencedBundles(b.getBundlesWithAsset(findAsset(b, 'bar.js'))[0])
         .includes(b.getBundlesWithAsset(findAsset(b, 'c.js'))[0]),
     );
-  });
-
-  it('should split manifest bundle', async function () {
-    let b = await bundle(
-      [
-        path.join(__dirname, 'integration/split-manifest-bundle/a.html'),
-        path.join(__dirname, 'integration/split-manifest-bundle/b.html'),
-      ],
-      {
-        mode: 'production',
-        defaultTargetOptions: {
-          shouldScopeHoist: false,
-          shouldOptimize: false,
-        },
-      },
-    );
-
-    // There should be two manifest bundles added, one for a.js, one for b.js
-    assertBundles(b, [
-      {
-        assets: ['a.html'],
-      },
-      {
-        assets: ['b.html'],
-      },
-      {
-        assets: ['a.js', 'cacheLoader.js', 'js-loader.js'],
-      },
-      {
-        assets: ['bundle-manifest.js', 'bundle-url.js'], // manifest bundle
-      },
-      {
-        assets: [
-          'b.js',
-          'cacheLoader.js',
-          'js-loader.js',
-          'esmodule-helpers.js',
-        ],
-      },
-      {
-        assets: ['bundle-manifest.js', 'bundle-url.js'], // manifest bundle
-      },
-      {
-        assets: ['c.js'],
-      },
-    ]);
-
-    let aManifestBundle = b
-      .getBundles()
-      .find(
-        bundle => !bundle.getMainEntry() && bundle.name.includes('runtime'),
-      );
-
-    let bBundles = b
-      .getBundles()
-      .filter(bundle => /b\.HASH_REF/.test(bundle.name));
-
-    let aBundleManifestAsset;
-    aManifestBundle.traverseAssets((asset, _, {stop}) => {
-      if (/runtime-[a-z0-9]{16}\.js/.test(asset.filePath)) {
-        aBundleManifestAsset = asset;
-        stop();
-      }
-    });
-    let aBundleManifestAssetCode = await aBundleManifestAsset.getCode();
-
-    // Assert the a.js manifest bundle is aware of all the b.js bundles
-    for (let bundle of bBundles) {
-      assert(
-        aBundleManifestAssetCode.includes(bundle.name),
-        `Bundle should contain reference to: "${bundle.name}"`,
-      );
-    }
-  });
-
-  it('should not split manifest bundle for stable entries', async function () {
-    let b = await bundle(
-      path.join(__dirname, 'integration/split-manifest-bundle/a.js'),
-      {
-        mode: 'production',
-        defaultTargetOptions: {
-          shouldScopeHoist: false,
-        },
-      },
-    );
-
-    assertBundles(b, [
-      {
-        assets: [
-          'a.js',
-          'b.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-          'esmodule-helpers.js',
-          'bundle-manifest.js',
-        ],
-      },
-      {
-        assets: ['c.js'],
-      },
-    ]);
   });
 
   it('should respect mode specific config', async function () {
@@ -1877,11 +1775,11 @@ describe('bundler', function () {
         index.html:
           <link rel="stylesheet" type="text/css" href="./style.css">
           <script src="./index.js" type="module"></script>
-      
+
         style.css:
           @import "common.css";
           body { color: red }
-        
+
         common.css:
           .common { color: green }
 

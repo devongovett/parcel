@@ -70,6 +70,8 @@ export interface FileSystem {
   ): Promise<void>;
   stat(filePath: FilePath): Promise<Stats>;
   statSync(filePath: FilePath): Stats;
+  lstat(filePath: FilePath): Promise<Stats>;
+  lstatSync(filePath: FilePath): Stats;
   readdir(
     path: FilePath,
     opts?: {withFileTypes?: false, ...},
@@ -81,6 +83,8 @@ export interface FileSystem {
   unlink(path: FilePath): Promise<void>;
   realpath(path: FilePath): Promise<FilePath>;
   realpathSync(path: FilePath): FilePath;
+  readlink(path: FilePath): Promise<FilePath>;
+  readlinkSync(path: FilePath): FilePath;
   exists(path: FilePath): Promise<boolean>;
   existsSync(path: FilePath): boolean;
   mkdirp(path: FilePath): Promise<void>;

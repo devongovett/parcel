@@ -203,6 +203,12 @@ export function mergeParcelOptions(
       // $FlowFixMe
       ...optsTwo?.defaultTargetOptions,
     },
+    featureFlags: {
+      // $FlowFixMe
+      ...optsOne?.featureFlags,
+      // $FlowFixMe
+      ...optsTwo?.featureFlags,
+    },
   };
 }
 

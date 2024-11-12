@@ -1,24 +1,21 @@
 #![deny(unused_crate_dependencies)]
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{
+  collections::{HashMap, HashSet},
+  sync::Arc,
+};
 use swc_core::ecma::utils::stack_size::maybe_grow_default;
 
 use indexmap::IndexMap;
-use swc_core::common::util::take::Take;
-use swc_core::common::SourceMap;
-use swc_core::common::Span;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::*;
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::parser::error::Error;
-use swc_core::ecma::parser::lexer::Lexer;
-use swc_core::ecma::parser::Parser;
-use swc_core::ecma::parser::StringInput;
-use swc_core::ecma::visit::Fold;
-use swc_core::ecma::visit::FoldWith;
+use swc_core::{
+  common::{sync::Lrc, util::take::Take, SourceMap, Span, DUMMY_SP},
+  ecma::{
+    ast::*,
+    atoms::{js_word, JsWord},
+    parser::{error::Error, lexer::Lexer, Parser, StringInput},
+    visit::{Fold, FoldWith},
+  },
+};
 
 #[cfg(feature = "napi")]
 pub mod napi;
@@ -335,7 +332,9 @@ fn is_macro(with: &ObjectLit) -> bool {
     if let PropOrSpread::Prop(prop) = &prop {
       if let Prop::KeyValue(kv) = &**prop {
         let k = match &kv.key {
-          PropName::Ident(Ident { sym, .. }) | PropName::Str(Str { value: sym, .. }) => sym.clone(),
+          PropName::Ident(IdentName { sym, .. }) | PropName::Str(Str { value: sym, .. }) => {
+            sym.clone()
+          }
           _ => continue,
         };
         if &k == "type"
@@ -446,9 +445,8 @@ impl<'a> Macros<'a> {
               Prop::KeyValue(kv) => {
                 let v = self.eval(&*kv.value)?;
                 let k = match &kv.key {
-                  PropName::Ident(Ident { sym, .. }) | PropName::Str(Str { value: sym, .. }) => {
-                    sym.to_string()
-                  }
+                  PropName::Ident(IdentName { sym, .. })
+                  | PropName::Str(Str { value: sym, .. }) => sym.to_string(),
                   PropName::Num(n) => n.value.to_string(),
                   PropName::Computed(c) => match self.eval(&*c.expr) {
                     Err(e) => return Err(e),
@@ -651,6 +649,12 @@ impl<'a> Macros<'a> {
           Err(opt.span)
         }
       }
+      Expr::TsAs(TsAsExpr { expr, .. })
+      | Expr::TsNonNull(TsNonNullExpr { expr, .. })
+      | Expr::TsSatisfies(TsSatisfiesExpr { expr, .. })
+      | Expr::TsTypeAssertion(TsTypeAssertion { expr, .. })
+      | Expr::TsInstantiation(TsInstantiation { expr, .. })
+      | Expr::TsConstAssertion(TsConstAssertion { expr, .. }) => self.eval(expr),
       Expr::Fn(FnExpr { function, .. }) => Err(function.span),
       Expr::Class(ClassExpr { class, .. }) => Err(class.span),
       Expr::JSXElement(el) => Err(el.span),
@@ -665,7 +669,9 @@ impl<'a> Macros<'a> {
       | Expr::Yield(YieldExpr { span, .. })
       | Expr::Await(AwaitExpr { span, .. })
       | Expr::JSXFragment(JSXFragment { span, .. })
-      | Expr::PrivateName(PrivateName { span, .. }) => Err(*span),
+      | Expr::PrivateName(PrivateName { span, .. })
+      | Expr::SuperProp(SuperPropExpr { span, .. })
+      | Expr::MetaProp(MetaPropExpr { span, .. }) => Err(*span),
       _ => Err(DUMMY_SP),
     }
   }
@@ -685,7 +691,7 @@ impl<'a> Macros<'a> {
   fn value_to_expr(&self, value: JsValue) -> Result<Expr, MacroError> {
     Ok(match value {
       JsValue::Null => Expr::Lit(Lit::Null(Null::dummy())),
-      JsValue::Undefined => Expr::Ident(Ident::new(js_word!("undefined"), DUMMY_SP)),
+      JsValue::Undefined => Expr::Ident(Ident::new_no_ctxt(js_word!("undefined"), DUMMY_SP)),
       JsValue::Bool(b) => Expr::Lit(Lit::Bool(Bool {
         value: b,
         span: DUMMY_SP,
@@ -724,7 +730,7 @@ impl<'a> Macros<'a> {
           .map(|(k, v)| -> Result<_, MacroError> {
             Ok(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
               key: if Ident::verify_symbol(&k).is_ok() {
-                PropName::Ident(Ident::new(k.into(), DUMMY_SP))
+                PropName::Ident(IdentName::new(k.into(), DUMMY_SP))
               } else {
                 PropName::Str(Str {
                   value: k.into(),
@@ -738,9 +744,10 @@ impl<'a> Macros<'a> {
           .collect::<Result<Vec<_>, MacroError>>()?,
       }),
       JsValue::Function(source) => {
-        let source_file = self
-          .source_map
-          .new_source_file(swc_core::common::FileName::MacroExpansion, source.into());
+        let source_file = self.source_map.new_source_file(
+          Lrc::new(swc_core::common::FileName::MacroExpansion),
+          source.into(),
+        );
         let lexer = Lexer::new(
           Default::default(),
           Default::default(),

@@ -249,8 +249,8 @@ export class EntryResolver {
                       ),
                     },
                   });
-                  i++;
                 }
+                i++;
               }
             }
           }
@@ -300,8 +300,8 @@ export class EntryResolver {
                   ...getJSONSourceLocation(pkg.map.pointers[keyPath], 'value'),
                 },
               });
-              i++;
             }
+            i++;
           }
         }
 

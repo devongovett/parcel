@@ -141,14 +141,12 @@ export default class PublicConfig implements IConfig {
     let packageKey = options?.packageKey;
     if (packageKey != null) {
       let pkg = await this.getConfigFrom(searchPath, ['package.json'], {
-        exclude: this.#options.featureFlags.configKeyInvalidation,
+        exclude: true,
       });
 
       if (pkg && pkg.contents[packageKey]) {
-        if (this.#options.featureFlags.configKeyInvalidation) {
-          // Invalidate only when the package key changes
-          this.invalidateOnConfigKeyChange(pkg.filePath, packageKey);
-        }
+        // Invalidate only when the package key changes
+        this.invalidateOnConfigKeyChange(pkg.filePath, packageKey);
 
         return {
           contents: pkg.contents[packageKey],

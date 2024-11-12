@@ -1,5 +1,11 @@
 // @flow
-import type {ServerOptions, PluginLogger, HMROptions} from '@parcel/types';
+import type {
+  ServerOptions,
+  PluginLogger,
+  HMROptions,
+  HTTPSOptions,
+  FilePath,
+} from '@parcel/types';
 import type {FileSystem} from '@parcel/fs';
 import type {HTTPServer} from '@parcel/utils';
 import type {PackageManager} from '@parcel/package-manager';
@@ -39,10 +45,12 @@ export type ServerError = Error & {|
 
 export type HMRServerOptions = {|
   devServer?: HTTPServer,
-  addMiddleware?: (
-    handler: (req: Request, res: Response) => boolean
-  ) => void,
+  addMiddleware?: (handler: (req: Request, res: Response) => boolean) => void,
   port: number,
   host: ?string,
   logger: PluginLogger,
+  https?: HTTPSOptions | boolean,
+  cacheDir: FilePath,
+  inputFS: FileSystem,
+  outputFS: FileSystem,
 |};

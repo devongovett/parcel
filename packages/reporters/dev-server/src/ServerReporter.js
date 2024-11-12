@@ -51,6 +51,10 @@ export default (new Reporter({
                 server?.middleware.push(handler);
               },
               logger,
+              https: options.serveOptions ? options.serveOptions.https : false,
+              cacheDir: options.cacheDir,
+              inputFS: options.inputFS,
+              outputFS: options.outputFS,
             };
             hmrServer = new HMRServer(hmrServerOptions);
             hmrServers.set(serveOptions.port, hmrServer);
@@ -61,7 +65,15 @@ export default (new Reporter({
 
         let port = hmrOptions?.port;
         if (typeof port === 'number') {
-          let hmrServerOptions = {port, host: hmrOptions?.host, logger};
+          let hmrServerOptions = {
+            port,
+            host: hmrOptions?.host,
+            logger,
+            https: options.serveOptions ? options.serveOptions.https : false,
+            cacheDir: options.cacheDir,
+            inputFS: options.inputFS,
+            outputFS: options.outputFS,
+          };
           hmrServer = new HMRServer(hmrServerOptions);
           hmrServers.set(port, hmrServer);
           await hmrServer.start();

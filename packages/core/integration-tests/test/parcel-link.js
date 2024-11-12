@@ -3,7 +3,7 @@
 import type {ProgramOptions} from '@parcel/link';
 
 import {createProgram as _createProgram} from '@parcel/link';
-import {overlayFS, fsFixture} from '@parcel/test-utils';
+import {fsFixture, overlayFS} from '@parcel/test-utils';
 
 import assert from 'assert';
 import path from 'path';
@@ -41,7 +41,8 @@ describe('@parcel/link', () => {
 
   it('prints help text', async () => {
     let cli = createProgram({fs: overlayFS});
-    await assert.throws(() => cli('--help'), /\(outputHelp\)/);
+    // $FlowFixMe[prop-missing]
+    await assert.rejects(() => cli('--help'), /\(outputHelp\)/);
   });
 
   it('links by default', async () => {

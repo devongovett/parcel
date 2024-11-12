@@ -2,25 +2,19 @@ use std::path::Path;
 
 use indexmap::IndexMap;
 use path_slash::PathBufExt;
-use swc_core::common::sync::Lrc;
-use swc_core::common::Mark;
-use swc_core::common::SourceMap;
-use swc_core::common::SyntaxContext;
-use swc_core::common::DUMMY_SP;
-use swc_core::ecma::ast::{self, Expr};
-use swc_core::ecma::ast::{ComputedPropName, Module};
-use swc_core::ecma::atoms::js_word;
-use swc_core::ecma::atoms::JsWord;
-use swc_core::ecma::visit::VisitMut;
-use swc_core::ecma::visit::VisitMutWith;
+use swc_core::{
+  common::{sync::Lrc, Mark, SourceMap, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast::{self, ComputedPropName, Expr, Module},
+    atoms::{js_word, JsWord},
+    visit::{VisitMut, VisitMutWith},
+  },
+};
 
-use crate::dependency_collector::DependencyDescriptor;
-use crate::dependency_collector::DependencyKind;
-use crate::utils::create_global_decl_stmt;
-use crate::utils::create_require;
-use crate::utils::is_unresolved;
-use crate::utils::SourceLocation;
-use crate::utils::SourceType;
+use crate::{
+  dependency_collector::{DependencyDescriptor, DependencyKind},
+  utils::{create_global_decl_stmt, create_require, is_unresolved, SourceLocation, SourceType},
+};
 
 /// Replaces a few node.js constants with literals or require statements.
 /// This duplicates some logic in [`NodeReplacer`]
@@ -67,9 +61,7 @@ pub struct GlobalReplacer<'a> {
 
 impl VisitMut for GlobalReplacer<'_> {
   fn visit_mut_expr(&mut self, node: &mut Expr) {
-    use ast::Expr::*;
-    use ast::MemberExpr;
-    use ast::MemberProp;
+    use ast::{Expr::*, MemberExpr, MemberProp};
 
     let Ident(id) = node else {
       node.visit_mut_children_with(self);
@@ -105,7 +97,7 @@ impl VisitMut for GlobalReplacer<'_> {
         if self.update_binding(id, |_| {
           Member(MemberExpr {
             obj: Box::new(Call(create_require(specifier.clone(), unresolved_mark))),
-            prop: MemberProp::Ident(ast::Ident::new("Buffer".into(), DUMMY_SP)),
+            prop: MemberProp::Ident(ast::IdentName::new("Buffer".into(), DUMMY_SP)),
             span: DUMMY_SP,
           })
         }) {
@@ -157,7 +149,10 @@ impl VisitMut for GlobalReplacer<'_> {
         if !self.scope_hoist {
           self.update_binding(id, |_| {
             Member(MemberExpr {
-              obj: Box::new(Ident(ast::Ident::new(js_word!("arguments"), DUMMY_SP))),
+              obj: Box::new(Ident(ast::Ident::new_no_ctxt(
+                js_word!("arguments"),
+                DUMMY_SP,
+              ))),
               prop: MemberProp::Computed(ComputedPropName {
                 span: DUMMY_SP,
                 expr: Box::new(Lit(ast::Lit::Num(3.into()))),
@@ -177,8 +172,8 @@ impl VisitMut for GlobalReplacer<'_> {
       0..0,
       self
         .globals
-        .values()
-        .map(|(_, stmt)| ast::ModuleItem::Stmt(stmt.clone())),
+        .drain(..)
+        .map(|(_, (_, stmt))| ast::ModuleItem::Stmt(stmt)),
     );
   }
 }
@@ -189,13 +184,13 @@ impl GlobalReplacer<'_> {
     F: FnOnce(&Self) -> Expr,
   {
     if let Some((syntax_context, _)) = self.globals.get(&id.sym) {
-      id.span.ctxt = *syntax_context;
+      id.ctxt = *syntax_context;
       false
     } else {
       let (decl, syntax_context) =
         create_global_decl_stmt(id.sym.clone(), expr(self), self.global_mark);
 
-      id.span.ctxt = syntax_context;
+      id.ctxt = syntax_context;
 
       self.globals.insert(id.sym.clone(), (syntax_context, decl));
 
@@ -210,9 +205,11 @@ mod test {
 
   use swc_core::ecma::atoms::JsWord;
 
-  use crate::global_replacer::GlobalReplacer;
-  use crate::test_utils::{run_visit, RunTestContext, RunVisitResult};
-  use crate::{DependencyDescriptor, DependencyKind};
+  use crate::{
+    global_replacer::GlobalReplacer,
+    test_utils::{run_visit, RunTestContext, RunVisitResult},
+    DependencyDescriptor, DependencyKind,
+  };
 
   fn make_global_replacer(
     run_test_context: RunTestContext,

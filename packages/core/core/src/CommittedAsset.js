@@ -10,6 +10,7 @@ import {generateFromAST} from './assetUtils';
 import {deserializeRaw} from './serializer';
 
 export default class CommittedAsset {
+  key: ?string;
   value: Asset;
   options: ParcelOptions;
   content: ?Promise<Buffer | string>;
@@ -21,16 +22,17 @@ export default class CommittedAsset {
 
   constructor(value: Asset, options: ParcelOptions) {
     this.value = value;
+    this.key = this.value.contentKey;
     this.options = options;
   }
 
   getContent(): Blob | Promise<Buffer | string> {
     if (this.content == null) {
-      if (this.value.contentKey != null) {
+      if (this.key != null) {
         if (this.value.isLargeBlob) {
-          return this.options.cache.getStream(this.value.contentKey);
+          return this.options.cache.getStream(this.key);
         } else {
-          return this.options.cache.getBlob(this.value.contentKey);
+          return this.options.cache.getBlob(this.key);
         }
       } else if (this.value.astKey != null) {
         return streamFromPromise(
@@ -51,8 +53,8 @@ export default class CommittedAsset {
 
   async getCode(): Promise<string> {
     let content;
-    if (this.content == null && this.value.contentKey != null) {
-      this.content = this.options.cache.getBlob(this.value.contentKey);
+    if (this.content == null && this.key != null) {
+      this.content = this.options.cache.getBlob(this.key);
       content = await this.content;
     } else {
       content = await this.getContent();

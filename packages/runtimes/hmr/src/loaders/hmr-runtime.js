@@ -139,7 +139,9 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
 
     var data /*: HMRMessage */ = JSON.parse(event.data);
 
-    if (data.type === 'update') {
+    if (data.type === 'reload') {
+      fullReload();
+    } else if (data.type === 'update') {
       // Remove error overlay if there is one
       if (typeof document !== 'undefined') {
         removeErrorOverlay();

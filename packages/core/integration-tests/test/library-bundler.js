@@ -50,7 +50,7 @@ describe('library bundler', function () {
         export function foo() {
           return 'foo' + baz();
         }
-      
+
       bar.js:
         import {baz} from './baz';
         export function bar() {
@@ -147,7 +147,7 @@ describe('library bundler', function () {
         export function bar() {
           return css('.b { color: pink }');
         }
-      
+
       macro.js:
         export function css(content) {
           this.addAsset({type: 'css', content});

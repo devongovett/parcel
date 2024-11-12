@@ -1,6 +1,5 @@
 // @flow
 import assert from 'assert';
-import randomInt from 'random-int';
 
 import PromiseQueue from '../src/PromiseQueue';
 import sinon from 'sinon';
@@ -66,7 +65,7 @@ describe('PromiseQueue', () => {
         running++;
         assert(queue._numRunning === running);
         assert(running <= maxConcurrent);
-        await Promise.resolve(randomInt(1, 10)); //sleep(randomInt(1, 10));
+        await Promise.resolve(Math.floor(Math.random() * 10) + 1);
         running--;
       }),
     );

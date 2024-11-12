@@ -4,11 +4,11 @@ import path from 'path';
 import url from 'url';
 import nullthrows from 'nullthrows';
 import {
-  bundle,
-  run,
   assertBundles,
+  bundle,
   distDir,
   outputFS,
+  run,
 } from '@parcel/test-utils';
 
 const tscConfig = path.join(

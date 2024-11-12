@@ -1,11 +1,11 @@
 import assert from 'assert';
 import path from 'path';
 import {
-  bundle,
-  run,
   assertBundles,
+  bundle,
   distDir,
   outputFS,
+  run,
 } from '@parcel/test-utils';
 import {md} from '@parcel/diagnostic';
 

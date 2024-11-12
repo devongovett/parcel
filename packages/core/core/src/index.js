@@ -18,5 +18,3 @@ export {
   INTERNAL_RESOLVE,
   INTERNAL_TRANSFORM,
 } from './Parcel';
-
-export * from './parcel-v3';
