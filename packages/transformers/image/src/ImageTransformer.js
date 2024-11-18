@@ -16,6 +16,8 @@ const FORMATS = new Map([
   ['avif', 'avif'],
   ['heic', 'heif'],
   ['heif', 'heif'],
+  ['jpegxl', 'jxl'],
+  ['jxl', 'jxl'],
 ]);
 
 let isSharpLoadedOnMainThread = false;
