@@ -549,7 +549,7 @@ function getURLRuntime(
   to: NamedBundle,
   options: PluginOptions,
 ): RuntimeAsset {
-  let relativePathExpr = getRelativePathExpr(from, to, options);
+  let relativePathExpr = getRelativePathExpr(from, to, options, true);
   let code;
 
   if (dependency.meta.webworker === true && !from.env.isLibrary) {
@@ -630,10 +630,11 @@ function getRelativePathExpr(
   from: NamedBundle,
   to: NamedBundle,
   options: PluginOptions,
+  isURL = to.type !== 'js',
 ): string {
   let relativePath = relativeBundlePath(from, to, {leadingDotSlash: false});
   let res = JSON.stringify(relativePath);
-  if (options.hmrOptions) {
+  if (isURL && options.hmrOptions) {
     res += ' + "?" + Date.now()';
   }
 
