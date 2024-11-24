@@ -527,6 +527,40 @@ module.hot.dispose((data) => {
       assert(!reloaded);
     });
 
+    it('should bubble to parents if child returns additional parents', async function () {
+      let {reloaded, outputs} = await testHMRClient('hmr-parents', outputs => {
+        assert.deepEqual(outputs, ['child 2', 'root']);
+        return {
+          'updated.js': 'exports.a = 3;',
+        };
+      });
+
+      assert.deepEqual(outputs, [
+        'child 2',
+        'root',
+        'child 3',
+        'accept child',
+        'root',
+        'accept root',
+      ]);
+      assert(!reloaded);
+    });
+
+    it('should bubble to parents and reload if they do not accept', async function () {
+      let {reloaded, outputs} = await testHMRClient(
+        'hmr-parents-reload',
+        outputs => {
+          assert.deepEqual(outputs, ['child 2', 'root']);
+          return {
+            'updated.js': 'exports.a = 3;',
+          };
+        },
+      );
+
+      assert.deepEqual(outputs, []);
+      assert(reloaded);
+    });
+
     it('should work with urls', async function () {
       let search;
       let {outputs} = await testHMRClient('hmr-url', outputs => {
