@@ -12,7 +12,7 @@ use swc_core::{
   ecma::{
     ast::{self, Callee, IdentName, MemberProp},
     atoms::{js_word, JsWord},
-    utils::stack_size::maybe_grow_default,
+    utils::{member_expr, stack_size::maybe_grow_default},
     visit::{Fold, FoldWith},
   },
 };
@@ -93,6 +93,8 @@ pub enum DependencyKind {
   ///
   /// * https://parceljs.org/features/node-emulation/#inlining-fs.readfilesync
   File,
+  /// `parcelRequire` call.
+  Id,
 }
 
 impl fmt::Display for DependencyKind {
@@ -514,6 +516,31 @@ impl<'a> Fold for DependencyCollector<'a> {
                   DUMMY_SP,
                   SyntaxContext::empty().apply_mark(self.ignore_mark),
                 ))));
+                return call;
+              }
+              "parcelRequire" => {
+                if let Some(ast::ExprOrSpread { expr, .. }) = node.args.first() {
+                  if let Some((id, span)) = match_str(expr) {
+                    self.items.push(DependencyDescriptor {
+                      kind: DependencyKind::Id,
+                      loc: SourceLocation::from(&self.source_map, span),
+                      specifier: id,
+                      attributes: None,
+                      is_optional: false,
+                      is_helper: false,
+                      source_type: None,
+                      placeholder: None,
+                    });
+                  }
+                }
+                let mut call = node.fold_children_with(self);
+                if !self.config.scope_hoist {
+                  call.callee = ast::Callee::Expr(Box::new(ast::Expr::Member(member_expr!(
+                    Default::default(),
+                    call.span,
+                    module.bundle.root
+                  ))));
+                }
                 return call;
               }
               _ => return node.fold_children_with(self),

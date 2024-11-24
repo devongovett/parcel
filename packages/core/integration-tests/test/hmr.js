@@ -516,15 +516,15 @@ module.hot.dispose((data) => {
     });
 
     it('should work across bundles', async function () {
-      let {reloaded} = await testHMRClient('hmr-dynamic', outputs => {
+      let {reloaded, outputs} = await testHMRClient('hmr-dynamic', outputs => {
         assert.deepEqual(outputs, [3]);
         return {
           'local.js': 'exports.a = 5; exports.b = 5;',
         };
       });
 
-      // assert.deepEqual(outputs, [3, 10]);
-      assert(reloaded); // TODO: this should eventually not reload...
+      assert.deepEqual(outputs, [3, 10]);
+      assert(!reloaded);
     });
 
     it('should work with urls', async function () {
