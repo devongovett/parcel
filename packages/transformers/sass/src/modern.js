@@ -123,7 +123,7 @@ function resolvePathImporter({
       const urls = [url];
       const urlFileName = path.basename(url);
       if (urlFileName[0] !== '_') {
-        urls.push(path.join(path.dirname(url), `_${urlFileName}`));
+        urls.push(path.posix.join(path.dirname(url), `_${urlFileName}`));
       }
 
       let ext = path.extname(urlFileName);
@@ -135,10 +135,10 @@ function resolvePathImporter({
       }
 
       // If none of the possible paths is valid, the importer should perform the same resolution on the URL followed by /index.
-      urls.push(path.join(url, 'index.sass'));
-      urls.push(path.join(url, 'index.scss'));
-      urls.push(path.join(url, '_index.sass'));
-      urls.push(path.join(url, '_index.scss'));
+      urls.push(path.posix.join(url, 'index.sass'));
+      urls.push(path.posix.join(url, 'index.scss'));
+      urls.push(path.posix.join(url, '_index.sass'));
+      urls.push(path.posix.join(url, '_index.scss'));
 
       if (url[0] !== '~') {
         for (let p of paths) {
