@@ -373,4 +373,30 @@ describe('sass', function () {
       },
     ]);
   });
+
+  it('should support sass import resolution rules', async function () {
+    const dir = path.join(__dirname, 'sass-extensions');
+    overlayFS.mkdirp(dir);
+
+    await fsFixture(overlayFS, dir)`
+      index.js:
+        import './main.scss';
+
+      main.scss:
+        @use '~test' as test;
+
+      node_modules/test/package.json:
+        { "name": "test" }
+
+      node_modules/test/_index.scss:
+        @use 'other';
+
+      node_modules/test/_other.scss:
+        .foo { color: red }
+      `;
+
+    await bundle(path.join(dir, '/index.js'), {
+      inputFS: overlayFS,
+    });
+  });
 });
