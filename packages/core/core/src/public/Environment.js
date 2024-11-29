@@ -81,6 +81,7 @@ const supportData = {
     samsung: '8',
     and_qq: '10.4',
     op_mob: '64',
+    node: '15.3',
   },
   'worker-module': {
     edge: '80',
