@@ -584,7 +584,10 @@ function createIdealGraph(
             }
             if (
               dependency.priority === 'lazy' ||
-              childAsset.bundleBehavior === 'isolated' // An isolated Dependency, or Bundle must contain all assets it needs to load.
+              dependency.priority !== 'parallel' && (
+                dependency.bundleBehavior === 'isolated' ||
+                childAsset.bundleBehavior === 'isolated' // An isolated Dependency, or Bundle must contain all assets it needs to load.
+              )
             ) {
               if (bundleId == null) {
                 let firstBundleGroup = nullthrows(
@@ -645,6 +648,12 @@ function createIdealGraph(
                 ),
                 dependencyPriorityEdges[dependency.priority],
               );
+
+              // If this is a sync dependency on a JS asset that won't be replaced with a URL runtime,
+              // add a reference so the bundle is loaded by the parent. This happens with React Server Components.
+              if (dependency.priority === 'sync' && childAsset.type === 'js' && childAsset?.meta.jsRuntime !== 'url') {
+                assetReference.get(childAsset).push([dependency, bundle]);
+              }
             } else if (
               dependency.priority === 'parallel' ||
               childAsset.bundleBehavior === 'inline'
@@ -1092,8 +1101,7 @@ function createIdealGraph(
         entries.has(a) ||
         !a.isBundleSplittable ||
         (bundleRoots.get(a) &&
-          (getBundleFromBundleRoot(a).needsStableName ||
-            getBundleFromBundleRoot(a).bundleBehavior === 'isolated'))
+          (getBundleFromBundleRoot(a).needsStableName))
       ) {
         // Add asset to non-splittable bundles.
         addAssetToBundleRoot(asset, a);

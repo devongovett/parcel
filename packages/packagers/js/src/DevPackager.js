@@ -242,6 +242,17 @@ export class DevPackager {
           b,
         )}");\n`;
       }
+    } else if (this.bundle.env.isNode()) {
+      let bundles = this.bundleGraph.getReferencedBundles(this.bundle);
+      for (let b of bundles) {
+        if (b.type !== 'js') {
+          continue;
+        }
+        importScripts += `require("${relativeBundlePath(
+          this.bundle,
+          b,
+        )}");\n`;
+      }
     }
 
     return (
