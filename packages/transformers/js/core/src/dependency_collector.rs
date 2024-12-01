@@ -1,16 +1,17 @@
 use std::{
-  collections::{hash_map::DefaultHasher, HashMap},
+  collections::hash_map::DefaultHasher,
   fmt,
   hash::{Hash, Hasher},
   path::Path,
 };
 
+use parcel_macros::{Evaluator, JsValue};
 use path_slash::PathBufExt;
 use serde::{Deserialize, Serialize};
 use swc_core::{
   common::{sync::Lrc, Mark, SourceMap, Span, SyntaxContext, DUMMY_SP},
   ecma::{
-    ast::{self, Callee, IdentName, MemberProp},
+    ast::{self, Callee, MemberProp},
     atoms::{js_word, JsWord},
     utils::{member_expr, stack_size::maybe_grow_default},
     visit::{Fold, FoldWith},
@@ -103,13 +104,13 @@ impl fmt::Display for DependencyKind {
   }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DependencyDescriptor {
   pub kind: DependencyKind,
   pub loc: SourceLocation,
   /// The text specifier associated with the import/export statement.
   pub specifier: swc_core::ecma::atoms::JsWord,
-  pub attributes: Option<HashMap<swc_core::ecma::atoms::JsWord, bool>>,
+  pub attributes: Option<JsValue>,
   pub is_optional: bool,
   pub is_helper: bool,
   pub source_type: Option<SourceType>,
@@ -158,7 +159,7 @@ impl<'a> DependencyCollector<'a> {
     mut specifier: JsWord,
     span: swc_core::common::Span,
     kind: DependencyKind,
-    attributes: Option<HashMap<swc_core::ecma::atoms::JsWord, bool>>,
+    attributes: Option<JsValue>,
     is_optional: bool,
     source_type: SourceType,
   ) -> Option<JsWord> {
@@ -344,11 +345,17 @@ impl<'a> Fold for DependencyCollector<'a> {
       return node;
     }
 
+    let evaluator = Evaluator::new(&self.source_map);
+    let attributes = node
+      .with
+      .as_ref()
+      .and_then(|attrs| evaluator.eval_object(&*attrs).ok());
+
     let rewritten = self.add_dependency(
       node.src.value.clone(),
       node.src.span,
       DependencyKind::Import,
-      None,
+      attributes,
       false,
       self.config.source_type,
     );
@@ -366,11 +373,17 @@ impl<'a> Fold for DependencyCollector<'a> {
         return node;
       }
 
+      let evaluator = Evaluator::new(&self.source_map);
+      let attributes = node
+        .with
+        .as_ref()
+        .and_then(|attrs| evaluator.eval_object(&*attrs).ok());
+
       let rewritten = self.add_dependency(
         src.value.clone(),
         src.span,
         DependencyKind::Export,
-        None,
+        attributes,
         false,
         self.config.source_type,
       );
@@ -384,11 +397,17 @@ impl<'a> Fold for DependencyCollector<'a> {
   }
 
   fn fold_export_all(&mut self, mut node: ast::ExportAll) -> ast::ExportAll {
+    let evaluator = Evaluator::new(&self.source_map);
+    let attributes = node
+      .with
+      .as_ref()
+      .and_then(|attrs| evaluator.eval_object(&*attrs).ok());
+
     let rewritten = self.add_dependency(
       node.src.value.clone(),
       node.src.span,
       DependencyKind::Export,
-      None,
+      attributes,
       false,
       self.config.source_type,
     );
@@ -637,38 +656,14 @@ impl<'a> Fold for DependencyCollector<'a> {
     let mut attributes = None;
     if kind == DependencyKind::DynamicImport {
       if let Some(arg) = node.args.get(1) {
-        if let Object(arg) = &*arg.expr {
-          let mut attrs = HashMap::new();
-          for key in &arg.props {
-            let prop = match key {
-              ast::PropOrSpread::Prop(prop) => prop,
-              _ => continue,
-            };
-
-            let kv = match &**prop {
-              ast::Prop::KeyValue(kv) => kv,
-              _ => continue,
-            };
-
-            let k = match &kv.key {
-              ast::PropName::Ident(IdentName { sym, .. })
-              | ast::PropName::Str(ast::Str { value: sym, .. }) => sym.clone(),
-              _ => continue,
-            };
-
-            let v = match &*kv.value {
-              Lit(ast::Lit::Bool(ast::Bool { value, .. })) => *value,
-              _ => continue,
-            };
-
-            attrs.insert(k, v);
-          }
-
-          attributes = Some(attrs);
+        if let Object(_) = &*arg.expr {
+          let evaluator = Evaluator::new(&self.source_map);
+          attributes = evaluator.eval(&*arg.expr).ok();
         }
       }
     }
 
+    let mut is_specifier_str = false;
     let node = if let Some(arg) = node.args.first() {
       if kind == DependencyKind::ServiceWorker || kind == DependencyKind::Worklet {
         let (source_type, opts) = if kind == DependencyKind::ServiceWorker {
@@ -726,6 +721,7 @@ impl<'a> Fold for DependencyCollector<'a> {
       }
 
       if let Some((specifier, span)) = match_str(&arg.expr) {
+        is_specifier_str = true;
         // require() calls aren't allowed in scripts, flag as an error.
         if kind == DependencyKind::Require && self.config.source_type == SourceType::Script {
           self.add_script_error(node.span);
@@ -762,7 +758,7 @@ impl<'a> Fold for DependencyCollector<'a> {
     // Replace import() with require()
     if kind == DependencyKind::DynamicImport {
       let mut call = node;
-      if !self.config.scope_hoist && !self.config.standalone {
+      if !self.config.scope_hoist && !self.config.standalone && is_specifier_str {
         let name = match &self.config.source_type {
           SourceType::Module => "require",
           SourceType::Script => "__parcel__require__",
@@ -1536,9 +1532,7 @@ mod test {
   }
 
   fn make_config() -> Config {
-    let mut config = Config::default();
-    config.is_browser = true;
-    config
+    Config::default()
   }
 
   fn make_placeholder_hash(specifier: &str, dependency_kind: DependencyKind) -> String {
