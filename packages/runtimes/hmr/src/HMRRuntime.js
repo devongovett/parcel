@@ -45,6 +45,7 @@ export default (new Runtime({
             ? port
             : null,
         )};` +
+        `var HMR_SERVER_PORT = ${JSON.stringify(port ?? null)};` +
         `var HMR_SECURE = ${JSON.stringify(
           !!(options.serveOptions && options.serveOptions.https),
         )};` +

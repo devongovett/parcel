@@ -6,30 +6,32 @@ import {loadConfig} from '@parcel/utils';
 import {version} from 'react-refresh/package.json';
 
 const CODE = `
-var Refresh = require('react-refresh/runtime');
-var ErrorOverlay = require('react-error-overlay');
-window.__REACT_REFRESH_VERSION_RUNTIME = '${version}';
+let Refresh = require('react-refresh/runtime');
+globalThis.__REACT_REFRESH_VERSION_RUNTIME = '${version}';
 
-Refresh.injectIntoGlobalHook(window);
-window.$RefreshReg$ = function() {};
-window.$RefreshSig$ = function() {
+Refresh.injectIntoGlobalHook(globalThis);
+globalThis.$RefreshReg$ = function() {};
+globalThis.$RefreshSig$ = function() {
   return function(type) {
     return type;
   };
 };
 
-ErrorOverlay.setEditorHandler(function editorHandler(errorLocation) {
-  let file = \`\${errorLocation.fileName}:\${errorLocation.lineNumber || 1}:\${errorLocation.colNumber || 1}\`;
-  fetch(\`/__parcel_launch_editor?file=\${encodeURIComponent(file)}\`);
-});
+if (typeof window !== 'undefined') {
+  let ErrorOverlay = require('react-error-overlay');
+  ErrorOverlay.setEditorHandler(function editorHandler(errorLocation) {
+    let file = \`\${errorLocation.fileName}:\${errorLocation.lineNumber || 1}:\${errorLocation.colNumber || 1}\`;
+    fetch(\`/__parcel_launch_editor?file=\${encodeURIComponent(file)}\`);
+  });
 
-ErrorOverlay.startReportingRuntimeErrors({
-  onError: function () {},
-});
+  ErrorOverlay.startReportingRuntimeErrors({
+    onError: function () {},
+  });
 
-window.addEventListener('parcelhmraccept', () => {
-  ErrorOverlay.dismissRuntimeErrors();
-});
+  window.addEventListener('parcelhmraccept', () => {
+    ErrorOverlay.dismissRuntimeErrors();
+  });
+}
 `;
 
 export default (new Runtime({
