@@ -420,18 +420,14 @@ export default (new Transformer({
       used_env,
       has_node_replacements,
       is_constant_module,
+      directives,
     } = await (transformAsync || transform)({
       filename: asset.filePath,
       code,
       module_id: asset.id,
       project_root: options.projectRoot,
-      replace_env: !asset.env.isNode(),
-      inline_fs: Boolean(config?.inlineFS) && !asset.env.isNode(),
-      insert_node_globals:
-        !asset.env.isNode() && asset.env.sourceType !== 'script',
-      node_replacer: asset.env.isNode(),
-      is_browser: asset.env.isBrowser(),
-      is_worker: asset.env.isWorker(),
+      inline_fs: Boolean(config?.inlineFS),
+      context: asset.env.context,
       env,
       is_type_script: asset.type === 'ts' || asset.type === 'tsx',
       is_jsx: isJSX,
@@ -440,12 +436,7 @@ export default (new Transformer({
       automatic_jsx_runtime: Boolean(config?.automaticJSXRuntime),
       jsx_import_source: config?.jsxImportSource,
       is_development: options.mode === 'development',
-      react_refresh:
-        asset.env.isBrowser() &&
-        !asset.env.isLibrary &&
-        !asset.env.isWorker() &&
-        !asset.env.isWorklet() &&
-        Boolean(config?.reactRefresh),
+      react_refresh: Boolean(config?.reactRefresh),
       decorators: Boolean(config?.decorators),
       use_define_for_class_fields: Boolean(config?.useDefineForClassFields),
       targets,
@@ -687,6 +678,39 @@ export default (new Transformer({
       asset.invalidateOnEnvChange(env);
     }
 
+    asset.meta.id = asset.id;
+    asset.meta.directives = directives;
+    if (asset.env.isServer() && !asset.env.isLibrary && (directives.includes('use client') || directives.includes('use client-entry'))) {
+      asset.setEnvironment({
+        context: 'react-client',
+        sourceType: 'module',
+        outputFormat: 'esmodule',
+        engines: asset.env.engines,
+        includeNodeModules: true,
+        isLibrary: false,
+        sourceMap: asset.env.sourceMap,
+        shouldOptimize: asset.env.shouldOptimize,
+        shouldScopeHoist: asset.env.shouldScopeHoist,
+      });
+    } else if (!asset.env.isServer() && !asset.env.isLibrary && directives.includes('use server')) {
+      asset.setEnvironment({
+        context: 'react-server',
+        sourceType: 'module',
+        outputFormat: 'esmodule',
+        engines: asset.env.engines,
+        includeNodeModules: false,
+        isLibrary: false,
+        sourceMap: asset.env.sourceMap,
+        shouldOptimize: asset.env.shouldOptimize,
+        shouldScopeHoist: asset.env.shouldScopeHoist,
+      });
+    } else if (directives.includes('use server-entry')) {
+      if (!asset.env.isServer()) {
+        throw new Error('use server-entry must be imported in a server environment');
+      }
+      asset.bundleBehavior = 'isolated';
+    }
+
     for (let dep of dependencies) {
       if (dep.kind === 'WebWorker') {
         // Use native ES module output if the worker was created with `type: 'module'` and all targets
@@ -745,7 +769,7 @@ export default (new Transformer({
           },
           meta: {
             placeholder: dep.placeholder,
-          },
+        },
         });
       } else if (dep.kind === 'Url') {
         asset.addURLDependency(dep.specifier, {
@@ -854,6 +878,21 @@ export default (new Transformer({
           range = pkg.dependencies[module];
         }
 
+        if (dep.attributes?.env === 'react-server') {
+          env = {
+            ...env,
+            context: 'react-server',
+            outputFormat: 'esmodule'
+          };
+        } else if (dep.attributes?.env === 'react-client') {
+          env = {
+            ...env,
+            context: 'react-client',
+            outputFormat: 'esmodule',
+            includeNodeModules: true
+          };
+        }
+
         asset.addDependency({
           specifier: dep.specifier,
           specifierType: dep.kind === 'Require' ? 'commonjs' : 'esm',
@@ -868,7 +907,6 @@ export default (new Transformer({
       }
     }
 
-    asset.meta.id = asset.id;
     if (hoist_result) {
       asset.symbols.ensure();
       for (let {

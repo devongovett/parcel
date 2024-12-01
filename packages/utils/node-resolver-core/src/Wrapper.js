@@ -252,7 +252,7 @@ export default class NodeResolver {
     name: string,
     options: ResolveOptions,
   ): Promise<?ResolveResult> {
-    if (options.env.isNode()) {
+    if (options.env.isNode() || options.env.context === 'react-server') {
       return {isExcluded: true};
     }
 
@@ -779,6 +779,7 @@ function environmentToExportsConditions(
   const ELECTRON = 1 << 7;
   const DEVELOPMENT = 1 << 8;
   const PRODUCTION = 1 << 9;
+  const REACT_SERVER = 1 << 16;
 
   let conditions = 0;
   if (env.isBrowser()) {
@@ -799,6 +800,10 @@ function environmentToExportsConditions(
 
   if (env.isNode()) {
     conditions |= NODE;
+  }
+
+  if (env.context === 'react-server') {
+    conditions |= REACT_SERVER;
   }
 
   if (mode === 'production') {
