@@ -167,7 +167,9 @@ export type EnvironmentContext =
   | 'worklet'
   | 'node'
   | 'electron-main'
-  | 'electron-renderer';
+  | 'electron-renderer'
+  | 'react-client'
+  | 'react-server';
 
 /** The JS module format for the bundle output */
 export type OutputFormat = 'esmodule' | 'commonjs' | 'global';
@@ -282,6 +284,8 @@ export interface Environment {
   isBrowser(): boolean;
   /** Whether <code>context</code> specifies a node context. */
   isNode(): boolean;
+  /** Whether <code>context</code> specifies a server context. */
+  isServer(): boolean;
   /** Whether <code>context</code> specifies an electron context. */
   isElectron(): boolean;
   /** Whether <code>context</code> specifies a worker context. */

@@ -165,7 +165,7 @@ impl ExportsField {
 
 bitflags! {
   /// A common package.json "exports" field.
-  pub struct ExportsCondition: u16 {
+  pub struct ExportsCondition: u32 {
     /// The "import" condition. True when the package was referenced using the ESM `import` syntax.
     const IMPORT = 1 << 0;
     /// The "require" condition. True when the package was referenced using the CommonJS `require` function.
@@ -198,6 +198,8 @@ bitflags! {
     const LESS = 1 << 14;
     /// The "stylus" condition. True when the package was referenced from a Stylus stylesheet.
     const STYLUS = 1 << 15;
+    /// The "react-server" condition.
+    const REACT_SERVER = 1 << 16;
   }
 }
 

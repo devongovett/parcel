@@ -458,7 +458,7 @@ impl<'a> Fold for DependencyCollector<'a> {
                 }
               }
               "importScripts" => {
-                if self.config.is_worker {
+                if self.config.is_worker() {
                   let (msg, span) = if self.config.source_type == SourceType::Script {
                     // Ignore if argument is not a string literal.
                     let span = if let Some(ast::ExprOrSpread { expr, .. }) = node.args.first() {
@@ -568,7 +568,7 @@ impl<'a> Fold for DependencyCollector<'a> {
           Member(member) => {
             if match_member_expr(member, vec!["module", "require"], self.unresolved_mark) {
               DependencyKind::Require
-            } else if self.config.is_browser
+            } else if self.config.is_browser()
               && match_member_expr(
                 member,
                 vec!["navigator", "serviceWorker", "register"],
@@ -576,7 +576,7 @@ impl<'a> Fold for DependencyCollector<'a> {
               )
             {
               DependencyKind::ServiceWorker
-            } else if self.config.is_browser
+            } else if self.config.is_browser()
               && match_member_expr(
                 member,
                 vec!["CSS", "paintWorklet", "addModule"],
@@ -809,7 +809,7 @@ impl<'a> Fold for DependencyCollector<'a> {
       Ident(id) => {
         if id.sym == "Worker" || id.sym == "SharedWorker" {
           // Bail if defined in scope
-          self.config.is_browser && is_unresolved(&id, self.unresolved_mark)
+          self.config.is_browser() && is_unresolved(&id, self.unresolved_mark)
         } else if id.sym == "Promise" {
           // Match requires inside promises (e.g. Rollup compiled dynamic imports)
           // new Promise(resolve => resolve(require('foo')))

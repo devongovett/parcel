@@ -39,7 +39,7 @@ use swc_core::{
     source_map::SourceMapGenConfig, sync::Lrc, FileName, Globals, Mark, SourceMap,
   },
   ecma::{
-    ast::{Module, ModuleItem, Program},
+    ast::{Expr, ExprStmt, Lit, Module, ModuleItem, Program, Stmt, Str},
     codegen::text_writer::JsWriter,
     parser::{error::Error, lexer::Lexer, EsSyntax, Parser, StringInput, Syntax, TsSyntax},
     preset_env::{preset_env, Mode::Entry, Targets, Version, Versions},
@@ -74,13 +74,9 @@ pub struct Config {
   pub code: Vec<u8>,
   pub module_id: String,
   pub project_root: String,
-  pub replace_env: bool,
   pub env: HashMap<swc_core::ecma::atoms::JsWord, swc_core::ecma::atoms::JsWord>,
   pub inline_fs: bool,
-  pub insert_node_globals: bool,
-  pub node_replacer: bool,
-  pub is_browser: bool,
-  pub is_worker: bool,
+  pub context: EnvContext,
   pub is_type_script: bool,
   pub is_jsx: bool,
   pub jsx_pragma: Option<String>,
@@ -104,6 +100,79 @@ pub struct Config {
   pub inline_constants: bool,
 }
 
+#[derive(Default, Serialize, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EnvContext {
+  #[default]
+  Browser,
+  WebWorker,
+  ServiceWorker,
+  Worklet,
+  Node,
+  ElectronRenderer,
+  ElectronMain,
+  EdgeRoutine,
+  ReactClient,
+  ReactServer,
+}
+
+impl Config {
+  fn is_browser(&self) -> bool {
+    use EnvContext::*;
+    matches!(
+      self.context,
+      Browser | WebWorker | ServiceWorker | Worklet | ElectronRenderer | ReactClient
+    )
+  }
+
+  fn is_node(&self) -> bool {
+    use EnvContext::*;
+    matches!(
+      self.context,
+      Node | ElectronMain | ElectronRenderer | ReactServer
+    )
+  }
+
+  fn is_server(&self) -> bool {
+    use EnvContext::*;
+    matches!(self.context, Node | ReactServer)
+  }
+
+  fn is_worker(&self) -> bool {
+    use EnvContext::*;
+    matches!(self.context, WebWorker | ServiceWorker)
+  }
+
+  fn is_worklet(&self) -> bool {
+    use EnvContext::*;
+    matches!(self.context, Worklet)
+  }
+
+  fn react_refresh(&self) -> bool {
+    self.is_browser()
+      && !self.is_library
+      && !self.is_worker()
+      && !self.is_worklet()
+      && self.react_refresh
+  }
+
+  fn inline_fs(&self) -> bool {
+    self.inline_fs && !self.is_node() && self.source_type != SourceType::Script
+  }
+
+  fn node_replacer(&self) -> bool {
+    self.is_node()
+  }
+
+  fn insert_node_globals(&self) -> bool {
+    !self.is_node() && self.source_type != SourceType::Script
+  }
+
+  fn replace_env(&self) -> bool {
+    !self.is_node() || matches!(self.context, EnvContext::ReactServer)
+  }
+}
+
 #[derive(Serialize, Debug, Default)]
 #[non_exhaustive]
 pub struct TransformResult {
@@ -119,6 +188,7 @@ pub struct TransformResult {
   pub used_env: HashSet<swc_core::ecma::atoms::JsWord>,
   pub has_node_replacements: bool,
   pub is_constant_module: bool,
+  pub directives: Vec<swc_core::ecma::atoms::JsWord>,
 }
 
 fn targets_to_versions(targets: &Option<HashMap<String, String>>) -> Option<Versions> {
@@ -152,7 +222,7 @@ fn targets_to_versions(targets: &Option<HashMap<String, String>>) -> Option<Vers
 }
 
 pub fn transform(
-  config: Config,
+  mut config: Config,
   call_macro: Option<MacroCallback>,
 ) -> Result<TransformResult, std::io::Error> {
   let mut result = TransformResult::default();
@@ -186,9 +256,48 @@ pub fn transform(
         Program::Script(script) => script.shebang.take().map(|s| s.to_string()),
       };
 
+      match &module {
+        Program::Module(module) => {
+          for item in &module.body {
+            if let ModuleItem::Stmt(Stmt::Expr(ExprStmt { expr, .. })) = item {
+              if let Expr::Lit(Lit::Str(Str { value, .. })) = &**expr {
+                result.directives.push(value.clone());
+                continue;
+              }
+            }
+            break;
+          }
+        }
+        Program::Script(script) => {
+          for item in &script.body {
+            if let Stmt::Expr(ExprStmt { expr, .. }) = item {
+              if let Expr::Lit(Lit::Str(Str { value, .. })) = &**expr {
+                result.directives.push(value.clone());
+                continue;
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      if config.is_server()
+        && !config.is_library
+        && result.directives.contains(&"use client".into())
+      {
+        config.context = EnvContext::ReactClient;
+        config.is_esm_output = true;
+      } else if !config.is_server()
+        && !config.is_library
+        && result.directives.contains(&"use server".into())
+      {
+        config.context = EnvContext::ReactServer;
+        config.is_esm_output = true;
+      }
+
       let mut global_deps = vec![];
       let mut fs_deps = vec![];
-      let should_inline_fs = config.inline_fs
+      let should_inline_fs = config.inline_fs()
         && config.source_type != SourceType::Script
         && code.contains("readFileSync");
       let should_import_swc_helpers = match config.source_type {
@@ -214,7 +323,7 @@ pub fn transform(
                   react_options.pragma_frag = Some(jsx_pragma_frag.clone());
                 }
                 react_options.development = Some(config.is_development);
-                react_options.refresh = if config.react_refresh {
+                react_options.refresh = if config.react_refresh() {
                   Some(react::RefreshOptions::default())
                 } else {
                   None
@@ -337,9 +446,9 @@ pub fn transform(
                 // Inline process.env and process.browser,
                 Optional::new(
                   EnvReplacer {
-                    replace_env: config.replace_env,
+                    replace_env: config.replace_env(),
                     env: &config.env,
-                    is_browser: config.is_browser,
+                    is_browser: config.is_browser(),
                     used_env: &mut result.used_env,
                     source_map: source_map.clone(),
                     diagnostics: &mut diagnostics,
@@ -379,7 +488,7 @@ pub fn transform(
                     unresolved_mark,
                     has_node_replacements: &mut result.has_node_replacements,
                   },
-                  config.node_replacer,
+                  config.node_replacer(),
                 ),
               );
 
@@ -396,7 +505,7 @@ pub fn transform(
                     unresolved_mark,
                     scope_hoist: config.scope_hoist,
                   },
-                  config.insert_node_globals,
+                  config.insert_node_globals(),
                 ),
               );
 
