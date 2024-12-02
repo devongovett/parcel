@@ -40,21 +40,25 @@ const REPLACEMENT_RE =
   /\n|import\s+"([0-9a-f]{16}:.+?)";|(?:\$[0-9a-f]{16}\$exports)|(?:\$[0-9a-f]{16}\$(?:import|importAsync|require)\$[0-9a-f]+(?:\$[0-9a-f]+)?)/g;
 
 const BUILTINS = Object.keys(globals.builtin);
+const BROWSER_BUILTINS = new Set([...BUILTINS, ...Object.keys(globals.browser)]);
+const NODE_BUILTINS = new Set([...BUILTINS, ...Object.keys(globals.node)]);
 const GLOBALS_BY_CONTEXT = {
-  browser: new Set([...BUILTINS, ...Object.keys(globals.browser)]),
+  browser: BROWSER_BUILTINS,
+  'react-client': BROWSER_BUILTINS,
   'web-worker': new Set([...BUILTINS, ...Object.keys(globals.worker)]),
   'service-worker': new Set([
     ...BUILTINS,
     ...Object.keys(globals.serviceworker),
   ]),
   worklet: new Set([...BUILTINS]),
-  node: new Set([...BUILTINS, ...Object.keys(globals.node)]),
-  'electron-main': new Set([...BUILTINS, ...Object.keys(globals.node)]),
+  node: NODE_BUILTINS,
+  'electron-main': NODE_BUILTINS,
   'electron-renderer': new Set([
     ...BUILTINS,
     ...Object.keys(globals.node),
     ...Object.keys(globals.browser),
   ]),
+  'react-server': NODE_BUILTINS
 };
 
 const OUTPUT_FORMATS = {
@@ -131,13 +135,16 @@ export class ScopeHoistingPackager {
     // picked up by another bundler later at which point runtimes will be added.
     if (
       this.bundle.env.isLibrary ||
-      this.bundle.env.outputFormat === 'commonjs'
+      this.bundle.env.outputFormat === 'commonjs' ||
+      (this.bundle.env.outputFormat === 'esmodule' && !this.isAsyncBundle)
     ) {
       for (let b of this.bundleGraph.getReferencedBundles(this.bundle, {
         recursive: false,
       })) {
+        if (this.bundle.env.isLibrary || b.type === 'js') {
         this.externals.set(relativeBundlePath(this.bundle, b), new Map());
       }
+    }
     }
 
     let res = '';

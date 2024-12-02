@@ -1115,12 +1115,11 @@ export default class BundleGraph {
     if (
       this._graph
         .getNodeIdsConnectedTo(assetNodeId, bundleGraphEdgeTypes.references)
-        .map(id => this._graph.getNode(id))
         .some(
-          node =>
-            node?.type === 'dependency' &&
-            node.value.priority === Priority.lazy &&
-            node.value.specifierType !== SpecifierType.url,
+          id => {
+            let node = this._graph.getNode(id);
+            return node?.type === 'dependency' && this._graph.getNodeIdsConnectedFrom(id, bundleGraphEdgeTypes.references).some(id => this._graph.getNode(id)?.type === 'bundle');
+          }
         )
     ) {
       // If this asset is referenced by any async dependency, it's referenced.
@@ -1172,7 +1171,7 @@ export default class BundleGraph {
 
         if (
           descendant.type !== bundle.type ||
-          descendant.env.context !== bundle.env.context
+          ISOLATED_ENVS.has(descendant.env.context)
         ) {
           actions.skipChildren();
           return;
@@ -1265,7 +1264,7 @@ export default class BundleGraph {
               node.type === 'root' ||
               (node.type === 'bundle' &&
                 (node.value.id === bundle.id ||
-                  node.value.env.context !== bundle.env.context))
+                  ISOLATED_ENVS.has(node.value.env.context)))
             ) {
               isReachable = false;
               actions.stop();

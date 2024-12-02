@@ -12,7 +12,7 @@ import {environmentToInternalEnvironment} from './public/Environment';
 
 const DEFAULT_ENGINES = {
   browsers: ['> 0.25%'],
-  node: '>= 8.0.0',
+  node: '>= 18.0.0',
 };
 
 type EnvironmentOpts = {|
