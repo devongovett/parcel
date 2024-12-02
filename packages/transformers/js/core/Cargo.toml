@@ -38,3 +38,4 @@ path-slash = "0.1.4"
 indexmap = "1.9.2"
 parcel-macros = { path = "../../../../crates/macros" }
 parking_lot = "0.12"
+bitflags = "1.3.2"

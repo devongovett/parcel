@@ -142,9 +142,9 @@ export class ScopeHoistingPackager {
         recursive: false,
       })) {
         if (this.bundle.env.isLibrary || b.type === 'js') {
-        this.externals.set(relativeBundlePath(this.bundle, b), new Map());
+          this.externals.set(relativeBundlePath(this.bundle, b), new Map());
+        }
       }
-    }
     }
 
     let res = '';
@@ -507,6 +507,16 @@ export class ScopeHoistingPackager {
     // TODO: maybe a meta prop?
     if (code.includes('$parcel$global')) {
       this.usedHelpers.add('$parcel$global');
+    }
+
+    let importMetaProps = asset.meta.importMetaProps;
+    if (typeof importMetaProps === 'number') {
+      if (importMetaProps & 1) {
+        this.usedHelpers.add('$parcel$distDir');
+      }
+      if (importMetaProps & 2) {
+        this.usedHelpers.add('$parcel$publicUrl');
+      }
     }
 
     if (this.bundle.env.isNode() && asset.meta.has_node_replacements) {
@@ -1364,7 +1374,7 @@ ${code}
     for (let helper of this.usedHelpers) {
       let currentHelper = helpers[helper];
       if (typeof currentHelper === 'function') {
-        currentHelper = helpers[helper](this.bundle.env);
+        currentHelper = helpers[helper](this.bundle.env, this.bundle);
       }
       res += currentHelper;
       if (enableSourceMaps) {

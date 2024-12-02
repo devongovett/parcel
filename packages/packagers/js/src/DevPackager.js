@@ -6,6 +6,7 @@ import {
   relativeBundlePath,
   countLines,
   normalizeSeparators,
+  relativePath,
 } from '@parcel/utils';
 import SourceMap from '@parcel/source-map';
 import invariant from 'assert';
@@ -60,6 +61,7 @@ export class DevPackager {
     let lineOffset = countLines(prefix);
     let script: ?{|code: string, mapBuffer: ?Buffer|} = null;
 
+    let usedMetaProps = 0;
     this.bundle.traverse(node => {
       let wrapped = first ? '' : ',';
 
@@ -86,6 +88,10 @@ export class DevPackager {
           asset.type === 'js',
           'all assets in a js bundle must be js assets',
         );
+
+        if (typeof asset.meta.importMetaProps === 'number') {
+          usedMetaProps |= asset.meta.importMetaProps;
+        }
 
         // If this is the main entry of a script rather than a module, we need to hoist it
         // outside the bundle wrapper function so that its variables are exposed as globals.
@@ -192,10 +198,24 @@ export class DevPackager {
       JSON.stringify(
         mainEntry ? this.bundleGraph.getAssetPublicId(mainEntry) : null,
       ) +
-      ', ' +
-      JSON.stringify(this.parcelRequireName) +
-      ')' +
-      '\n';
+      ', ' + JSON.stringify(this.parcelRequireName);
+
+    if (usedMetaProps & 1) {
+      // Generate a relative path from this bundle to the root of the dist dir.
+      let distDir = relativePath(path.dirname(this.bundle.name), '');
+      if (distDir.endsWith('/')) {
+        distDir = distDir.slice(0, -1);
+      }
+      contents += ', ' + JSON.stringify(distDir);
+    } else if (usedMetaProps & 2) {
+      contents += ', null';
+    }
+
+    if (usedMetaProps & 2) {
+      contents += ', ' + JSON.stringify(this.bundle.target.publicUrl);
+    }
+
+    contents += ')\n';
 
     // The entry asset of a script bundle gets hoisted outside the bundle wrapper function
     // so that its variables become globals. We need to replace any require calls for

@@ -21,6 +21,7 @@ use std::{
 pub use collect::CollectImportedSymbol;
 use collect::{Collect, CollectResult};
 use constant_module::ConstantModule;
+use dependency_collector::ImportMetaProperty;
 pub use dependency_collector::{dependency_collector, DependencyDescriptor, DependencyKind};
 use env_replacer::*;
 use fs::inline_fs;
@@ -189,6 +190,7 @@ pub struct TransformResult {
   pub has_node_replacements: bool,
   pub is_constant_module: bool,
   pub directives: Vec<swc_core::ecma::atoms::JsWord>,
+  pub import_meta_properties: ImportMetaProperty,
 }
 
 fn targets_to_versions(targets: &Option<HashMap<String, String>>) -> Option<Versions> {
@@ -537,19 +539,19 @@ pub fn transform(
                   .visit_mut_with(&mut (hygiene(), resolver(unresolved_mark, global_mark, false)))
               }
 
+              // Collect dependencies
               let ignore_mark = Mark::fresh(Mark::root());
-              let module = module.fold_with(
-                // Collect dependencies
-                &mut dependency_collector(
-                  source_map.clone(),
-                  &mut result.dependencies,
-                  ignore_mark,
-                  unresolved_mark,
-                  &config,
-                  &mut diagnostics,
-                ),
+              let (module, import_meta_properties) = dependency_collector(
+                module,
+                source_map.clone(),
+                &mut result.dependencies,
+                ignore_mark,
+                unresolved_mark,
+                &config,
+                &mut diagnostics,
               );
 
+              result.import_meta_properties = import_meta_properties;
               diagnostics.extend(error_buffer_to_diagnostics(&error_buffer, &source_map));
 
               if diagnostics

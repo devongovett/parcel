@@ -421,6 +421,7 @@ export default (new Transformer({
       has_node_replacements,
       is_constant_module,
       directives,
+      import_meta_properties,
     } = await (transformAsync || transform)({
       filename: asset.filePath,
       code,
@@ -680,6 +681,7 @@ export default (new Transformer({
 
     asset.meta.id = asset.id;
     asset.meta.directives = directives;
+    asset.meta.importMetaProps = import_meta_properties;
     if (asset.env.isServer() && !asset.env.isLibrary && (directives.includes('use client') || directives.includes('use client-entry'))) {
       asset.setEnvironment({
         context: 'react-client',

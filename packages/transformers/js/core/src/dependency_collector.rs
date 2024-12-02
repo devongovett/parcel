@@ -5,13 +5,14 @@ use std::{
   path::Path,
 };
 
+use bitflags::bitflags;
 use parcel_macros::{Evaluator, JsValue};
 use path_slash::PathBufExt;
 use serde::{Deserialize, Serialize};
 use swc_core::{
   common::{sync::Lrc, Mark, SourceMap, Span, SyntaxContext, DUMMY_SP},
   ecma::{
-    ast::{self, Callee, MemberProp},
+    ast::{self, Callee, MemberProp, Module},
     atoms::{js_word, JsWord},
     utils::{member_expr, stack_size::maybe_grow_default},
     visit::{Fold, FoldWith},
@@ -98,6 +99,17 @@ pub enum DependencyKind {
   Id,
 }
 
+bitflags! {
+  #[derive(Serialize, Deserialize, Default)]
+  #[serde(transparent)]
+  pub struct ImportMetaProperty: u8 {
+    /// `import.meta.distDir` – a relative path from the current bundle to the distDir
+    const DIST_DIR = 1 << 0;
+    /// `import.meta.publicUrl` - absolute public URL
+    const PUBLIC_URL = 1 << 1;
+  }
+}
+
 impl fmt::Display for DependencyKind {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{:?}", self)
@@ -119,14 +131,15 @@ pub struct DependencyDescriptor {
 
 /// This pass collects dependencies in a module and compiles references as needed to work with Parcel's JSRuntime.
 pub fn dependency_collector<'a>(
+  module: Module,
   source_map: Lrc<SourceMap>,
   items: &'a mut Vec<DependencyDescriptor>,
   ignore_mark: swc_core::common::Mark,
   unresolved_mark: swc_core::common::Mark,
   config: &'a Config,
   diagnostics: &'a mut Vec<Diagnostic>,
-) -> impl Fold + 'a {
-  DependencyCollector {
+) -> (Module, ImportMetaProperty) {
+  let mut collector = DependencyCollector {
     source_map,
     items,
     in_try: false,
@@ -137,7 +150,11 @@ pub fn dependency_collector<'a>(
     config,
     diagnostics,
     import_meta: None,
-  }
+    import_meta_props: ImportMetaProperty::empty(),
+  };
+
+  let module = module.fold_with(&mut collector);
+  (module, collector.import_meta_props)
 }
 
 struct DependencyCollector<'a> {
@@ -151,6 +168,7 @@ struct DependencyCollector<'a> {
   config: &'a Config,
   diagnostics: &'a mut Vec<Diagnostic>,
   import_meta: Option<ast::VarDecl>,
+  import_meta_props: ImportMetaProperty,
 }
 
 impl<'a> DependencyCollector<'a> {
@@ -746,13 +764,13 @@ impl<'a> Fold for DependencyCollector<'a> {
           })));
           node
         } else {
-          node
+          node.fold_children_with(self)
         }
       } else {
-        node
+        node.fold_children_with(self)
       }
     } else {
-      node
+      node.fold_children_with(self)
     };
 
     // Replace import() with require()
@@ -914,6 +932,10 @@ impl<'a> Fold for DependencyCollector<'a> {
 
     if self.is_import_meta_url(&node) {
       return self.get_import_meta_url();
+    }
+
+    if let Some(expr) = self.match_import_meta_prop(&node) {
+      return expr;
     }
 
     if let Some((specifier, span)) = self.match_new_url(&node) {
@@ -1339,7 +1361,63 @@ impl<'a> DependencyCollector<'a> {
         }
         true
       }
+      Expr::Member(member) => {
+        match_member_expr(member, vec!["parcelRequire", "meta"], self.unresolved_mark)
+      }
       _ => false,
+    }
+  }
+
+  fn match_import_meta_prop(&mut self, expr: &ast::Expr) -> Option<ast::Expr> {
+    use ast::*;
+
+    match expr {
+      Expr::Member(member) => {
+        if !self.is_import_meta(&member.obj) {
+          return None;
+        }
+
+        let name = match_property_name(member);
+
+        if let Some((name, span)) = name {
+          match name.as_str() {
+            "distDir" => {
+              self.import_meta_props |= ImportMetaProperty::DIST_DIR;
+              if self.config.scope_hoist {
+                Some(Expr::Ident(Ident::new_no_ctxt(
+                  "$parcel$distDir".into(),
+                  span,
+                )))
+              } else {
+                Some(Expr::Member(member_expr!(
+                  Default::default(),
+                  span,
+                  module.bundle.distDir
+                )))
+              }
+            }
+            "publicUrl" => {
+              self.import_meta_props |= ImportMetaProperty::PUBLIC_URL;
+              if self.config.scope_hoist {
+                Some(Expr::Ident(Ident::new_no_ctxt(
+                  "$parcel$publicUrl".into(),
+                  span,
+                )))
+              } else {
+                Some(Expr::Member(member_expr!(
+                  Default::default(),
+                  span,
+                  module.bundle.publicUrl
+                )))
+              }
+            }
+            _ => None,
+          }
+        } else {
+          None
+        }
+      }
+      _ => None,
     }
   }
 
@@ -1528,6 +1606,7 @@ mod test {
       config,
       diagnostics,
       import_meta: None,
+      import_meta_props: ImportMetaProperty::empty(),
     }
   }
 
