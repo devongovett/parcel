@@ -1,0 +1,31 @@
+{
+  "name": "@parcel/runtime-prefresh",
+  "version": "2.5.0",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/parcel"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/parcel.git"
+  },
+  "main": "lib/PrefreshRuntime.js",
+  "source": "src/PrefreshRuntime.js",
+  "engines": {
+    "node": ">= 12.0.0",
+    "parcel": "^2.5.0"
+  },
+  "peerDependencies": {
+    "preact": "latest"
+  },
+  "dependencies": {
+    "@parcel/plugin": "2.5.0",
+    "@parcel/utils": "2.5.0",
+    "@prefresh/core": "latest",
+    "preact": "latest"
+  }
+}

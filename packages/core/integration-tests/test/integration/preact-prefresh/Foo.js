@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { h } from "preact";
+import { useState } from "preact/hooks";
 
 let Foo = () => {
   const [x] = useState(Math.random());
-  console.log('Foo', x);
 
   return (
     <div>

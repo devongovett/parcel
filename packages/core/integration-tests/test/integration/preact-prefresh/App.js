@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { h } from "preact";
+import { useState } from "preact/hooks";
 import Foo from "./Foo";
 
 export const App = () => {
