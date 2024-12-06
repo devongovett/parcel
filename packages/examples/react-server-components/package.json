@@ -1,0 +1,29 @@
+{
+  "name": "parcel-react-server-components-example",
+  "version": "1.0.0",
+  "private": true,
+  "server": "dist/server.js",
+  "targets": {
+    "server": {
+      "source": "src/server.tsx",
+      "context": "react-server",
+      "outputFormat": "commonjs",
+      "includeNodeModules": {
+        "express": false
+      }
+    }
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "react": "18.3.0-canary-feed8f3f9-20240118",
+    "react-dom": "18.3.0-canary-feed8f3f9-20240118",
+    "react-server-dom-parcel": "file:/Users/devongovett/dev/react/build/node_modules/react-server-dom-parcel",
+    "rsc-html-stream": "0.0.4"
+  },
+  "@parcel/resolver-default": {
+    "packageExports": true
+  }
+}
