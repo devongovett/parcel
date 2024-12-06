@@ -199,6 +199,47 @@ function createDiagnostic(err, filePath) {
   return diagnostic;
 }
 
+function getScriptType(script) {
+  if (!script) {
+    return 'js';
+  }
+
+  if (script.src) {
+    script.lang = extname(script.src).slice(1);
+  }
+  let type;
+  switch (script.lang || 'js') {
+    case 'javascript':
+    case 'js':
+      type = 'js';
+      break;
+    case 'jsx':
+      type = 'jsx';
+      break;
+    case 'typescript':
+    case 'ts':
+      type = 'ts';
+      break;
+    case 'tsx':
+      type = 'tsx';
+      break;
+    case 'coffeescript':
+    case 'coffee':
+      type = 'coffee';
+      break;
+    default:
+      // TODO: codeframe
+      throw new ThrowableDiagnostic({
+        diagnostic: {
+          message: md`Unknown script language: "${script.lang}"`,
+          origin: '@parcel/transformer-vue',
+        },
+      });
+  }
+
+  return type;
+}
+
 async function processPipeline({
   asset,
   template,
@@ -244,6 +285,14 @@ async function processPipeline({
         }
         content = await preprocessor.render(content, options);
       }
+
+      // if using TS, support TS syntax in template expressions
+      const expressionPlugins = config.compilerOptions?.expressionPlugins || [];
+      const type = getScriptType(script);
+      if (type === 'ts') {
+        expressionPlugins.push('typescript');
+      }
+
       let templateComp = compiler.compileTemplate({
         filename: asset.filePath,
         source: content,
@@ -253,6 +302,7 @@ async function processPipeline({
         compilerOptions: {
           ...config.compilerOptions,
           bindingMetadata: script ? script.bindings : undefined,
+          expressionPlugins,
         },
         isProd: options.mode === 'production',
         id,
@@ -265,7 +315,7 @@ async function processPipeline({
         });
       }
       let templateAsset: TransformerResult = {
-        type: 'js',
+        type,
         uniqueKey: asset.id + '-template',
         ...(!template.src &&
           asset.env.sourceMap && {
@@ -295,35 +345,7 @@ ${
         ).toString();
         script.lang = extname(script.src).slice(1);
       }
-      let type;
-      switch (script.lang || 'js') {
-        case 'javascript':
-        case 'js':
-          type = 'js';
-          break;
-        case 'jsx':
-          type = 'jsx';
-          break;
-        case 'typescript':
-        case 'ts':
-          type = 'ts';
-          break;
-        case 'tsx':
-          type = 'tsx';
-          break;
-        case 'coffeescript':
-        case 'coffee':
-          type = 'coffee';
-          break;
-        default:
-          // TODO: codeframe
-          throw new ThrowableDiagnostic({
-            diagnostic: {
-              message: md`Unknown script language: "${script.lang}"`,
-              origin: '@parcel/transformer-vue',
-            },
-          });
-      }
+      let type = getScriptType(script);
       let scriptAsset = {
         type,
         uniqueKey: asset.id + '-script',

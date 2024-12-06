@@ -113,4 +113,12 @@ describe('vue', function () {
     assert.equal(typeof output.render, 'function');
     assert.equal(typeof output.setup, 'function');
   });
+  it('should process template with TS when script is TS', async function () {
+    let b = await bundle(
+      path.join(__dirname, '/integration/vue-ts-template/App.vue'),
+    );
+    let output = (await run(b)).default;
+    assert.equal(typeof output.render, 'function');
+    assert.equal(typeof output.setup, 'function');
+  });
 });
