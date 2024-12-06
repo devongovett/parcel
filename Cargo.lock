@@ -1695,6 +1695,7 @@ name = "parcel-js-swc-core"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "bitflags 1.3.2",
  "data-encoding",
  "dunce",
  "indexmap 1.9.3",

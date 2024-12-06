@@ -1,0 +1,31 @@
+{
+  "name": "@parcel/runtime-rsc",
+  "version": "2.13.2",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/parcel"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/parcel.git"
+  },
+  "exports": {
+    ".": {
+      "react-server": "./resources.js",
+      "source": "./src/RSCRuntime.js",
+      "default": "./lib/RSCRuntime.js"
+    }
+  },
+  "engines": {
+    "node": ">= 12.0.0",
+    "parcel": "^2.8.3"
+  },
+  "dependencies": {
+    "@parcel/plugin": "2.13.2",
+    "@parcel/utils": "2.13.2"
+  }
+}

@@ -90,6 +90,8 @@
   "resolutions": {
     "@parcel/watcher": "~2.2.0",
     "@vue/compiler-sfc": "~3.2.47",
-    "vue": "~3.2.47"
+    "vue": "~3.2.47",
+    "react": "file:/Users/devongovett/dev/react/build/node_modules/react",
+    "react-dom": "file:/Users/devongovett/dev/react/build/node_modules/react-dom"
   }
 }
