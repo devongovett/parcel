@@ -764,18 +764,18 @@ impl<'a> Fold for DependencyCollector<'a> {
           })));
           node
         } else {
-          node.fold_children_with(self)
+          node
         }
       } else {
-        node.fold_children_with(self)
+        node
       }
     } else {
-      node.fold_children_with(self)
+      node
     };
 
     // Replace import() with require()
     if kind == DependencyKind::DynamicImport {
-      let mut call = node;
+      let mut call = node.fold_children_with(self);
       if !self.config.scope_hoist && !self.config.standalone && is_specifier_str {
         let name = match &self.config.source_type {
           SourceType::Module => "require",
