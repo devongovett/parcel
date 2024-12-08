@@ -1118,7 +1118,9 @@ export default class BundleGraph {
         .some(
           id => {
             let node = this._graph.getNode(id);
-            return node?.type === 'dependency' && this._graph.getNodeIdsConnectedFrom(id, bundleGraphEdgeTypes.references).some(id => this._graph.getNode(id)?.type === 'bundle');
+            return node?.type === 'dependency' 
+              && !node.value.isEntry 
+              && this._graph.getNodeIdsConnectedFrom(id).some(id => this._graph.getNode(id)?.type === 'bundle_group');
           }
         )
     ) {
