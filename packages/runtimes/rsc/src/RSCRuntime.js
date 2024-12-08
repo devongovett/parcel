@@ -70,7 +70,7 @@ export default (new Runtime({
             code = `import {createServerReference} from "react-server-dom-parcel/client";\n`;
             for (let symbol of usedSymbols) {
               let resolved = bundleGraph.getSymbolResolution(resolvedAsset, symbol);
-              code += `exports[${JSON.stringify(symbol)}] = createServerReference([${JSON.stringify(bundleGraph.getAssetPublicId(resolved.asset))}, ${JSON.stringify(resolved.exportSymbol)}]);\n`;
+              code += `exports[${JSON.stringify(symbol)}] = createServerReference(${JSON.stringify(bundleGraph.getAssetPublicId(resolved.asset))}, ${JSON.stringify(resolved.exportSymbol)});\n`;
             }
           }
           
@@ -160,7 +160,7 @@ parcelRequire(${JSON.stringify(bundleGraph.getAssetPublicId(node.value))})
 
       code += '});\n';
       runtimes.push({
-        filePath: __filename,
+        filePath: bundle.getMainEntry()?.filePath ?? __filename,
         code,
         isEntry: true,
         env: {sourceType: 'module'},
