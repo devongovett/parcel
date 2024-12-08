@@ -90,7 +90,14 @@ function getPort() {
 }
 
 // eslint-disable-next-line no-redeclare
-const WebSocket = globalThis.WebSocket ?? (typeof module.bundle.root === 'function' ? module.bundle.root('ws') : null);
+let WebSocket = globalThis.WebSocket;
+if (!WebSocket && typeof module.bundle.root === 'function') {
+  try {
+    WebSocket = module.bundle.root('ws');
+  } catch {
+    // ignore.
+  }
+}
 
 // eslint-disable-next-line no-redeclare
 var parent = module.bundle.parent;
