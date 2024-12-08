@@ -606,9 +606,13 @@ function hmrAcceptCheckOne(
   checkedAssets[id] = true;
 
   var cached = bundle.cache[id];
+  if (!cached) {
+    return true;
+  }
+  
   assetsToDispose.push([bundle, id]);
 
-  if (!cached || (cached.hot && cached.hot._acceptCallbacks.length)) {
+  if (cached && (cached.hot && cached.hot._acceptCallbacks.length)) {
     assetsToAccept.push([bundle, id]);
     return true;
   }
