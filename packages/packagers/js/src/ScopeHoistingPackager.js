@@ -381,7 +381,7 @@ export class ScopeHoistingPackager {
           // If the module has a namespace (e.g. commonjs), and this is not an entry, only export the namespace
           // as default, without individual exports. This mirrors the importing logic in addExternal, avoiding
           // extra unused exports and potential for non-identifier export names.
-          if (hasNamespace && this.isAsyncBundle && exportAs !== '*') {
+          if (hasNamespace && !this.bundle.needsStableName && exportAs !== '*') {
             continue;
           }
 
