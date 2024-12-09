@@ -584,10 +584,9 @@ function createIdealGraph(
             }
             if (
               dependency.priority === 'lazy' ||
-              dependency.priority !== 'parallel' && (
-                dependency.bundleBehavior === 'isolated' ||
-                childAsset.bundleBehavior === 'isolated' // An isolated Dependency, or Bundle must contain all assets it needs to load.
-              )
+              (dependency.priority !== 'parallel' &&
+                (dependency.bundleBehavior === 'isolated' ||
+                  childAsset.bundleBehavior === 'isolated')) // An isolated Dependency, or Bundle must contain all assets it needs to load.
             ) {
               if (bundleId == null) {
                 let firstBundleGroup = nullthrows(
@@ -651,7 +650,11 @@ function createIdealGraph(
 
               // If this is a sync dependency on a JS asset that won't be replaced with a URL runtime,
               // add a reference so the bundle is loaded by the parent. This happens with React Server Components.
-              if (dependency.priority === 'sync' && childAsset.type === 'js' && childAsset?.meta.jsRuntime !== 'url') {
+              if (
+                dependency.priority === 'sync' &&
+                childAsset.type === 'js' &&
+                childAsset?.meta.jsRuntime !== 'url'
+              ) {
                 assetReference.get(childAsset).push([dependency, bundle]);
               }
             } else if (
@@ -1100,8 +1103,7 @@ function createIdealGraph(
       if (
         entries.has(a) ||
         !a.isBundleSplittable ||
-        (bundleRoots.get(a) &&
-          (getBundleFromBundleRoot(a).needsStableName))
+        (bundleRoots.get(a) && getBundleFromBundleRoot(a).needsStableName)
       ) {
         // Add asset to non-splittable bundles.
         addAssetToBundleRoot(asset, a);
@@ -1241,7 +1243,12 @@ function createIdealGraph(
       let sourceBundles = reachableArray.map(
         a => nullthrows(bundleRoots.get(a))[0],
       );
-      let key = reachableArray.map(a => a.id).join(',') + '.' + asset.env.context + '.' + asset.type;
+      let key =
+        reachableArray.map(a => a.id).join(',') +
+        '.' +
+        asset.env.context +
+        '.' +
+        asset.type;
       let bundleId = bundles.get(key);
       let bundle;
       if (bundleId == null) {
@@ -1547,15 +1554,26 @@ function createIdealGraph(
     let bundle = nullthrows(bundleGraph.getNode(bundleId));
     invariant(bundle !== 'root');
 
-    if (asset.type !== bundle.type || asset.env.context !== bundle.env.context) {
+    if (
+      asset.type !== bundle.type ||
+      asset.env.context !== bundle.env.context
+    ) {
       let bundleGroup = nullthrows(bundleGraph.getNode(bundleGroupId));
       invariant(bundleGroup !== 'root');
-      let key = nullthrows(bundleGroup.mainEntryAsset).id + '.' + asset.env.context + '.' + asset.type;
+      let key =
+        nullthrows(bundleGroup.mainEntryAsset).id +
+        '.' +
+        asset.env.context +
+        '.' +
+        asset.type;
       let typeChangeBundleId = bundles.get(key);
       if (typeChangeBundleId == null) {
         let typeChangeBundle = createBundle({
           uniqueKey: key,
-          needsStableName: asset.env.context !== bundle.env.context ? false : bundle.needsStableName,
+          needsStableName:
+            asset.env.context !== bundle.env.context
+              ? false
+              : bundle.needsStableName,
           bundleBehavior: bundle.bundleBehavior,
           type: asset.type,
           target: bundle.target,

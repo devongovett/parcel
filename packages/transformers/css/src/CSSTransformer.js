@@ -54,7 +54,7 @@ export default (new Transformer({
       shouldOptimize: asset.env.shouldOptimize,
       shouldScopeHoist: asset.env.shouldScopeHoist,
       sourceMap: asset.env.sourceMap,
-      loc: asset.env.loc
+      loc: asset.env.loc,
     };
 
     asset.setEnvironment({

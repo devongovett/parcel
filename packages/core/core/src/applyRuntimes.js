@@ -38,7 +38,7 @@ type RuntimeConnection = {|
   assetGroup: AssetGroup,
   dependency: ?Dependency,
   isEntry: ?boolean,
-  shouldReplaceResolution: ?boolean
+  shouldReplaceResolution: ?boolean,
 |};
 
 export default async function applyRuntimes<TResult: RequestResult>({
@@ -173,7 +173,13 @@ export default async function applyRuntimes<TResult: RequestResult>({
     bundleGraph._assetPublicIds.add(publicId);
   }
 
-  for (let {bundle, assetGroup, dependency, isEntry, shouldReplaceResolution} of connections) {
+  for (let {
+    bundle,
+    assetGroup,
+    dependency,
+    isEntry,
+    shouldReplaceResolution,
+  } of connections) {
     let assetGroupNode = nodeFromAssetGroup(assetGroup);
     let assetGroupAssetNodeIds = runtimesAssetGraph.getNodeIdsConnectedFrom(
       runtimesAssetGraph.getNodeIdByContentKey(assetGroupNode.id),
@@ -262,7 +268,9 @@ export default async function applyRuntimes<TResult: RequestResult>({
       bundleGraph._graph.addEdge(dependencyNodeId, bundleGraphRuntimeNodeId);
 
       if (shouldReplaceResolution && resolution) {
-        let resolutionNodeId = bundleGraph._graph.getNodeIdByContentKey(resolution.id);
+        let resolutionNodeId = bundleGraph._graph.getNodeIdByContentKey(
+          resolution.id,
+        );
         bundleGraph._graph.removeEdge(dependencyNodeId, resolutionNodeId);
         bundleGraph._graph.addEdge(dependencyNodeId, resolutionNodeId);
         // TODO: remove asset from bundle?

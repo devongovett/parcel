@@ -1,8 +1,13 @@
-"use client-entry";
+'use client-entry';
 
 import {useState, use, startTransition, useInsertionEffect} from 'react';
 import ReactDOM from 'react-dom/client';
-import {createFromReadableStream, createFromFetch, encodeReply, setServerCallback} from 'react-server-dom-parcel/client';
+import {
+  createFromReadableStream,
+  createFromFetch,
+  encodeReply,
+  setServerCallback,
+} from 'react-server-dom-parcel/client';
 import {rscStream} from 'rsc-html-stream/client';
 
 // Stream in initial RSC payload embedded in the HTML.
@@ -11,8 +16,8 @@ let updateRoot;
 
 // Setup a callback to perform server actions.
 // This sends a POST request to the server, and updates the page with the response.
-setServerCallback(async function(id, args) {
-  console.log(id, args)
+setServerCallback(async function (id, args) {
+  console.log(id, args);
   const response = fetch('/', {
     method: 'POST',
     headers: {
@@ -41,13 +46,13 @@ startTransition(() => {
 });
 
 // A very simple router. When we navigate, we'll fetch a new RSC payload from the server,
-// and in a React transition, stream in the new page. Once complete, we'll pushState to 
+// and in a React transition, stream in the new page. Once complete, we'll pushState to
 // update the URL in the browser.
 async function navigate(pathname, push) {
   let res = fetch(pathname, {
     headers: {
-      Accept: 'text/x-component'
-    }
+      Accept: 'text/x-component',
+    },
   });
   let root = await createFromFetch(res);
   startTransition(() => {

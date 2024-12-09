@@ -1,4 +1,4 @@
-"use server-entry";
+'use server-entry';
 
 import Container from './Container.js';
 import {Counter} from './Counter.js';

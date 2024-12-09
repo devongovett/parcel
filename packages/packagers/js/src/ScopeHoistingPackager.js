@@ -40,7 +40,10 @@ const REPLACEMENT_RE =
   /\n|import\s+"([0-9a-f]{16}:.+?)";|(?:\$[0-9a-f]{16}\$exports)|(?:\$[0-9a-f]{16}\$(?:import|importAsync|require)\$[0-9a-f]+(?:\$[0-9a-f]+)?)/g;
 
 const BUILTINS = Object.keys(globals.builtin);
-const BROWSER_BUILTINS = new Set([...BUILTINS, ...Object.keys(globals.browser)]);
+const BROWSER_BUILTINS = new Set([
+  ...BUILTINS,
+  ...Object.keys(globals.browser),
+]);
 const NODE_BUILTINS = new Set([...BUILTINS, ...Object.keys(globals.node)]);
 const GLOBALS_BY_CONTEXT = {
   browser: BROWSER_BUILTINS,
@@ -58,7 +61,7 @@ const GLOBALS_BY_CONTEXT = {
     ...Object.keys(globals.node),
     ...Object.keys(globals.browser),
   ]),
-  'react-server': NODE_BUILTINS
+  'react-server': NODE_BUILTINS,
 };
 
 const OUTPUT_FORMATS = {
@@ -381,7 +384,11 @@ export class ScopeHoistingPackager {
           // If the module has a namespace (e.g. commonjs), and this is not an entry, only export the namespace
           // as default, without individual exports. This mirrors the importing logic in addExternal, avoiding
           // extra unused exports and potential for non-identifier export names.
-          if (hasNamespace && !this.bundle.needsStableName && exportAs !== '*') {
+          if (
+            hasNamespace &&
+            !this.bundle.needsStableName &&
+            exportAs !== '*'
+          ) {
             continue;
           }
 

@@ -172,7 +172,9 @@ const $parcel$distDir = (env: Environment, bundle: NamedBundle): string => {
 };
 
 const $parcel$publicUrl = (env: Environment, bundle: NamedBundle): string => {
-  return `const $parcel$publicUrl = ${JSON.stringify(bundle.target.publicUrl)};\n`;
+  return `const $parcel$publicUrl = ${JSON.stringify(
+    bundle.target.publicUrl,
+  )};\n`;
 };
 
 export const helpers = {

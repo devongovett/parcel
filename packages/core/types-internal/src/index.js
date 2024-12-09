@@ -1725,6 +1725,7 @@ export type RuntimeAsset = {|
   +dependency?: Dependency,
   +isEntry?: boolean,
   +env?: EnvironmentOptions,
+  +shouldReplaceResolution?: boolean,
 |};
 
 /**

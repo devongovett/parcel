@@ -6155,13 +6155,16 @@ describe('javascript', function () {
             output = [import.meta.distDir, import.meta.publicUrl]`;
 
       let b = await bundle(
-        [path.join(__dirname, 'import-meta-properties/a.js'), path.join(__dirname, 'import-meta-properties/b/c/d.js')],
+        [
+          path.join(__dirname, 'import-meta-properties/a.js'),
+          path.join(__dirname, 'import-meta-properties/b/c/d.js'),
+        ],
         {
           ...options,
           inputFS: overlayFS,
           defaultTargetOptions: {
-            publicUrl: 'https://example.com'
-          }
+            publicUrl: 'https://example.com',
+          },
         },
       );
       let res = await runBundle(b, b.getBundles()[0], null, {require: false});
@@ -6182,13 +6185,16 @@ describe('javascript', function () {
             output = [parcelRequire.meta.distDir, parcelRequire.meta.publicUrl]`;
 
       let b = await bundle(
-        [path.join(__dirname, 'parcelRequire-meta-properties/a.js'), path.join(__dirname, 'parcelRequire-meta-properties/b/c/d.js')],
+        [
+          path.join(__dirname, 'parcelRequire-meta-properties/a.js'),
+          path.join(__dirname, 'parcelRequire-meta-properties/b/c/d.js'),
+        ],
         {
           ...options,
           inputFS: overlayFS,
           defaultTargetOptions: {
-            publicUrl: 'https://example.com'
-          }
+            publicUrl: 'https://example.com',
+          },
         },
       );
       let res = await runBundle(b, b.getBundles()[0], null, {require: false});

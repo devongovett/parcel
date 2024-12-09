@@ -7,7 +7,8 @@ export default function Button({action, children}) {
       onClick={async () => {
         const result = await action();
         console.log(result);
-      }}>
+      }}
+    >
       {children}
     </button>
   );

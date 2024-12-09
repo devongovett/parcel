@@ -81,18 +81,24 @@ var checkedAssets /*: {|[string]: boolean|} */,
 function getHostname() {
   return (
     HMR_HOST ||
-    (typeof location !== 'undefined' && location.protocol.indexOf('http') === 0 ? location.hostname : 'localhost')
+    (typeof location !== 'undefined' && location.protocol.indexOf('http') === 0
+      ? location.hostname
+      : 'localhost')
   );
 }
 
 function getPort() {
-  return HMR_PORT || (typeof location !== 'undefined' ? location.port : HMR_SERVER_PORT);
+  return (
+    HMR_PORT ||
+    (typeof location !== 'undefined' ? location.port : HMR_SERVER_PORT)
+  );
 }
 
 // eslint-disable-next-line no-redeclare
 let WebSocket = globalThis.WebSocket;
 if (!WebSocket && typeof module.bundle.root === 'function') {
   try {
+    // eslint-disable-next-line no-global-assign
     WebSocket = module.bundle.root('ws');
   } catch {
     // ignore.
@@ -106,7 +112,8 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var port = getPort();
   var protocol =
     HMR_SECURE ||
-    (typeof location !== 'undefined' && location.protocol === 'https:' &&
+    (typeof location !== 'undefined' &&
+      location.protocol === 'https:' &&
       !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname))
       ? 'wss'
       : 'ws';
@@ -175,7 +182,7 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
 
       // Dispatch a custom event in case a bundle was not found. This might mean
       // an asset on the server changed and we should reload the page. This event
-      // gives the client an opportunity to refresh without losing state 
+      // gives the client an opportunity to refresh without losing state
       // (e.g. via React Server Components). If e.preventDefault() is not called,
       // we will trigger a full page reload.
       if (
@@ -185,7 +192,9 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
         typeof window !== 'undefined' &&
         typeof CustomEvent !== 'undefined'
       ) {
-        handled = !window.dispatchEvent(new CustomEvent('parcelhmrreload', {cancelable: true}));
+        handled = !window.dispatchEvent(
+          new CustomEvent('parcelhmrreload', {cancelable: true}),
+        );
       }
 
       if (handled) {
@@ -312,10 +321,17 @@ ${frame.code}`;
 function fullReload() {
   if (typeof location !== 'undefined' && 'reload' in location) {
     location.reload();
-  } else if (typeof extCtx !== 'undefined' && extCtx && extCtx.runtime && extCtx.runtime.reload) {
+  } else if (
+    typeof extCtx !== 'undefined' &&
+    extCtx &&
+    extCtx.runtime &&
+    extCtx.runtime.reload
+  ) {
     extCtx.runtime.reload();
   } else {
-    console.error('[parcel] ⚠️ An HMR update was not accepted. Please restart the process.')
+    console.error(
+      '[parcel] ⚠️ An HMR update was not accepted. Please restart the process.',
+    );
   }
 }
 
@@ -616,10 +632,10 @@ function hmrAcceptCheckOne(
   if (!cached) {
     return true;
   }
-  
+
   assetsToDispose.push([bundle, id]);
 
-  if (cached && (cached.hot && cached.hot._acceptCallbacks.length)) {
+  if (cached && cached.hot && cached.hot._acceptCallbacks.length) {
     assetsToAccept.push([bundle, id]);
     return true;
   }

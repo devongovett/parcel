@@ -1115,17 +1115,20 @@ export default class BundleGraph {
     if (
       this._graph
         .getNodeIdsConnectedTo(assetNodeId, bundleGraphEdgeTypes.references)
-        .some(
-          id => {
-            let node = this._graph.getNode(id);
-            return node?.type === 'dependency' 
-              && !node.value.isEntry 
-              && (
-                this._graph.getNodeIdsConnectedFrom(id).some(id => this._graph.getNode(id)?.type === 'bundle_group')
-                || this._graph.getNodeIdsConnectedTo(id, bundleGraphEdgeTypes.internal_async).length > 0
-              );
-          }
-        )
+        .some(id => {
+          let node = this._graph.getNode(id);
+          return (
+            node?.type === 'dependency' &&
+            !node.value.isEntry &&
+            (this._graph
+              .getNodeIdsConnectedFrom(id)
+              .some(id => this._graph.getNode(id)?.type === 'bundle_group') ||
+              this._graph.getNodeIdsConnectedTo(
+                id,
+                bundleGraphEdgeTypes.internal_async,
+              ).length > 0)
+          );
+        })
     ) {
       // If this asset is referenced by any async dependency, it's referenced.
       return true;

@@ -36,7 +36,7 @@ export default (new Bundler({
       let bundleGroup = bundleGraph.createBundleGroup(dep, target);
       bundleGroupsByTarget.set(target, bundleGroup);
     }
-    
+
     // Create bundles for each asset.
     let bundles = new Map();
     for (let [dependency, target, assets] of dependencies) {

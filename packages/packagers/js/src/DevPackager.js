@@ -198,7 +198,8 @@ export class DevPackager {
       JSON.stringify(
         mainEntry ? this.bundleGraph.getAssetPublicId(mainEntry) : null,
       ) +
-      ', ' + JSON.stringify(this.parcelRequireName);
+      ', ' +
+      JSON.stringify(this.parcelRequireName);
 
     if (usedMetaProps & 1) {
       // Generate a relative path from this bundle to the root of the dist dir.
@@ -268,10 +269,7 @@ export class DevPackager {
         if (b.type !== 'js') {
           continue;
         }
-        importScripts += `require("${relativeBundlePath(
-          this.bundle,
-          b,
-        )}");\n`;
+        importScripts += `require("${relativeBundlePath(this.bundle, b)}");\n`;
       }
     }
 

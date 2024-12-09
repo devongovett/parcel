@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@parcel/plugin": "2.13.2",
-    "@parcel/utils": "2.13.2"
+    "@parcel/utils": "2.13.2",
+    "nullthrows": "^1.1.1"
   }
 }

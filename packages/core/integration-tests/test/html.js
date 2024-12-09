@@ -2160,11 +2160,7 @@ describe('html', function () {
       },
       {
         type: 'js',
-        assets: [
-          'bundle-manifest.js',
-          'index.js',
-          'esm-js-loader.js',
-        ],
+        assets: ['bundle-manifest.js', 'index.js', 'esm-js-loader.js'],
       },
       {
         type: 'js',
@@ -2181,11 +2177,7 @@ describe('html', function () {
       },
       {
         type: 'js',
-        assets: [
-          'bundle-manifest.js',
-          'index.js',
-          'esm-js-loader.js',
-        ],
+        assets: ['bundle-manifest.js', 'index.js', 'esm-js-loader.js'],
       },
     ]);
   });

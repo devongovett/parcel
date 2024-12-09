@@ -682,7 +682,12 @@ export default (new Transformer({
     asset.meta.id = asset.id;
     asset.meta.directives = directives;
     asset.meta.importMetaProps = import_meta_properties;
-    if (asset.env.isServer() && !asset.env.isLibrary && (directives.includes('use client') || directives.includes('use client-entry'))) {
+    if (
+      asset.env.isServer() &&
+      !asset.env.isLibrary &&
+      (directives.includes('use client') ||
+        directives.includes('use client-entry'))
+    ) {
       asset.setEnvironment({
         context: 'react-client',
         sourceType: 'module',
@@ -694,7 +699,11 @@ export default (new Transformer({
         shouldOptimize: asset.env.shouldOptimize,
         shouldScopeHoist: asset.env.shouldScopeHoist,
       });
-    } else if (!asset.env.isServer() && !asset.env.isLibrary && directives.includes('use server')) {
+    } else if (
+      !asset.env.isServer() &&
+      !asset.env.isLibrary &&
+      directives.includes('use server')
+    ) {
       asset.setEnvironment({
         context: 'react-server',
         sourceType: 'module',
@@ -708,7 +717,9 @@ export default (new Transformer({
       });
     } else if (directives.includes('use server-entry')) {
       if (!asset.env.isServer()) {
-        throw new Error('use server-entry must be imported in a server environment');
+        throw new Error(
+          'use server-entry must be imported in a server environment',
+        );
       }
       asset.bundleBehavior = 'isolated';
     }
@@ -771,7 +782,7 @@ export default (new Transformer({
           },
           meta: {
             placeholder: dep.placeholder,
-        },
+          },
         });
       } else if (dep.kind === 'Url') {
         asset.addURLDependency(dep.specifier, {
@@ -884,14 +895,14 @@ export default (new Transformer({
           env = {
             ...env,
             context: 'react-server',
-            outputFormat: 'esmodule'
+            outputFormat: 'esmodule',
           };
         } else if (dep.attributes?.env === 'react-client') {
           env = {
             ...env,
             context: 'react-client',
             outputFormat: 'esmodule',
-            includeNodeModules: true
+            includeNodeModules: true,
           };
         }
 

@@ -188,8 +188,14 @@ export default (new Runtime({
       }
 
       // URL dependency or not, fall back to including a runtime that exports the url
-      let mainAsset = mainBundle.getEntryAssets().find(e => e.id === bundleGroup.entryAssetId);
-      if (dependency.specifierType === 'url' || mainBundle.type !== 'js' || mainAsset?.meta.jsRuntime === 'url') {
+      let mainAsset = mainBundle
+        .getEntryAssets()
+        .find(e => e.id === bundleGroup.entryAssetId);
+      if (
+        dependency.specifierType === 'url' ||
+        mainBundle.type !== 'js' ||
+        mainAsset?.meta.jsRuntime === 'url'
+      ) {
         assets.push(getURLRuntime(dependency, bundle, mainBundle, options));
       }
     }
@@ -373,10 +379,7 @@ function getLoaderRuntime({
 
     // In development, clear the require cache when an error occurs so the
     // user can try again (e.g. after fixing a build error).
-    if (
-      options.mode === 'development' &&
-      !bundle.env.shouldScopeHoist
-    ) {
+    if (options.mode === 'development' && !bundle.env.shouldScopeHoist) {
       code +=
         '.catch(err => {delete module.bundle.cache[module.id]; throw err;})';
     }
@@ -573,7 +576,9 @@ function getURLRuntime(
       )});`;
     }
   } else if (from.env.isServer() && to.env.isBrowser()) {
-    code = `module.exports = ${JSON.stringify(urlJoin(to.target.publicUrl, to.name))};`;
+    code = `module.exports = ${JSON.stringify(
+      urlJoin(to.target.publicUrl, to.name),
+    )};`;
   } else {
     code = `module.exports = ${getAbsoluteUrlExpr(relativePathExpr, from)};`;
   }

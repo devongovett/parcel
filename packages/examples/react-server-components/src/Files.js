@@ -7,7 +7,11 @@ export async function Files({dir = process.cwd()}) {
   let relative = path.relative(process.cwd(), dir);
   return (
     <ul>
-      {files.map((file, i) => <li key={i}><a href={`/files/${path.join(relative, file)}`}>{file}</a></li>)}
+      {files.map((file, i) => (
+        <li key={i}>
+          <a href={`/files/${path.join(relative, file)}`}>{file}</a>
+        </li>
+      ))}
     </ul>
   );
 }

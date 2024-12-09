@@ -335,10 +335,10 @@ async function setup(entry) {
         engines: {
           // JSDOM doesn't support type=module
           // https://github.com/jsdom/jsdom/issues/2475
-          browsers: 'Chrome >= 58'
-        }
-      }
-    }
+          browsers: 'Chrome >= 58',
+        },
+      },
+    },
   });
 
   subscription = await b.watch();
