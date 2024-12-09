@@ -177,7 +177,7 @@ export class DevPackager {
     let entries = this.bundle.getEntryAssets();
     let mainEntry = this.bundle.getMainEntry();
     if (
-      (!this.isEntry() && this.bundle.env.outputFormat === 'global') ||
+      (!this.isEntry() && this.bundle.env.outputFormat !== 'commonjs') ||
       this.bundle.env.sourceType === 'script'
     ) {
       // In async bundles we don't want the main entry to execute until we require it

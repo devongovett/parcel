@@ -928,6 +928,13 @@ module.hot.dispose((data) => {
       let bundleEvent = await getNextBuild(b);
       assert.equal(bundleEvent.type, 'buildSuccess');
 
+      // JSDOM doesn't support type=module
+      // https://github.com/jsdom/jsdom/issues/2475
+      let htmlPath = nullthrows(bundleEvent.bundleGraph).getBundles()[0].filePath;
+      let html = await outputFS.readFile(htmlPath, 'utf8');
+      html = html.replace(/type="module"/g, '');
+      await outputFS.writeFile(htmlPath, html);
+
       let window;
       try {
         let dom = await JSDOM.JSDOM.fromURL(
@@ -947,7 +954,7 @@ module.hot.dispose((data) => {
         );
         _window.console.clear = () => {};
         _window.console.warn = () => {};
-
+        
         let initialHref = _window.document.querySelector('link').href;
 
         await overlayFS.copyFile(
@@ -990,6 +997,13 @@ module.hot.dispose((data) => {
       subscription = await b.watch();
       let bundleEvent = await getNextBuild(b);
       assert.equal(bundleEvent.type, 'buildSuccess');
+
+      // JSDOM doesn't support type=module
+      // https://github.com/jsdom/jsdom/issues/2475
+      let htmlPath = nullthrows(bundleEvent.bundleGraph).getBundles()[0].filePath;
+      let html = await outputFS.readFile(htmlPath, 'utf8');
+      html = html.replace(/type="module"/g, '');
+      await outputFS.writeFile(htmlPath, html);
 
       let window;
       try {

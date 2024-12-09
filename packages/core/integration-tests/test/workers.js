@@ -1232,7 +1232,6 @@ describe('parcel', function () {
           'lodash.js',
           'esmodule-helpers.js',
           'bundle-manifest.js',
-          'bundle-url.js',
         ],
       },
       {

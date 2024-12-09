@@ -394,19 +394,17 @@ export async function runBundles(
   }
 
   if (opts.require !== false) {
+    if (!env.shouldScopeHoist) {
+      for (let key in ctx) {
+        if (key.startsWith('parcelRequire')) {
+          // $FlowFixMe[incompatible-use]
+          return ctx[key](bundleGraph.getAssetPublicId(entryAsset));
+        }
+      }
+    }
     switch (outputFormat) {
       case 'global':
-        if (env.shouldScopeHoist) {
-          return typeof ctx.output !== 'undefined' ? ctx.output : undefined;
-        } else {
-          for (let key in ctx) {
-            if (key.startsWith('parcelRequire')) {
-              // $FlowFixMe[incompatible-use]
-              return ctx[key](bundleGraph.getAssetPublicId(entryAsset));
-            }
-          }
-        }
-        return;
+        return typeof ctx.output !== 'undefined' ? ctx.output : undefined;
       case 'commonjs':
         invariant(typeof ctx.module === 'object' && ctx.module != null);
         return ctx.module.exports;

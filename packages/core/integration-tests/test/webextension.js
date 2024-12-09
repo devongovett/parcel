@@ -114,7 +114,7 @@ describe('webextension', function () {
       {assets: ['background.js']},
       {assets: ['popup.html']},
       {assets: ['popup.css']},
-      {assets: ['popup.js', 'esmodule-helpers.js', 'bundle-url.js']},
+      {assets: ['popup.js', 'esmodule-helpers.js']},
       {assets: ['side-panel.html']},
       {assets: ['content-script.js']},
       {assets: ['other-content-script.js']},

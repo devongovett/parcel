@@ -197,7 +197,7 @@ export default (new Runtime({
     // In development, bundles can be created lazily. This means that the parent bundle may not
     // know about all of the sibling bundles of a child when it is written for the first time.
     // Therefore, we need to also ensure that the siblings are loaded when the child loads.
-    if (options.shouldBuildLazily && bundle.env.outputFormat === 'global') {
+    if (options.shouldBuildLazily && !bundle.env.shouldScopeHoist) {
       let referenced = bundleGraph.getReferencedBundles(bundle);
       for (let referencedBundle of referenced) {
         let loaders = getLoaders(bundle.env);
@@ -375,7 +375,7 @@ function getLoaderRuntime({
     // user can try again (e.g. after fixing a build error).
     if (
       options.mode === 'development' &&
-      bundle.env.outputFormat === 'global'
+      !bundle.env.shouldScopeHoist
     ) {
       code +=
         '.catch(err => {delete module.bundle.cache[module.id]; throw err;})';
