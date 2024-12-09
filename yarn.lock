@@ -12341,8 +12341,10 @@ react-resizable-panels@^0.0.61:
   resolved "https://registry.yarnpkg.com/react-resizable-panels/-/react-resizable-panels-0.0.61.tgz#2260ec8ca591431d367d172bced49733cc3308aa"
   integrity sha512-Vk2a4LEHWkI6hGPnPmXxa/2twLYMAMMUTyA2PtR1ijvH2Nkg/AhGqrPsIi/eI85uVWtYCFNZKEsbR3uGuJl/yg==
 
-"react-server-dom-parcel@file:../react/build/node_modules/react-server-dom-parcel":
-  version "19.0.0"
+react-server-dom-parcel@^0.0.0:
+  version "0.0.0"
+  resolved "https://registry.yarnpkg.com/react-server-dom-parcel/-/react-server-dom-parcel-0.0.0.tgz#fc12d258680fcc9a2d950a4c45c895cf8f13f9ad"
+  integrity sha512-p66OwCsOG84i6M8p0QDFimQ+6+49GTbngvdf/mXLfXlVXPgI46CUhENJfBtOHOkrbhld6oczEXNW/9MGLQzOMw==
 
 react-universal-interface@^0.6.2:
   version "0.6.2"
@@ -12937,7 +12939,7 @@ rrweb-cssom@^0.7.1:
   resolved "https://registry.yarnpkg.com/rrweb-cssom/-/rrweb-cssom-0.7.1.tgz#c73451a484b86dd7cfb1e0b2898df4b703183e4b"
   integrity sha512-TrEMa7JGdVm0UThDJSx7ddw5nVm3UJS9o9CCIZ72B1vSyEZoziDqBYP3XIoi/12lKrJR8rE3jeFHMok2F/Mnsg==
 
-rsc-html-stream@0.0.4:
+rsc-html-stream@^0.0.4:
   version "0.0.4"
   resolved "https://registry.yarnpkg.com/rsc-html-stream/-/rsc-html-stream-0.0.4.tgz#0ae70518eeac305852533b9ad60aefacce72ed95"
   integrity sha512-1isiXIrlTI/vRLTvS3O4fMrO9qIHje1FSphufrIV5QfzHUgBDCZFwP9b8+rH63nbhxtcKTqfyziwM+2khfX0Uw==
