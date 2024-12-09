@@ -3,6 +3,7 @@
 import {Runtime} from '@parcel/plugin';
 import nullthrows from 'nullthrows';
 import {urlJoin} from '@parcel/utils';
+import path from 'path';
 
 export default (new Runtime({
   apply({bundle, bundleGraph}) {
@@ -163,8 +164,10 @@ export default (new Runtime({
 
           code += '  </>;\n}\n';
 
+          let filePath = nullthrows(node.value.sourcePath);
+          let ext = path.extname(filePath);
           runtimes.push({
-            filePath: __filename + 'x',
+            filePath: filePath.slice(0, -ext.length) + '.jsx',
             code,
             dependency: node.value,
             env: {sourceType: 'module'},

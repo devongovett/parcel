@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "react": "18.3.0-canary-feed8f3f9-20240118",
-    "react-dom": "18.3.0-canary-feed8f3f9-20240118",
+    "react": "^19",
+    "react-dom": "^19",
     "react-server-dom-parcel": "file:/Users/devongovett/dev/react/build/node_modules/react-server-dom-parcel",
     "rsc-html-stream": "0.0.4"
   },
