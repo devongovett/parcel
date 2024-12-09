@@ -63,10 +63,10 @@ describe('Environment', () => {
 
   it('assigns default engines for node', () => {
     assert.deepEqual(createEnvironment({context: 'node'}), {
-      id: 'f7c9644283a8698f',
+      id: 'b9b60fc7dcc0ae9c',
       context: 'node',
       engines: {
-        node: '>= 8.0.0',
+        node: '>= 18.0.0',
       },
       includeNodeModules: false,
       outputFormat: 'commonjs',
