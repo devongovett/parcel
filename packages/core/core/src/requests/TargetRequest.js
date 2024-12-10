@@ -340,14 +340,6 @@ export class TargetResolver {
             },
           });
         }
-        if (!BROWSER_ENVS.has(targets[0].env.context)) {
-          throw new ThrowableDiagnostic({
-            diagnostic: {
-              message: `Only browser targets are supported in serve mode`,
-              origin: '@parcel/core',
-            },
-          });
-        }
         targets[0].distDir = toProjectPath(
           this.options.projectRoot,
           serve.distDir,
