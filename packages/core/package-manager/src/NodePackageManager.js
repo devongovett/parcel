@@ -244,7 +244,7 @@ export class NodePackageManager implements PackageManager {
       ) {
         let compile = m._compile;
         m._compile = (code, filename) => {
-          let out = transformSync(code, {filename, module: {type: 'commonjs'}});
+          let out = transformSync(code, {filename, module: {type: 'commonjs', ignoreDynamic: true}});
           compile.call(m, out.code, filename);
         };
 
