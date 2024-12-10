@@ -112,6 +112,10 @@
     ];
   };
 
+  // Only insert newRequire.load when it is actually used.
+  // The code in this file is linted against ES5, so dynamic import is not allowed.
+  // INSERT_LOAD_HERE
+
   Object.defineProperty(newRequire, 'root', {
     get: function () {
       return globalObject[parcelRequireName];

@@ -421,7 +421,7 @@ export default (new Transformer({
       has_node_replacements,
       is_constant_module,
       directives,
-      import_meta_properties,
+      helpers,
     } = await (transformAsync || transform)({
       filename: asset.filePath,
       code,
@@ -681,7 +681,7 @@ export default (new Transformer({
 
     asset.meta.id = asset.id;
     asset.meta.directives = directives;
-    asset.meta.importMetaProps = import_meta_properties;
+    asset.meta.usedHelpers = helpers;
     if (
       asset.env.isServer() &&
       !asset.env.isLibrary &&

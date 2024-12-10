@@ -168,12 +168,20 @@ const $parcel$distDir = (env: Environment, bundle: NamedBundle): string => {
   if (distDir.endsWith('/')) {
     distDir = distDir.slice(0, -1);
   }
-  return `const $parcel$distDir = ${JSON.stringify(distDir)};\n`;
+  return `var $parcel$distDir = ${JSON.stringify(distDir)};\n`;
 };
 
 const $parcel$publicUrl = (env: Environment, bundle: NamedBundle): string => {
-  return `const $parcel$publicUrl = ${JSON.stringify(
+  return `var $parcel$publicUrl = ${JSON.stringify(
     bundle.target.publicUrl,
+  )};\n`;
+};
+
+const $parcel$import = (env: Environment): string => {
+  return `var $parcel$import = ${fnExpr(
+    env,
+    ['url'],
+    ['return import($parcel$distDir + "/" + url);'],
   )};\n`;
 };
 
@@ -185,4 +193,5 @@ export const helpers = {
   $parcel$defineInteropFlag,
   $parcel$distDir,
   $parcel$publicUrl,
+  $parcel$import,
 };

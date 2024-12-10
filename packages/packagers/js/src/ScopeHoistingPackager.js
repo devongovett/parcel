@@ -516,13 +516,16 @@ export class ScopeHoistingPackager {
       this.usedHelpers.add('$parcel$global');
     }
 
-    let importMetaProps = asset.meta.importMetaProps;
-    if (typeof importMetaProps === 'number') {
-      if (importMetaProps & 1) {
+    let usedHelpers = asset.meta.usedHelpers;
+    if (typeof usedHelpers === 'number') {
+      if (usedHelpers & 1) {
         this.usedHelpers.add('$parcel$distDir');
       }
-      if (importMetaProps & 2) {
+      if (usedHelpers & 2) {
         this.usedHelpers.add('$parcel$publicUrl');
+      }
+      if (usedHelpers & 4) {
+        this.usedHelpers.add('$parcel$import');
       }
     }
 

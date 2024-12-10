@@ -86,9 +86,9 @@ describe('javascript', function () {
     );
 
     let jsBundle = b.getBundles()[0];
-    let contents = await outputFS.readFile(jsBundle.filePath);
+    let contents = await outputFS.readFile(jsBundle.filePath, 'utf8');
 
-    assert(!contents.includes('import'));
+    assert(!contents.includes('import('));
   });
 
   it('should ignore unused requires after process.env inlining', async function () {
@@ -6163,6 +6163,7 @@ describe('javascript', function () {
           ...options,
           inputFS: overlayFS,
           defaultTargetOptions: {
+            ...options.defaultTargetOptions,
             publicUrl: 'https://example.com',
           },
         },
@@ -6193,6 +6194,7 @@ describe('javascript', function () {
           ...options,
           inputFS: overlayFS,
           defaultTargetOptions: {
+            ...options.defaultTargetOptions,
             publicUrl: 'https://example.com',
           },
         },
@@ -6202,6 +6204,31 @@ describe('javascript', function () {
 
       res = await runBundle(b, b.getBundles()[1], null, {require: false});
       assert.deepEqual(res.output, ['../..', 'https://example.com']);
+    });
+
+    it(`supports parcelRequire.load ${
+      shouldScopeHoist ? 'with' : 'without'
+    } scope-hoisting`, async () => {
+      await fsFixture(overlayFS, __dirname)`
+        parcelRequire-meta-properties
+          x/y/z/a.js:
+            output = parcelRequire.load('b.js');
+          b.js:
+            globalThis.result = 2;`;
+
+      let b = await bundle(
+        [
+          path.join(__dirname, 'parcelRequire-meta-properties/x/y/z/a.js'),
+          path.join(__dirname, 'parcelRequire-meta-properties/b.js'),
+        ],
+        {
+          ...options,
+          inputFS: overlayFS,
+        },
+      );
+      let res = await runBundle(b, b.getBundles()[0], null, {require: false});
+      await res.output;
+      assert.equal(res.result, 2);
     });
   }
 });

@@ -102,11 +102,13 @@ pub enum DependencyKind {
 bitflags! {
   #[derive(Serialize, Deserialize, Default)]
   #[serde(transparent)]
-  pub struct ImportMetaProperty: u8 {
+  pub struct Helpers: u8 {
     /// `import.meta.distDir` – a relative path from the current bundle to the distDir
     const DIST_DIR = 1 << 0;
     /// `import.meta.publicUrl` - absolute public URL
     const PUBLIC_URL = 1 << 1;
+    /// `parcelRequire.load`
+    const LOAD = 1 << 2;
   }
 }
 
@@ -138,7 +140,7 @@ pub fn dependency_collector<'a>(
   unresolved_mark: swc_core::common::Mark,
   config: &'a Config,
   diagnostics: &'a mut Vec<Diagnostic>,
-) -> (Module, ImportMetaProperty) {
+) -> (Module, Helpers) {
   let mut collector = DependencyCollector {
     source_map,
     items,
@@ -150,11 +152,11 @@ pub fn dependency_collector<'a>(
     config,
     diagnostics,
     import_meta: None,
-    import_meta_props: ImportMetaProperty::empty(),
+    helpers: Helpers::empty(),
   };
 
   let module = module.fold_with(&mut collector);
-  (module, collector.import_meta_props)
+  (module, collector.helpers)
 }
 
 struct DependencyCollector<'a> {
@@ -168,7 +170,7 @@ struct DependencyCollector<'a> {
   config: &'a Config,
   diagnostics: &'a mut Vec<Diagnostic>,
   import_meta: Option<ast::VarDecl>,
-  import_meta_props: ImportMetaProperty,
+  helpers: Helpers,
 }
 
 impl<'a> DependencyCollector<'a> {
@@ -584,7 +586,21 @@ impl<'a> Fold for DependencyCollector<'a> {
             }
           }
           Member(member) => {
-            if match_member_expr(member, vec!["module", "require"], self.unresolved_mark) {
+            if match_member_expr(member, vec!["parcelRequire", "load"], self.unresolved_mark) {
+              let mut call = node.fold_children_with(self);
+              let callee = if self.config.scope_hoist {
+                ast::Expr::Ident(ast::Ident::new_no_ctxt("$parcel$import".into(), call.span))
+              } else {
+                ast::Expr::Member(member_expr!(
+                  Default::default(),
+                  call.span,
+                  module.bundle.load
+                ))
+              };
+              call.callee = ast::Callee::Expr(Box::new(callee));
+              self.helpers |= Helpers::DIST_DIR | Helpers::LOAD;
+              return call;
+            } else if match_member_expr(member, vec!["module", "require"], self.unresolved_mark) {
               DependencyKind::Require
             } else if self.config.is_browser()
               && match_member_expr(
@@ -1382,7 +1398,7 @@ impl<'a> DependencyCollector<'a> {
         if let Some((name, span)) = name {
           match name.as_str() {
             "distDir" => {
-              self.import_meta_props |= ImportMetaProperty::DIST_DIR;
+              self.helpers |= Helpers::DIST_DIR;
               if self.config.scope_hoist {
                 Some(Expr::Ident(Ident::new_no_ctxt(
                   "$parcel$distDir".into(),
@@ -1397,7 +1413,7 @@ impl<'a> DependencyCollector<'a> {
               }
             }
             "publicUrl" => {
-              self.import_meta_props |= ImportMetaProperty::PUBLIC_URL;
+              self.helpers |= Helpers::PUBLIC_URL;
               if self.config.scope_hoist {
                 Some(Expr::Ident(Ident::new_no_ctxt(
                   "$parcel$publicUrl".into(),
@@ -1606,7 +1622,7 @@ mod test {
       config,
       diagnostics,
       import_meta: None,
-      import_meta_props: ImportMetaProperty::empty(),
+      helpers: Helpers::empty(),
     }
   }
 
