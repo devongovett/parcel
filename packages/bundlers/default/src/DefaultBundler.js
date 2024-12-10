@@ -1101,9 +1101,8 @@ function createIdealGraph(
       if (assetId == null) return; // deleted
       let a = assets[assetId];
       if (
-        entries.has(a) ||
         !a.isBundleSplittable ||
-        (bundleRoots.get(a) && getBundleFromBundleRoot(a).needsStableName)
+        (bundleRoots.get(a) && getBundleFromBundleRoot(a).needsStableName && a.env.context === asset.env.context)
       ) {
         // Add asset to non-splittable bundles.
         addAssetToBundleRoot(asset, a);
