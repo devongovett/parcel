@@ -45,7 +45,6 @@ import {
   PACKAGE_DESCRIPTOR_SCHEMA,
   ENGINES_SCHEMA,
 } from '../TargetDescriptor.schema';
-import {BROWSER_ENVS} from '../public/Environment';
 import {optionsProxy, toInternalSourceLocation} from '../utils';
 import {fromProjectPath, toProjectPath, joinProjectPath} from '../projectPath';
 import {requestTypes} from '../RequestTracker';
