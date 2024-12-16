@@ -1,6 +1,6 @@
-import ReactDOM from "react-dom";
+import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { act } from "react-dom/test-utils";
 
 export default () =>
-  act(async () => {ReactDOM.render(<App />, document.getElementById("root"));});
+  act(async () => {ReactDOM.createRoot(document.getElementById("root")).render(<App />);});

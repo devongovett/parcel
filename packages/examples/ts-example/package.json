@@ -15,8 +15,6 @@
   "module": "dist/module.js",
   "types": "dist/types.d.ts",
   "dependencies": {
-    "lodash": "^4.17.11",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "lodash": "^4.17.11"
   }
 }

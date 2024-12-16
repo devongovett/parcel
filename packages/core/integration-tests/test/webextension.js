@@ -86,7 +86,6 @@ describe('webextension', function () {
           'esmodule-helpers.js',
           'index-jsx.jsx',
           'index.js',
-          'index.js',
           'react.development.js',
         ],
       },

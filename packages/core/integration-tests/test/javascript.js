@@ -6169,10 +6169,10 @@ describe('javascript', function () {
         },
       );
       let res = await runBundle(b, b.getBundles()[0], null, {require: false});
-      assert.deepEqual(res.output, ['.', 'https://example.com']);
+      assert.deepEqual(res.output, ['.', 'https://example.com/']);
 
       res = await runBundle(b, b.getBundles()[1], null, {require: false});
-      assert.deepEqual(res.output, ['../..', 'https://example.com']);
+      assert.deepEqual(res.output, ['../..', 'https://example.com/']);
     });
 
     it(`supports parcelRequire.meta properties ${
@@ -6200,10 +6200,10 @@ describe('javascript', function () {
         },
       );
       let res = await runBundle(b, b.getBundles()[0], null, {require: false});
-      assert.deepEqual(res.output, ['.', 'https://example.com']);
+      assert.deepEqual(res.output, ['.', 'https://example.com/']);
 
       res = await runBundle(b, b.getBundles()[1], null, {require: false});
-      assert.deepEqual(res.output, ['../..', 'https://example.com']);
+      assert.deepEqual(res.output, ['../..', 'https://example.com/']);
     });
 
     it(`supports parcelRequire.load ${

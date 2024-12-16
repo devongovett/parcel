@@ -1,5 +1,5 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import * as ReactDOM from "react-dom/client";
 
 type Props = {
   bar: string;
@@ -9,4 +9,4 @@ function App(props: Props) {
   return <div>{props.bar}</div>;
 }
 
-ReactDOM.render(<App bar="bar" />, document.getElementById("root"));
+ReactDOM.createRoot(document.getElementById("root")).render(<App bar="bar" />);
