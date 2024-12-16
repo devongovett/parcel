@@ -18,11 +18,15 @@ use crate::utils::is_unresolved;
 /// the global `module`, `exports` and `require` symbols.
 pub struct TypeofReplacer {
   unresolved_mark: Mark,
+  is_node: bool,
 }
 
 impl TypeofReplacer {
-  pub fn new(unresolved_mark: Mark) -> Self {
-    Self { unresolved_mark }
+  pub fn new(unresolved_mark: Mark, is_node: bool) -> Self {
+    Self {
+      unresolved_mark,
+      is_node,
+    }
   }
 }
 
@@ -66,6 +70,18 @@ impl TypeofReplacer {
       })));
     }
 
+    // Replace `typeof process` with "undefined" in browser builds to avoid pulling in the polyfill.
+    if !self.is_node
+      && ident.sym == js_word!("process")
+      && is_unresolved(&ident, self.unresolved_mark)
+    {
+      return Some(Expr::Lit(Lit::Str(Str {
+        span: unary.span,
+        value: js_word!("undefined"),
+        raw: None,
+      })));
+    }
+
     None
   }
 }
@@ -93,10 +109,12 @@ mod test {
 const x = typeof require;
 const m = typeof module;
 const e = typeof exports;
+const p = typeof process;
 "#;
 
     let output_code = run_visit(code, |context| TypeofReplacer {
       unresolved_mark: context.unresolved_mark,
+      is_node: false,
     })
     .output_code;
 
@@ -104,6 +122,7 @@ const e = typeof exports;
 const x = "function";
 const m = "object";
 const e = "object";
+const p = "undefined";
 "#
     .trim_start();
     assert_eq!(output_code, expected_code);
@@ -117,6 +136,7 @@ const x = typeof require === 'function';
 
     let output_code = run_visit(code, |context| TypeofReplacer {
       unresolved_mark: context.unresolved_mark,
+      is_node: false,
     })
     .output_code;
 
@@ -139,6 +159,7 @@ function wrapper({ require, exports }) {
 
     let output_code = run_visit(code, |context| TypeofReplacer {
       unresolved_mark: context.unresolved_mark,
+      is_node: false,
     })
     .output_code;
 

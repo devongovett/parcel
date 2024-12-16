@@ -442,7 +442,7 @@ pub fn transform(
 
               module.visit_mut_with(&mut (
                 Optional::new(
-                  TypeofReplacer::new(unresolved_mark),
+                  TypeofReplacer::new(unresolved_mark, config.is_node()),
                   config.source_type != SourceType::Script,
                 ),
                 // Inline process.env and process.browser,
