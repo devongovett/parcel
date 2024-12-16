@@ -41,26 +41,38 @@ bitflags! {
 #[derive(serde::Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 struct SerializedPackageJson {
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   pub name: String,
-  #[serde(rename = "type", default)]
+  #[serde(rename = "type", default, deserialize_with = "ok_or_default")]
   pub module_type: ModuleType,
+  #[serde(default, deserialize_with = "ok_or_default")]
   main: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   module: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   tsconfig: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   types: Option<PathBuf>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   pub source: SourceField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   browser: BrowserField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   alias: IndexMap<Specifier<'static>, AliasValue<'static>>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   exports: ExportsField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   imports: IndexMap<ExportsKey<'static>, ExportsField>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   side_effects: SideEffects,
+}
+
+fn ok_or_default<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+  T: serde::Deserialize<'de> + Default,
+  D: serde::Deserializer<'de>,
+{
+  Ok(T::deserialize(deserializer).unwrap_or_default())
 }
 
 #[derive(Debug)]
@@ -1932,5 +1944,7 @@ mod tests {
     assert_eq!(pkg.module_type, ModuleType::CommonJs);
     let pkg: SerializedPackageJson = serde_json::from_str(r#"{"name":"foo"}"#).unwrap();
     assert_eq!(pkg.module_type, ModuleType::CommonJs);
+    let pkg: SerializedPackageJson = serde_json::from_str(r#"{"main":false}"#).unwrap();
+    assert_eq!(pkg.main, None);
   }
 }
