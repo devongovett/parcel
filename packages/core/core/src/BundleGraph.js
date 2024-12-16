@@ -1198,7 +1198,13 @@ export default class BundleGraph {
 
   hasParentBundleOfType(bundle: Bundle, type: string): boolean {
     let parents = this.getParentBundles(bundle);
-    return parents.length > 0 && parents.every(parent => parent.type === type);
+    return (
+      parents.length > 0 &&
+      parents.every(
+        parent =>
+          parent.type === type && parent.env.context === bundle.env.context,
+      )
+    );
   }
 
   getParentBundles(bundle: Bundle): Array<Bundle> {

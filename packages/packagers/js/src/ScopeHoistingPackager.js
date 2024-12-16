@@ -1398,7 +1398,9 @@ ${code}
       let parentBundles = this.bundleGraph.getParentBundles(this.bundle);
       let mightBeFirstJS =
         parentBundles.length === 0 ||
-        parentBundles.some(b => b.type !== 'js') ||
+        parentBundles.some(
+          b => b.type !== 'js' || b.env.context !== this.bundle.env.context,
+        ) ||
         this.bundleGraph
           .getBundleGroupsContainingBundle(this.bundle)
           .some(g => this.bundleGraph.isEntryBundleGroup(g)) ||
