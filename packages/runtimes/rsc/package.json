@@ -18,7 +18,8 @@
       "react-server": "./resources.js",
       "source": "./src/RSCRuntime.js",
       "default": "./lib/RSCRuntime.js"
-    }
+    },
+    "./resources": "./resources.js"
   },
   "engines": {
     "node": ">= 12.0.0",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@parcel/plugin": "2.13.2",
+    "@parcel/rust": "2.13.2",
     "@parcel/utils": "2.13.2",
     "nullthrows": "^1.1.1"
   }

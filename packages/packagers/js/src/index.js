@@ -60,7 +60,7 @@ export default (new Packager({
       },
     );
 
-    let name = packageName?.contents?.name ?? '';
+    let name = packageName?.contents ?? '';
     return {
       parcelRequireName: 'parcelRequire' + hashString(name).slice(-4),
       unstable_asyncBundleRuntime: Boolean(

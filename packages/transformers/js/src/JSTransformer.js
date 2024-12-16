@@ -707,7 +707,7 @@ export default (new Transformer({
       asset.setEnvironment({
         context: 'react-server',
         sourceType: 'module',
-        outputFormat: 'esmodule',
+        outputFormat: 'commonjs',
         engines: asset.env.engines,
         includeNodeModules: false,
         isLibrary: false,
@@ -722,6 +722,11 @@ export default (new Transformer({
         );
       }
       asset.bundleBehavior = 'isolated';
+    }
+
+    // Server actions must always be wrapped so they can be parcelRequired.
+    if (directives.includes('use server')) {
+      asset.meta.shouldWrap = true;
     }
 
     for (let dep of dependencies) {
@@ -895,7 +900,7 @@ export default (new Transformer({
           env = {
             ...env,
             context: 'react-server',
-            outputFormat: 'esmodule',
+            outputFormat: 'commonjs',
           };
         } else if (dep.attributes?.env === 'react-client') {
           env = {
@@ -904,6 +909,10 @@ export default (new Transformer({
             outputFormat: 'esmodule',
             includeNodeModules: true,
           };
+
+          // This is a hack to prevent creating unnecessary shared bundles between actual client code
+          // and server code that runs in the client environment (e.g. react).
+          asset.isBundleSplittable = false;
         }
 
         asset.addDependency({
@@ -1030,7 +1039,7 @@ export default (new Transformer({
 
       asset.meta.hasCJSExports = hoist_result.has_cjs_exports;
       asset.meta.staticExports = hoist_result.static_cjs_exports;
-      asset.meta.shouldWrap = hoist_result.should_wrap;
+      asset.meta.shouldWrap ||= hoist_result.should_wrap;
     } else {
       if (symbol_result) {
         let deps = new Map(
