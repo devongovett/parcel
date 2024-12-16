@@ -220,7 +220,12 @@ export class DevPackager {
     }
 
     if (usedHelpers & 2) {
-      contents += ', ' + JSON.stringify(this.bundle.target.publicUrl);
+      // Ensure the public url always ends with a slash to code can easily join paths to it.
+      let publicUrl = this.bundle.target.publicUrl;
+      if (!publicUrl.endsWith('/')) {
+        publicUrl += '/';
+      }
+      contents += ', ' + JSON.stringify(publicUrl);
     }
 
     contents += ')\n';

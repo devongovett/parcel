@@ -172,9 +172,12 @@ const $parcel$distDir = (env: Environment, bundle: NamedBundle): string => {
 };
 
 const $parcel$publicUrl = (env: Environment, bundle: NamedBundle): string => {
-  return `var $parcel$publicUrl = ${JSON.stringify(
-    bundle.target.publicUrl,
-  )};\n`;
+  // Ensure the public url always ends with a slash to code can easily join paths to it.
+  let publicUrl = bundle.target.publicUrl;
+  if (!publicUrl.endsWith('/')) {
+    publicUrl += '/';
+  }
+  return `var $parcel$publicUrl = ${JSON.stringify(publicUrl)};\n`;
 };
 
 const $parcel$import = (env: Environment): string => {
