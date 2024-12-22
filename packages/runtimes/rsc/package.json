@@ -1,6 +1,6 @@
 {
   "name": "@parcel/runtime-rsc",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -26,9 +26,9 @@
     "parcel": "^2.8.3"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.2",
-    "@parcel/rust": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/plugin": "2.13.3",
+    "@parcel/rust": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "nullthrows": "^1.1.1"
   }
 }
