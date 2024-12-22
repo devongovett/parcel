@@ -125,7 +125,10 @@ export default class NodeResolver {
           options.env,
           this.options.mode,
         ),
-        packageExports: this.options.packageExports ?? false,
+        packageExports:
+          this.options.packageExports ||
+          options.env.context === 'react-server' ||
+          options.env.context === 'react-client',
         moduleDirResolver:
           process.versions.pnp != null
             ? (module, from) => {
