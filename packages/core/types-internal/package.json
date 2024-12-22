@@ -1,6 +1,6 @@
 {
   "name": "@parcel/types-internal",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "main": "src/index.js",
   "types": "lib/index.d.ts",
@@ -16,8 +16,8 @@
     "check-ts": "tsc --noEmit lib/index.d.ts"
   },
   "dependencies": {
-    "@parcel/diagnostic": "2.13.2",
-    "@parcel/feature-flags": "2.13.2",
+    "@parcel/diagnostic": "2.13.3",
+    "@parcel/feature-flags": "2.13.3",
     "@parcel/source-map": "^2.1.1",
     "utility-types": "^3.10.0"
   }

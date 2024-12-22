@@ -1,6 +1,6 @@
 {
   "name": "@parcel/transformer-pug",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,10 +17,10 @@
   "source": "src/PugTransformer.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.2",
+    "@parcel/plugin": "2.13.3",
     "pug": "^3.0.2"
   }
 }

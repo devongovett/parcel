@@ -1,6 +1,6 @@
 {
   "name": "@parcel/transformer-elm",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,11 +17,11 @@
   "source": "src/ElmTransformer.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/diagnostic": "2.13.2",
-    "@parcel/plugin": "2.13.2",
+    "@parcel/diagnostic": "2.13.3",
+    "@parcel/plugin": "2.13.3",
     "command-exists": "^1.2.8",
     "cross-spawn": "^7.0.3",
     "elm-hot": "^1.1.5",

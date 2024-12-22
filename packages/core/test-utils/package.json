@@ -1,6 +1,6 @@
 {
   "name": "@parcel/test-utils",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "description": "Blazing fast, zero configuration web application bundler",
   "license": "MIT",
   "private": true,
@@ -13,11 +13,11 @@
     "node": ">= 16.0.0"
   },
   "dependencies": {
-    "@parcel/config-default": "2.13.2",
-    "@parcel/core": "2.13.2",
-    "@parcel/fs": "2.13.2",
-    "@parcel/package-manager": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/config-default": "2.13.3",
+    "@parcel/core": "2.13.3",
+    "@parcel/fs": "2.13.3",
+    "@parcel/package-manager": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "chalk": "^4.1.2",
     "ncp": "^2.0.0",
     "nullthrows": "^1.1.1",

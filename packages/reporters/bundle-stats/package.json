@@ -1,6 +1,6 @@
 {
   "name": "@parcel/reporter-bundle-stats",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "publishConfig": {
     "access": "public"
   },
@@ -11,14 +11,14 @@
   },
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/core": "2.13.2",
-    "@parcel/plugin": "2.13.2",
-    "@parcel/utils": "2.13.2"
+    "@parcel/core": "2.13.3",
+    "@parcel/plugin": "2.13.3",
+    "@parcel/utils": "2.13.3"
   },
   "devDependencies": {
-    "@parcel/types": "2.13.2"
+    "@parcel/types": "2.13.3"
   }
 }

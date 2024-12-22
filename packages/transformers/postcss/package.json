@@ -1,6 +1,6 @@
 {
   "name": "@parcel/transformer-postcss",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,13 +17,13 @@
   "source": "src/PostCSSTransformer.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/diagnostic": "2.13.2",
-    "@parcel/plugin": "2.13.2",
-    "@parcel/rust": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/diagnostic": "2.13.3",
+    "@parcel/plugin": "2.13.3",
+    "@parcel/rust": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "clone": "^2.1.1",
     "nullthrows": "^1.1.1",
     "postcss-value-parser": "^4.2.0",

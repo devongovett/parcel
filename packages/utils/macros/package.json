@@ -1,6 +1,6 @@
 {
   "name": "@parcel/macros",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,6 +17,6 @@
   "sideEffects": false,
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   }
 }

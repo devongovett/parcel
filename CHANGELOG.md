@@ -5,6 +5,13 @@ All notable changes to Parcel will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and Parcel adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.13.3] - 2024-12-16
+
+### Fixed
+
+- Resolver
+  - Ignore invalid package.json fields – [Details](https://github.com/parcel-bundler/parcel/pull/10053)
+
 ## [2.13.2] - 2024-11-25
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "@parcel/transformer-typescript-tsc",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,12 +17,12 @@
   "source": "src/TSCTransformer.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.2",
+    "@parcel/plugin": "2.13.3",
     "@parcel/source-map": "^2.1.1",
-    "@parcel/ts-utils": "2.13.2"
+    "@parcel/ts-utils": "2.13.3"
   },
   "devDependencies": {
     "typescript": ">=3.0.0"

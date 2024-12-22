@@ -1,6 +1,6 @@
 {
   "name": "fuzzer",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "private": true,
   "scripts": {
     "test": "NODE_NO_WARNINGS=1 node --experimental-vm-modules -r @parcel/babel-register index.js"
@@ -10,8 +10,8 @@
     "@babel/generator": "^7.22.10",
     "@babel/template": "^7.22.5",
     "@babel/types": "^7.22.11",
-    "@parcel/core": "2.13.2",
-    "@parcel/fs": "2.13.2",
+    "@parcel/core": "2.13.3",
+    "@parcel/fs": "2.13.3",
     "nanoid": "^3.1.12",
     "nullthrows": "^1.1.1"
   }

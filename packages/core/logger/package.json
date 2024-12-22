@@ -1,6 +1,6 @@
 {
   "name": "@parcel/logger",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "description": "Blazing fast, zero configuration web application bundler",
   "license": "MIT",
   "publishConfig": {
@@ -20,7 +20,7 @@
     "node": ">= 16.0.0"
   },
   "dependencies": {
-    "@parcel/diagnostic": "2.13.2",
-    "@parcel/events": "2.13.2"
+    "@parcel/diagnostic": "2.13.3",
+    "@parcel/events": "2.13.3"
   }
 }

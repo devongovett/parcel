@@ -1,6 +1,6 @@
 {
   "name": "@parcel/reporter-lsp",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -17,12 +17,12 @@
   "source": "src/LspReporter.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/lsp-protocol": "2.13.2",
-    "@parcel/plugin": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/lsp-protocol": "2.13.3",
+    "@parcel/plugin": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "node-ipc": "^9.1.4",
     "nullthrows": "^1.1.1",
     "ps-node": "^0.1.6",

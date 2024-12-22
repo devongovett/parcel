@@ -1,6 +1,6 @@
 {
   "name": "@parcel/markdown-ansi",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "description": "Blazing fast, zero configuration web application bundler",
   "publishConfig": {
     "access": "public"

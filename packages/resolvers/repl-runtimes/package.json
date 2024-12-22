@@ -1,6 +1,6 @@
 {
   "name": "@parcel/resolver-repl-runtimes",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "private": true,
   "funding": {
@@ -16,7 +16,7 @@
     "parcel": "^2.11.0"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.2",
+    "@parcel/plugin": "2.13.3",
     "nullthrows": "^1.1.1"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 {
   "name": "@parcel/graph",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "Blazing fast, zero configuration web application bundler",
   "license": "MIT",
   "publishConfig": {
@@ -20,7 +20,7 @@
     "node": ">= 16.0.0"
   },
   "dependencies": {
-    "@parcel/feature-flags": "2.13.2",
+    "@parcel/feature-flags": "2.13.3",
     "nullthrows": "^1.1.1"
   }
 }

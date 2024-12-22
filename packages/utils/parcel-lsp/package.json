@@ -1,6 +1,6 @@
 {
   "name": "@parcel/lsp",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -22,10 +22,10 @@
   },
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/lsp-protocol": "2.13.2",
+    "@parcel/lsp-protocol": "2.13.3",
     "@parcel/watcher": "^2.0.7",
     "common-path-prefix": "^3.0.0",
     "nullthrows": "^1.1.1",

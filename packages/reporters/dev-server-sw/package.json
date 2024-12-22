@@ -1,6 +1,6 @@
 {
   "name": "@parcel/reporter-dev-server-sw",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "description": "Blazing fast, zero configuration web application bundler",
   "license": "MIT",
   "private": true,
@@ -19,10 +19,10 @@
     "parcel": "^2.11.0"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.2",
-    "@parcel/utils": "2.13.2"
+    "@parcel/plugin": "2.13.3",
+    "@parcel/utils": "2.13.3"
   },
   "devDependencies": {
-    "@parcel/types": "2.13.2"
+    "@parcel/types": "2.13.3"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@parcel/watcher-watchman-js",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "main": "lib/index.js",
   "source": "src/index.js",
@@ -8,8 +8,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@parcel/logger": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/logger": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "fb-watchman": "^2.0.2"
   },
   "devDependencies": {

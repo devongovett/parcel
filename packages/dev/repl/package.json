@@ -1,6 +1,6 @@
 {
   "name": "@parcel/repl",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -26,10 +26,10 @@
     "@mischnic/dot-svg": "^0.0.0",
     "@mischnic/pako": "^1.0.10",
     "@mischnic/yarn-browser": "^0.0.4",
-    "@parcel/config-repl": "2.13.2",
-    "@parcel/core": "2.13.2",
-    "@parcel/fs": "2.13.2",
-    "@parcel/package-manager": "2.13.2",
+    "@parcel/config-repl": "2.13.3",
+    "@parcel/core": "2.13.3",
+    "@parcel/fs": "2.13.3",
+    "@parcel/package-manager": "2.13.3",
     "comlink": "^4.3.1",
     "filesize": "^10.1.6",
     "idb": "^5.0.8",

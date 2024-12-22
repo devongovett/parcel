@@ -1,6 +1,6 @@
 {
   "name": "@parcel/lsp-protocol",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

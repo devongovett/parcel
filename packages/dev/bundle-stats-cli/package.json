@@ -1,6 +1,6 @@
 {
   "name": "@parcel/bundle-stats",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -20,17 +20,17 @@
   },
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.2"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/core": "2.13.2",
-    "@parcel/query": "2.13.2",
-    "@parcel/reporter-bundle-stats": "2.13.2",
-    "@parcel/utils": "2.13.2",
+    "@parcel/core": "2.13.3",
+    "@parcel/query": "2.13.3",
+    "@parcel/reporter-bundle-stats": "2.13.3",
+    "@parcel/utils": "2.13.3",
     "commander": "^12.1.0"
   },
   "devDependencies": {
-    "@parcel/babel-register": "2.13.2",
-    "@parcel/types": "2.13.2"
+    "@parcel/babel-register": "2.13.3",
+    "@parcel/types": "2.13.3"
   }
 }
