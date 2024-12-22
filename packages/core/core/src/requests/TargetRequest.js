@@ -364,7 +364,8 @@ export class TargetResolver {
           this.options.projectRoot,
           this.options.serveOptions.distDir,
         );
-        let context = targets[0]?.env.context ?? 'browser';
+        let mainTarget = targets.length === 1 ? targets[0] : null;
+        let context = mainTarget?.env.context ?? 'browser';
         let engines = BROWSER_ENVS.has(context)
           ? {browsers: DEFAULT_ENGINES.browsers}
           : {node: DEFAULT_ENGINES.node};
@@ -376,10 +377,10 @@ export class TargetResolver {
             env: createEnvironment({
               context,
               engines,
-              includeNodeModules: targets[0]?.env.includeNodeModules,
+              includeNodeModules: mainTarget?.env.includeNodeModules,
               shouldOptimize: this.options.defaultTargetOptions.shouldOptimize,
               outputFormat:
-                targets[0]?.env.outputFormat ??
+                mainTarget?.env.outputFormat ??
                 this.options.defaultTargetOptions.outputFormat,
               shouldScopeHoist:
                 this.options.defaultTargetOptions.shouldScopeHoist,

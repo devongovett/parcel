@@ -294,7 +294,7 @@ pub fn transform(
         && result.directives.contains(&"use server".into())
       {
         config.context = EnvContext::ReactServer;
-        config.is_esm_output = true;
+        config.is_esm_output = false;
       }
 
       let mut global_deps = vec![];
