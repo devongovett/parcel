@@ -72,7 +72,6 @@ export function createEnvironment({
       case 'node':
       case 'electron-main':
       case 'electron-renderer':
-      case 'react-server':
         includeNodeModules = false;
         break;
       case 'browser':
