@@ -2107,4 +2107,33 @@ export default class BundleGraph {
     this._targetEntryRoots.set(target.distDir, root);
     return root;
   }
+
+  getEntryBundles(): Array<Bundle> {
+    let entryBundleGroupIds = this._graph.getNodeIdsConnectedFrom(
+      nullthrows(this._graph.rootNodeId),
+      bundleGraphEdgeTypes.bundle,
+    );
+
+    let entries = [];
+    for (let bundleGroupId of entryBundleGroupIds) {
+      let bundleGroupNode = this._graph.getNode(bundleGroupId);
+      invariant(bundleGroupNode?.type === 'bundle_group');
+
+      let entryBundle = this.getBundlesInBundleGroup(
+        bundleGroupNode.value,
+      ).find(b => {
+        let mainEntryId = b.entryAssetIds[b.entryAssetIds.length - 1];
+        return (
+          mainEntryId != null &&
+          bundleGroupNode.value.entryAssetId === mainEntryId
+        );
+      });
+
+      if (entryBundle) {
+        entries.push(entryBundle);
+      }
+    }
+
+    return entries;
+  }
 }

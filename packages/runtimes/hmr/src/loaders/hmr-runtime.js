@@ -329,9 +329,18 @@ function fullReload() {
   ) {
     extCtx.runtime.reload();
   } else {
-    console.error(
-      '[parcel] ⚠️ An HMR update was not accepted. Please restart the process.',
-    );
+    try {
+      let {workerData, parentPort} = (module.bundle.root(
+        'node:worker_threads',
+      ) /*: any*/);
+      if (workerData?.__parcel) {
+        parentPort.postMessage('restart');
+      }
+    } catch (err) {
+      console.error(
+        '[parcel] ⚠️ An HMR update was not accepted. Please restart the process.',
+      );
+    }
   }
 }
 

@@ -53,4 +53,5 @@ export type HMRServerOptions = {|
   cacheDir: FilePath,
   inputFS: FileSystem,
   outputFS: FileSystem,
+  projectRoot: FilePath,
 |};

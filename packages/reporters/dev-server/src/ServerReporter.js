@@ -3,9 +3,11 @@
 import {Reporter} from '@parcel/plugin';
 import HMRServer from './HMRServer';
 import Server from './Server';
+import {NodeRunner} from './NodeRunner';
 
 let servers: Map<number, Server> = new Map();
 let hmrServers: Map<number, HMRServer> = new Map();
+let nodeRunners: Map<string, NodeRunner> = new Map();
 export default (new Reporter({
   async report({event, options, logger}) {
     let {serveOptions, hmrOptions} = options;
@@ -13,6 +15,7 @@ export default (new Reporter({
     let hmrPort =
       (hmrOptions && hmrOptions.port) || (serveOptions && serveOptions.port);
     let hmrServer = hmrPort ? hmrServers.get(hmrPort) : undefined;
+    let nodeRunner = nodeRunners.get(options.instanceId);
     switch (event.type) {
       case 'watchStart': {
         if (serveOptions) {
@@ -55,6 +58,7 @@ export default (new Reporter({
               cacheDir: options.cacheDir,
               inputFS: options.inputFS,
               outputFS: options.outputFS,
+              projectRoot: options.projectRoot,
             };
             hmrServer = new HMRServer(hmrServerOptions);
             hmrServers.set(serveOptions.port, hmrServer);
@@ -73,6 +77,7 @@ export default (new Reporter({
             cacheDir: options.cacheDir,
             inputFS: options.inputFS,
             outputFS: options.outputFS,
+            projectRoot: options.projectRoot,
           };
           hmrServer = new HMRServer(hmrServerOptions);
           hmrServers.set(port, hmrServer);
@@ -101,6 +106,7 @@ export default (new Reporter({
         if (server) {
           server.buildStart();
         }
+        nodeRunner?.buildStart();
         break;
       case 'buildProgress':
         if (
@@ -113,7 +119,7 @@ export default (new Reporter({
           await hmrServer.emitUpdate(event);
         }
         break;
-      case 'buildSuccess':
+      case 'buildSuccess': {
         if (serveOptions) {
           if (!server) {
             return logger.warn({
@@ -127,7 +133,14 @@ export default (new Reporter({
         if (hmrServer && options.serveOptions === false) {
           await hmrServer.emitUpdate(event);
         }
+
+        if (!nodeRunner && options.serveOptions) {
+          nodeRunner = new NodeRunner({logger, hmr: !!options.hmrOptions});
+          nodeRunners.set(options.instanceId, nodeRunner);
+        }
+        nodeRunner?.buildSuccess(event.bundleGraph);
         break;
+      }
       case 'buildFailure':
         // On buildFailure watchStart sometimes has not been called yet
         // do not throw an additional warning here

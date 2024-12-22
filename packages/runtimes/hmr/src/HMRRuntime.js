@@ -19,7 +19,7 @@ const HMR_RUNTIME = fs.readFileSync(
 );
 
 export default (new Runtime({
-  apply({bundle, options}) {
+  apply({bundle, bundleGraph, options}) {
     if (
       bundle.type !== 'js' ||
       !options.hmrOptions ||
@@ -31,6 +31,10 @@ export default (new Runtime({
     }
 
     const {host, port} = options.hmrOptions;
+    let hasServerBundles = bundleGraph
+      .getEntryBundles()
+      .some(b => b.env.isServer());
+
     return {
       filePath: FILENAME,
       code:
@@ -41,7 +45,9 @@ export default (new Runtime({
           port != null &&
             // Default to the HTTP port in the browser, only override
             // in watch mode or if hmr port != serve port
-            (!options.serveOptions || options.serveOptions.port !== port)
+            (!options.serveOptions ||
+              options.serveOptions.port !== port ||
+              hasServerBundles)
             ? port
             : null,
         )};` +

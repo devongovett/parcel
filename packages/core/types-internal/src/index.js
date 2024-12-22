@@ -1622,6 +1622,8 @@ export interface BundleGraph<TBundle: Bundle> {
   getUsedSymbols(Asset | Dependency): ?$ReadOnlySet<Symbol>;
   /** Returns the common root directory for the entry assets of a target. */
   getEntryRoot(target: Target): FilePath;
+  /** Returns a list of entry bundles. */
+  getEntryBundles(): Array<TBundle>;
 }
 
 /**

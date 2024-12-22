@@ -102,9 +102,9 @@ export class PluginLogger implements IPluginLogger {
   ): Diagnostic | Array<Diagnostic> {
     return Array.isArray(diagnostic)
       ? diagnostic.map(d => {
-          return {...d, origin: this.origin};
+          return {...d, origin: d.origin ?? this.origin};
         })
-      : {...diagnostic, origin: this.origin};
+      : {...diagnostic, origin: diagnostic.origin ?? this.origin};
   }
 
   verbose(
