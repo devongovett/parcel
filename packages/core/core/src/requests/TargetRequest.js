@@ -48,6 +48,7 @@ import {
 import {optionsProxy, toInternalSourceLocation} from '../utils';
 import {fromProjectPath, toProjectPath, joinProjectPath} from '../projectPath';
 import {requestTypes} from '../RequestTracker';
+import {BROWSER_ENVS} from '../public/Environment';
 
 type RunOpts<TResult> = {|
   input: Entry,
@@ -78,7 +79,7 @@ const COMMON_TARGETS = {
 };
 
 const DEFAULT_ENGINES = {
-  node: 'current',
+  node: process.versions.node,
   browsers: [
     'last 1 Chrome version',
     'last 1 Safari version',
@@ -345,26 +346,41 @@ export class TargetResolver {
         );
       }
     } else {
+      targets = Array.from(packageTargets.values())
+        .filter(Boolean)
+        .filter(descriptor => {
+          return (
+            descriptor &&
+            !skipTarget(descriptor.name, exclusiveTarget, descriptor.source)
+          );
+        });
+
       // Explicit targets were not provided. Either use a modern target for server
       // mode, or simply use the package.json targets.
       if (this.options.serveOptions) {
         // In serve mode, we only support a single browser target. Since the user
         // hasn't specified a target, use one targeting modern browsers for development
+        let distDir = toProjectPath(
+          this.options.projectRoot,
+          this.options.serveOptions.distDir,
+        );
+        let context = targets[0]?.env.context ?? 'browser';
+        let engines = BROWSER_ENVS.has(context)
+          ? {browsers: DEFAULT_ENGINES.browsers}
+          : {node: DEFAULT_ENGINES.node};
         targets = [
           {
             name: 'default',
-            distDir: toProjectPath(
-              this.options.projectRoot,
-              this.options.serveOptions.distDir,
-            ),
+            distDir,
             publicUrl: this.options.defaultTargetOptions.publicUrl ?? '/',
             env: createEnvironment({
-              context: 'browser',
-              engines: {
-                browsers: DEFAULT_ENGINES.browsers,
-              },
+              context,
+              engines,
+              includeNodeModules: targets[0]?.env.includeNodeModules,
               shouldOptimize: this.options.defaultTargetOptions.shouldOptimize,
-              outputFormat: this.options.defaultTargetOptions.outputFormat,
+              outputFormat:
+                targets[0]?.env.outputFormat ??
+                this.options.defaultTargetOptions.outputFormat,
               shouldScopeHoist:
                 this.options.defaultTargetOptions.shouldScopeHoist,
               sourceMap: this.options.defaultTargetOptions.sourceMaps
@@ -373,15 +389,6 @@ export class TargetResolver {
             }),
           },
         ];
-      } else {
-        targets = Array.from(packageTargets.values())
-          .filter(Boolean)
-          .filter(descriptor => {
-            return (
-              descriptor &&
-              !skipTarget(descriptor.name, exclusiveTarget, descriptor.source)
-            );
-          });
       }
     }
 

@@ -3,18 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "server": "dist/server.js",
+  "source": "src/server.tsx",
   "targets": {
     "server": {
-      "source": "src/server.tsx",
       "context": "react-server",
-      "outputFormat": "commonjs",
       "includeNodeModules": {
         "express": false
       }
     }
-  },
-  "engines": {
-    "node": ">= 18"
   },
   "dependencies": {
     "express": "^4.18.2",
