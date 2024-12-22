@@ -268,9 +268,9 @@ export default class HMRServer {
 
   getSourceURL(asset: Asset): string {
     let origin = '';
-    // $FlowFixMe
     if (
       !this.options.devServer ||
+      // $FlowFixMe
       this.bundleGraph?.getEntryBundles().some(b => b.env.isServer())
     ) {
       origin = `http://${this.options.host || 'localhost'}:${
