@@ -111,7 +111,9 @@ export async function _report(
 
       if (
         options.serveOptions &&
-        event.bundleGraph.getEntryBundles().some(b => b.env.isBrowser())
+        event.bundleGraph
+          .getEntryBundles()
+          .some(b => b.env.isBrowser() || b.type === 'html')
       ) {
         persistMessage(
           chalk.blue.bold(

@@ -125,6 +125,7 @@ export default (new Packager({
 
     return [
       {
+        type: 'html',
         contents: Readable.from(response),
       },
       {
