@@ -50,7 +50,6 @@
   "runtimes": [
     "@parcel/runtime-js",
     "@parcel/runtime-browser-hmr",
-    "@parcel/runtime-react-refresh",
     "@parcel/runtime-service-worker"
   ],
   "optimizers": {

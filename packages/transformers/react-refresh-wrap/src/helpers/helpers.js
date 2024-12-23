@@ -1,5 +1,4 @@
 var Refresh = require('react-refresh/runtime');
-var {version} = require('react-refresh/package.json');
 
 function debounce(func, delay) {
   if (process.env.NODE_ENV === 'test') {
@@ -33,24 +32,42 @@ var enqueueUpdate = debounce(function () {
   Refresh.performReactRefresh();
 }, 30);
 
+module.exports.init = function () {
+  if (!globalThis.$RefreshReg$) {
+    Refresh.injectIntoGlobalHook(globalThis);
+    globalThis.$RefreshReg$ = function () {};
+    globalThis.$RefreshSig$ = function () {
+      return function (type) {
+        return type;
+      };
+    };
+
+    if (typeof window !== 'undefined') {
+      let ErrorOverlay = require('react-error-overlay');
+      ErrorOverlay.setEditorHandler(function editorHandler(errorLocation) {
+        let file = `${errorLocation.fileName}:${
+          errorLocation.lineNumber || 1
+        }:${errorLocation.colNumber || 1}`;
+        fetch(`/__parcel_launch_editor?file=${encodeURIComponent(file)}`);
+      });
+
+      ErrorOverlay.startReportingRuntimeErrors({
+        onError: function () {},
+      });
+
+      window.addEventListener('parcelhmraccept', () => {
+        ErrorOverlay.dismissRuntimeErrors();
+      });
+    }
+  }
+};
+
 // Everything below is either adapted or copied from
 // https://github.com/facebook/metro/blob/61de16bd1edd7e738dd0311c89555a644023ab2d/packages/metro/src/lib/polyfills/require.js
 // MIT License - Copyright (c) Facebook, Inc. and its affiliates.
 
 module.exports.prelude = function (module) {
-  globalThis.__REACT_REFRESH_VERSION_TRANSFORMER = version;
   globalThis.$RefreshReg$ = function (type, id) {
-    if (
-      globalThis.__REACT_REFRESH_VERSION_TRANSFORMER &&
-      globalThis.__REACT_REFRESH_VERSION_RUNTIME &&
-      globalThis.__REACT_REFRESH_VERSION_TRANSFORMER !==
-        globalThis.__REACT_REFRESH_VERSION_RUNTIME
-    ) {
-      // Both versions were set and they did not match
-      throw new Error(
-        `react-refresh versions did not match between transformer and runtime. Please check your dependencies. Transformer: ${globalThis.__REACT_REFRESH_VERSION_TRANSFORMER}, Runtime: ${globalThis.__REACT_REFRESH_VERSION_RUNTIME}`,
-      );
-    }
     Refresh.register(type, module.id + ' ' + id);
   };
   globalThis.$RefreshSig$ = Refresh.createSignatureFunctionForTransform;
