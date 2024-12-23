@@ -1,0 +1,16 @@
+{
+  "name": "@parcel/config-react-ssg",
+  "version": "2.13.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/parcel.git"
+  },
+  "main": "index.json",
+  "dependencies": {
+    "@parcel/config-default": "2.13.3",
+    "@parcel/namer-ssg": "2.13.3",
+    "@parcel/packager-react-ssg": "2.13.3",
+    "@parcel/runtime-rsc": "2.13.3"
+  }
+}
