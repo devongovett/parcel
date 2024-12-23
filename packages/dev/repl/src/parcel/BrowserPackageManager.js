@@ -29,7 +29,6 @@ import resolverDefault from '@parcel/resolver-default';
 import resolverREPLRuntimes from '@parcel/resolver-repl-runtimes';
 import runtimeHMR from '@parcel/runtime-browser-hmr';
 import runtimeJs from '@parcel/runtime-js';
-import runtimeReactRefresh from '@parcel/runtime-react-refresh';
 import transformerBabel from '@parcel/transformer-babel';
 import transformerCss from '@parcel/transformer-css';
 import transformerHtml from '@parcel/transformer-html';
@@ -57,7 +56,6 @@ export const BUILTINS = {
   '@parcel/resolver-repl-runtimes': resolverREPLRuntimes,
   '@parcel/runtime-browser-hmr': runtimeHMR,
   '@parcel/runtime-js': runtimeJs,
-  '@parcel/runtime-react-refresh': runtimeReactRefresh,
   '@parcel/transformer-babel': transformerBabel,
   '@parcel/transformer-css': transformerCss,
   '@parcel/transformer-html': transformerHtml,
