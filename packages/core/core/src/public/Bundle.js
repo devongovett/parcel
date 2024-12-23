@@ -17,6 +17,7 @@ import type {
   Stats,
   Target as ITarget,
   BundleBehavior,
+  PackagedBundleFile,
 } from '@parcel/types';
 import type BundleGraph from '../BundleGraph';
 
@@ -263,7 +264,7 @@ export class PackagedBundle extends NamedBundle implements IPackagedBundle {
   #bundle /*: InternalBundle */;
   #bundleGraph /*: BundleGraph */;
   #options /*: ParcelOptions */;
-  #bundleInfo /*: ?PackagedBundleInfo */;
+  #bundleInfo /*: ?PackagedBundleInfo[] */;
 
   constructor(
     sentinel: mixed,
@@ -307,7 +308,7 @@ export class PackagedBundle extends NamedBundle implements IPackagedBundle {
     internalBundle: InternalBundle,
     bundleGraph: BundleGraph,
     options: ParcelOptions,
-    bundleInfo: ?PackagedBundleInfo,
+    bundleInfo: ?(PackagedBundleInfo[]),
   ): PackagedBundle {
     let packagedBundle = PackagedBundle.get(
       internalBundle,
@@ -321,17 +322,26 @@ export class PackagedBundle extends NamedBundle implements IPackagedBundle {
   get filePath(): string {
     return fromProjectPath(
       this.#options.projectRoot,
-      nullthrows(this.#bundleInfo).filePath,
+      nullthrows(this.#bundleInfo)[0].filePath,
     );
   }
 
   get type(): string {
     // The bundle type may be overridden in the packager.
     // However, inline bundles will not have a bundleInfo here since they are not written to the filesystem.
-    return this.#bundleInfo ? this.#bundleInfo.type : this.#bundle.type;
+    return this.#bundleInfo ? this.#bundleInfo[0].type : this.#bundle.type;
   }
 
   get stats(): Stats {
-    return nullthrows(this.#bundleInfo).stats;
+    return nullthrows(this.#bundleInfo)[0].stats;
+  }
+
+  get files(): PackagedBundleFile[] {
+    return this.#bundleInfo
+      ? this.#bundleInfo.map(i => ({
+          filePath: fromProjectPath(this.#options.projectRoot, i.filePath),
+          stats: i.stats,
+        }))
+      : [];
   }
 }

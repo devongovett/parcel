@@ -31,7 +31,7 @@ type ParcelBuildRequestInput = {|
 
 export type ParcelBuildRequestResult = {|
   bundleGraph: BundleGraph,
-  bundleInfo: Map<string, PackagedBundleInfo>,
+  bundleInfo: Map<string, PackagedBundleInfo[]>,
   changedAssets: Map<string, Asset>,
   assetRequests: Array<AssetGroup>,
 |};

@@ -3,7 +3,7 @@ import assert from 'assert';
 import path from 'path';
 import {bundle, overlayFS, fsFixture, assertBundles} from '@parcel/test-utils';
 
-describe.only('react static', function () {
+describe('react static', function () {
   let count = 0;
   let dir;
   beforeEach(async () => {
@@ -94,9 +94,17 @@ describe.only('react static', function () {
       {skipNodeModules: true},
     );
 
-    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    let files = b.getBundles()[0].files;
+    assert.equal(files.length, 2);
+    assert.equal(path.basename(files[0].filePath), 'index.html');
+    assert.equal(path.basename(files[1].filePath), 'index.rsc');
+
+    let output = await overlayFS.readFile(files[0].filePath, 'utf8');
     assert(output.includes('<h1>This is an RSC!</h1><p>Client</p>'));
     assert(output.includes('<script type="module">import '));
+
+    let rsc = await overlayFS.readFile(files[1].filePath, 'utf8');
+    assert(rsc.includes('{"children":"This is an RSC!"}'));
   });
 
   it('should render a list of pages', async function () {

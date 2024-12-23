@@ -1448,6 +1448,15 @@ export interface PackagedBundle extends NamedBundle {
   +filePath: FilePath;
   /** Statistics about the bundle. */
   +stats: Stats;
+  /** A list of all of the files written for this bundle. */
+  +files: Array<PackagedBundleFile>;
+}
+
+export interface PackagedBundleFile {
+  /** The absolute file path of the written file, including the final content hash if any. */
+  +filePath: FilePath;
+  /** Statistics about the file. */
+  +stats: Stats;
 }
 
 /**
@@ -1781,7 +1790,7 @@ export type Packager<ConfigType, BundleConfigType> = {|
       BundleGraph<NamedBundle>,
     ) => Async<{|contents: Blob|}>,
     getSourceMapReference: (map: ?SourceMap) => Async<?string>,
-  |}): Async<BundleResult>,
+  |}): Async<BundleResult | BundleResult[]>,
 |};
 
 /**

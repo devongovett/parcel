@@ -17,6 +17,7 @@ import path from 'path';
 import {ResolverBase} from '@parcel/node-resolver-core';
 import vm from 'vm';
 import nullthrows from 'nullthrows';
+import {Readable} from 'stream';
 
 export interface Page {
   url: string;
@@ -112,22 +113,25 @@ export default (new Packager({
     };
 
     let stream = renderToReadableStream(React.createElement(Component, props));
-    let [s1, s2] = stream.tee();
-    let data = createFromReadableStream(s1);
+    let [s1, renderStream] = stream.tee();
+    let [injectStream, rscStream] = s1.tee();
+    let data = createFromReadableStream(renderStream);
     function Content() {
       return React.use(data);
     }
 
     let {prelude} = await prerender(React.createElement(Content));
-    let response = prelude.pipeThrough(injectRSCPayload(s2));
-    let contents = '';
-    for await (let chunk of response) {
-      contents += Buffer.from(chunk).toString('utf8');
-    }
+    let response = prelude.pipeThrough(injectRSCPayload(injectStream));
 
-    return {
-      contents,
-    };
+    return [
+      {
+        contents: Readable.from(response),
+      },
+      {
+        type: 'rsc',
+        contents: Readable.from(rscStream),
+      },
+    ];
   },
 }): Packager);
 
@@ -205,6 +209,7 @@ async function loadBundleUncached(
       return cachedModule.exports;
     }
 
+    // Build a mapping of dependencies to their resolved assets.
     let deps = new Map();
     for (let dep of bundleGraph.getDependencies(asset)) {
       if (bundleGraph.isDependencySkipped(dep)) {

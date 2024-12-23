@@ -24,7 +24,7 @@ type PackageRequestInput = {|
   useMainThread?: boolean,
 |};
 
-export type PackageRequestResult = BundleInfo;
+export type PackageRequestResult = BundleInfo[];
 
 type RunInput<TResult> = {|
   input: PackageRequestInput,
@@ -34,7 +34,7 @@ type RunInput<TResult> = {|
 export type PackageRequest = {|
   id: ContentKey,
   +type: typeof requestTypes.package_request,
-  run: (RunInput<BundleInfo>) => Async<BundleInfo>,
+  run: (RunInput<BundleInfo[]>) => Async<BundleInfo[]>,
   input: PackageRequestInput,
 |};
 
@@ -95,8 +95,10 @@ async function run({input, api, farm}) {
     }
   }
 
-  // $FlowFixMe[cannot-write] time is marked read-only, but this is the exception
-  bundleInfo.time = Date.now() - start;
+  for (let info of bundleInfo) {
+    // $FlowFixMe[cannot-write] time is marked read-only, but this is the exception
+    info.time = Date.now() - start;
+  }
 
   api.storeResult(bundleInfo);
   return bundleInfo;

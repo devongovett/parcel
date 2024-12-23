@@ -2,7 +2,7 @@
 
 import type {FileSystem, FileOptions} from '@parcel/fs';
 import type {ContentKey} from '@parcel/graph';
-import type {Async, FilePath, Compressor} from '@parcel/types';
+import type {Async, Compressor} from '@parcel/types';
 
 import type {RunAPI, StaticRunOpts} from '../RequestTracker';
 import type {Bundle, PackagedBundleInfo, ParcelOptions} from '../types';
@@ -51,7 +51,7 @@ type WriteBundleRequestInput = {|
   hashRefToNameHash: Map<string, string>,
 |};
 
-export type WriteBundleRequestResult = PackagedBundleInfo;
+export type WriteBundleRequestResult = PackagedBundleInfo[];
 
 type RunInput<TResult> = {|
   input: WriteBundleRequestInput,
@@ -61,7 +61,7 @@ type RunInput<TResult> = {|
 export type WriteBundleRequest = {|
   id: ContentKey,
   +type: typeof requestTypes.write_bundle_request,
-  run: (RunInput<PackagedBundleInfo>) => Async<PackagedBundleInfo>,
+  run: (RunInput<PackagedBundleInfo[]>) => Async<PackagedBundleInfo[]>,
   input: WriteBundleRequestInput,
 |};
 
@@ -137,12 +137,6 @@ async function run({input, options, api}) {
       await options.cache.getBlob(cacheKeys.content),
     );
   }
-  let size = 0;
-  contentStream = contentStream.pipe(
-    new TapStream(buf => {
-      size += buf.length;
-    }),
-  );
 
   let configResult = nullthrows(
     await api.runRequest<null, ConfigAndCachePath>(createParcelConfigRequest()),
@@ -152,7 +146,7 @@ async function run({input, options, api}) {
   let {devDeps, invalidDevDeps} = await getDevDepRequests(api);
   invalidateDevDeps(invalidDevDeps, options, config);
 
-  await writeFiles(
+  let files = await writeFiles(
     contentStream,
     info,
     hashRefToNameHash,
@@ -171,7 +165,7 @@ async function run({input, options, api}) {
     !bundle.env.sourceMap.inline &&
     (await options.cache.has(mapKey))
   ) {
-    await writeFiles(
+    let mapFiles = await writeFiles(
       blobToStream(await options.cache.getBlob(mapKey)),
       info,
       hashRefToNameHash,
@@ -183,19 +177,11 @@ async function run({input, options, api}) {
       devDeps,
       api,
     );
+    files.push(...mapFiles);
   }
 
-  let res = {
-    filePath,
-    type: info.type,
-    stats: {
-      size,
-      time: info.time ?? 0,
-    },
-  };
-
-  api.storeResult(res);
-  return res;
+  api.storeResult(files);
+  return files;
 }
 
 async function writeFiles(
@@ -208,12 +194,11 @@ async function writeFiles(
   filePath: ProjectPath,
   writeOptions: ?FileOptions,
   devDeps: Map<string, string>,
-  api: RunAPI<PackagedBundleInfo>,
-) {
+  api: RunAPI<PackagedBundleInfo[]>,
+): Promise<PackagedBundleInfo[]> {
   let compressors = await config.getCompressors(
     fromProjectPathRelative(filePath),
   );
-  let fullPath = fromProjectPath(options.projectRoot, filePath);
 
   let stream = info.hashReferences.length
     ? inputStream.pipe(replaceStream(hashRefToNameHash))
@@ -224,10 +209,11 @@ async function writeFiles(
     promises.push(
       runCompressor(
         compressor,
+        info,
         cloneStream(stream),
         options,
         outputFS,
-        fullPath,
+        filePath,
         writeOptions,
         devDeps,
         api,
@@ -235,25 +221,27 @@ async function writeFiles(
     );
   }
 
-  await Promise.all(promises);
+  let results = await Promise.all(promises);
+  return results.filter(Boolean);
 }
 
 async function runCompressor(
   compressor: LoadedPlugin<Compressor>,
+  info: BundleInfo,
   stream: stream$Readable,
   options: ParcelOptions,
   outputFS: FileSystem,
-  filePath: FilePath,
+  inputFilePath: ProjectPath,
   writeOptions: ?FileOptions,
   devDeps: Map<string, string>,
-  api: RunAPI<PackagedBundleInfo>,
-) {
+  api: RunAPI<PackagedBundleInfo[]>,
+): Promise<PackagedBundleInfo | null> {
   let measurement;
   try {
     measurement = tracer.createMeasurement(
       compressor.name,
       'compress',
-      path.relative(options.projectRoot, filePath),
+      fromProjectPathRelative(inputFilePath),
     );
     let res = await compressor.plugin.compress({
       stream,
@@ -262,21 +250,45 @@ async function runCompressor(
       tracer: new PluginTracer({origin: compressor.name, category: 'compress'}),
     });
 
+    let filePath = inputFilePath;
     if (res != null) {
+      if (res.type != null) {
+        let type = res.type;
+        filePath = toProjectPathUnsafe(
+          fromProjectPathRelative(filePath) + '.' + type,
+        );
+      }
+
+      let size = 0;
+      let stream = res.stream.pipe(
+        new TapStream(buf => {
+          size += buf.length;
+        }),
+      );
+
+      let fullPath = fromProjectPath(options.projectRoot, filePath);
       await new Promise((resolve, reject) =>
         pipeline(
-          res.stream,
-          outputFS.createWriteStream(
-            filePath + (res.type != null ? '.' + res.type : ''),
-            writeOptions,
-          ),
+          stream,
+          outputFS.createWriteStream(fullPath, writeOptions),
           err => {
             if (err) reject(err);
             else resolve();
           },
         ),
       );
+
+      return {
+        filePath,
+        type: info.type,
+        stats: {
+          size,
+          time: info.time ?? 0,
+        },
+      };
     }
+
+    return null;
   } catch (err) {
     throw new ThrowableDiagnostic({
       diagnostic: errorToDiagnostic(err, {

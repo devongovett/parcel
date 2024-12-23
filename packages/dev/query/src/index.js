@@ -24,7 +24,7 @@ export async function loadGraphs(cacheDir: string): Promise<{|
   assetGraph: ?AssetGraph,
   bundleGraph: ?BundleGraph,
   requestTracker: ?RequestTracker,
-  bundleInfo: ?Map<ContentKey, PackagedBundleInfo>,
+  bundleInfo: ?Map<ContentKey, PackagedBundleInfo[]>,
   cacheInfo: ?Map<string, Array<string | number>>,
 |}> {
   function getMostRecentCacheBlobs() {
@@ -164,7 +164,7 @@ export async function loadGraphs(cacheDir: string): Promise<{|
       // $FlowFixMe[incompatible-cast]
       bundleInfo = (nullthrows(writeBundlesRequest.result): Map<
         ContentKey,
-        PackagedBundleInfo,
+        PackagedBundleInfo[],
       >);
     }
   } catch (e) {

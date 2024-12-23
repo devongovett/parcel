@@ -8,7 +8,7 @@ import {
   errorToDiagnostic,
 } from '@parcel/diagnostic';
 import {Optimizer} from '@parcel/plugin';
-import {detectSVGOVersion} from '@parcel/utils';
+import {detectSVGOVersion, blobToString} from '@parcel/utils';
 import posthtml from 'posthtml';
 import path from 'path';
 import {SVG_ATTRS, SVG_TAG_NAMES} from './svgMappings';
@@ -102,12 +102,7 @@ export default (new Optimizer({
       return {contents, map};
     }
 
-    if (typeof contents !== 'string') {
-      throw new Error(
-        'HTMLNanoOptimizer: Only string contents are currently supported',
-      );
-    }
-
+    let code = await blobToString(contents);
     const clonedConfig = config.contents || {};
 
     // $FlowFixMe
@@ -150,7 +145,7 @@ export default (new Optimizer({
 
     return {
       contents: (
-        await posthtml(plugins).process(contents, {
+        await posthtml(plugins).process(code, {
           xmlMode: bundle.type === 'xhtml',
           closingSingleTag: bundle.type === 'xhtml' ? 'slash' : undefined,
         })
