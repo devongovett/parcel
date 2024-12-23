@@ -1,8 +1,0 @@
-{
-  "extends": "@parcel/config-default",
-  "runtimes": ["@parcel/runtime-rsc", "..."],
-  "namers": ["@parcel/namer-ssg", "..."],
-  "packagers": {
-    "*.html": "@parcel/packager-react-ssg"
-  }
-}

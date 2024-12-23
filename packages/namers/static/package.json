@@ -1,5 +1,5 @@
 {
-  "name": "@parcel/packager-react-ssg",
+  "name": "@parcel/namer-static",
   "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
@@ -13,18 +13,15 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
-  "main": "lib/ReactSSGPackager.js",
-  "source": "src/ReactSSGPackager.js",
+  "main": "lib/StaticNamer.js",
+  "source": "src/StaticNamer.js",
   "engines": {
     "node": ">= 16.0.0",
     "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/node-resolver-core": "3.4.3",
+    "@parcel/diagnostic": "2.13.3",
     "@parcel/plugin": "2.13.3",
-    "@parcel/types": "2.13.3",
-    "@parcel/utils": "2.13.3",
-    "rsc-html-stream": "^0.0.4",
     "nullthrows": "^1.1.1"
   }
 }

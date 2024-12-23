@@ -43,14 +43,6 @@ describe('react server components', function () {
             }),
           );
 
-          await overlayFS.writeFile(
-            path.join(dir, '.parcelrc'),
-            JSON.stringify({
-              extends: '@parcel/config-default',
-              runtimes: ['@parcel/runtime-rsc', '...'],
-            }),
-          );
-
           await overlayFS.writeFile(path.join(dir, 'yarn.lock'), '');
         });
 

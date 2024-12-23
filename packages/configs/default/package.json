@@ -36,6 +36,7 @@
     "@parcel/resolver-default": "2.13.3",
     "@parcel/runtime-browser-hmr": "2.13.3",
     "@parcel/runtime-js": "2.13.3",
+    "@parcel/runtime-rsc": "2.13.3",
     "@parcel/runtime-service-worker": "2.13.3",
     "@parcel/transformer-babel": "2.13.3",
     "@parcel/transformer-css": "2.13.3",

@@ -7,12 +7,12 @@ describe('react static', function () {
   let count = 0;
   let dir;
   beforeEach(async () => {
-    dir = path.join(__dirname, 'react-ssg', '' + ++count);
+    dir = path.join(__dirname, 'react-static', '' + ++count);
     await overlayFS.mkdirp(dir);
     await overlayFS.writeFile(
       path.join(dir, 'package.json'),
       JSON.stringify({
-        name: 'react-ssg-test',
+        name: 'react-static-test',
         dependencies: {
           react: '^19',
         },
@@ -28,7 +28,7 @@ describe('react static', function () {
     await overlayFS.writeFile(
       path.join(dir, '.parcelrc'),
       JSON.stringify({
-        extends: '@parcel/config-react-ssg',
+        extends: '@parcel/config-react-static',
       }),
     );
 
@@ -36,7 +36,7 @@ describe('react static', function () {
   });
 
   after(async () => {
-    await overlayFS.rimraf(path.join(__dirname, 'react-ssg'));
+    await overlayFS.rimraf(path.join(__dirname, 'react-static'));
   });
 
   it('should render to HTML', async function () {
