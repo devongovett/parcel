@@ -36,6 +36,7 @@ import {transformSync} from '@swc/core';
 // Package.json fields. Must match package_json.rs.
 const MAIN = 1 << 0;
 const SOURCE = 1 << 2;
+const NODE_CONDITION = 1 << 3;
 const SOURCE_CONDITION = 1 << 17;
 const ENTRIES =
   MAIN |
@@ -46,8 +47,8 @@ const ENTRIES =
 
 const CONDITIONS =
   process.env.PARCEL_BUILD_ENV !== 'production' || process.env.PARCEL_SELF_BUILD
-    ? SOURCE_CONDITION
-    : 0;
+    ? NODE_CONDITION | SOURCE_CONDITION
+    : NODE_CONDITION;
 
 const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
 
