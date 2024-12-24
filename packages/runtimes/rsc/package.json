@@ -14,7 +14,6 @@
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
   "main": "lib/RSCRuntime.js",
-  "source": "src/RSCRuntime.js",
   "exports": {
     ".": {
       "react-server": "./resources.js",

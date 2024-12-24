@@ -65,3 +65,9 @@ document.addEventListener('click', e => {
 window.addEventListener('popstate', e => {
   navigate(location.pathname);
 });
+
+// Intercept HMR window reloads, and do it with RSC instead.
+window.addEventListener('parcelhmrreload', e => {
+  e.preventDefault();
+  navigate(location.pathname);
+});
