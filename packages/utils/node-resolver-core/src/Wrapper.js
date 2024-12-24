@@ -783,8 +783,9 @@ function environmentToExportsConditions(
   const DEVELOPMENT = 1 << 8;
   const PRODUCTION = 1 << 9;
   const REACT_SERVER = 1 << 16;
+  const SOURCE = 1 << 17;
 
-  let conditions = 0;
+  let conditions = SOURCE;
   if (env.isBrowser()) {
     conditions |= BROWSER;
   }

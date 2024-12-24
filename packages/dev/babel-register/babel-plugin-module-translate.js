@@ -9,6 +9,9 @@ function resolveSource(specifier, from) {
         if (pkg.source) {
           pkg.main = pkg.source;
         }
+        if (pkg.exports?.source) {
+          pkg.main = pkg.exports.source;
+        }
       }
       return pkg;
     },

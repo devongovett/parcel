@@ -584,9 +584,7 @@ impl PackageJson {
         for (key, value) in target {
           let matches = match key {
             ExportsKey::Condition(key) => {
-              *key == ExportsCondition::SOURCE
-                || *key == ExportsCondition::DEFAULT
-                || conditions.contains(*key)
+              *key == ExportsCondition::DEFAULT || conditions.contains(*key)
             }
             ExportsKey::CustomCondition(key) => custom_conditions.iter().any(|k| k == key),
             _ => false,
