@@ -1,6 +1,6 @@
 {
-  "name": "@parcel/runtime-react-refresh",
-  "version": "2.13.0",
+  "name": "@parcel/namer-static",
+  "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -13,16 +13,15 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
-  "main": "lib/ReactRefreshRuntime.js",
-  "source": "src/ReactRefreshRuntime.js",
+  "main": "lib/StaticNamer.js",
+  "source": "src/StaticNamer.js",
   "engines": {
     "node": ">= 16.0.0",
-    "parcel": "^2.13.0"
+    "parcel": "^2.13.3"
   },
   "dependencies": {
-    "@parcel/plugin": "2.13.0",
-    "@parcel/utils": "2.13.0",
-    "react-error-overlay": "6.0.9",
-    "react-refresh": ">=0.9 <=0.14"
+    "@parcel/diagnostic": "2.13.3",
+    "@parcel/plugin": "2.13.3",
+    "nullthrows": "^1.1.1"
   }
 }

@@ -185,7 +185,10 @@ export default function collectDependencies(
         : undefined;
 
       let outputFormat = 'global';
-      if (attrs.type === 'module' && asset.env.shouldScopeHoist) {
+      if (
+        attrs.type === 'module' &&
+        (asset.env.shouldScopeHoist || asset.env.supports('esmodules', true))
+      ) {
         outputFormat = 'esmodule';
       } else {
         if (attrs.type === 'module') {

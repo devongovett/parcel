@@ -16,11 +16,7 @@
     "url:*": ["@parcel/transformer-raw"]
   },
   "namers": ["@parcel/namer-default"],
-  "runtimes": [
-    "@parcel/runtime-js",
-    "@parcel/runtime-browser-hmr",
-    "@parcel/runtime-react-refresh"
-  ],
+  "runtimes": ["@parcel/runtime-js", "@parcel/runtime-browser-hmr"],
   "optimizers": {
     "*.{js,mjs,cjs}": ["@parcel/optimizer-terser"],
     "*.css": ["@parcel/optimizer-css"]

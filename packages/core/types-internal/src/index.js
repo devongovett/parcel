@@ -167,7 +167,9 @@ export type EnvironmentContext =
   | 'worklet'
   | 'node'
   | 'electron-main'
-  | 'electron-renderer';
+  | 'electron-renderer'
+  | 'react-client'
+  | 'react-server';
 
 /** The JS module format for the bundle output */
 export type OutputFormat = 'esmodule' | 'commonjs' | 'global';
@@ -282,6 +284,8 @@ export interface Environment {
   isBrowser(): boolean;
   /** Whether <code>context</code> specifies a node context. */
   isNode(): boolean;
+  /** Whether <code>context</code> specifies a server context. */
+  isServer(): boolean;
   /** Whether <code>context</code> specifies an electron context. */
   isElectron(): boolean;
   /** Whether <code>context</code> specifies a worker context. */
@@ -1444,6 +1448,15 @@ export interface PackagedBundle extends NamedBundle {
   +filePath: FilePath;
   /** Statistics about the bundle. */
   +stats: Stats;
+  /** A list of all of the files written for this bundle. */
+  +files: Array<PackagedBundleFile>;
+}
+
+export interface PackagedBundleFile {
+  /** The absolute file path of the written file, including the final content hash if any. */
+  +filePath: FilePath;
+  /** Statistics about the file. */
+  +stats: Stats;
 }
 
 /**
@@ -1618,6 +1631,8 @@ export interface BundleGraph<TBundle: Bundle> {
   getUsedSymbols(Asset | Dependency): ?$ReadOnlySet<Symbol>;
   /** Returns the common root directory for the entry assets of a target. */
   getEntryRoot(target: Target): FilePath;
+  /** Returns a list of entry bundles. */
+  getEntryBundles(): Array<TBundle>;
 }
 
 /**
@@ -1721,6 +1736,7 @@ export type RuntimeAsset = {|
   +dependency?: Dependency,
   +isEntry?: boolean,
   +env?: EnvironmentOptions,
+  +shouldReplaceResolution?: boolean,
 |};
 
 /**
@@ -1774,7 +1790,7 @@ export type Packager<ConfigType, BundleConfigType> = {|
       BundleGraph<NamedBundle>,
     ) => Async<{|contents: Blob|}>,
     getSourceMapReference: (map: ?SourceMap) => Async<?string>,
-  |}): Async<BundleResult>,
+  |}): Async<BundleResult | BundleResult[]>,
 |};
 
 /**

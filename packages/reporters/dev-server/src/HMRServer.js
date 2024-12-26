@@ -251,7 +251,9 @@ export default class HMRServer {
     if (sourcemap) {
       let sourcemapStringified = await sourcemap.stringify({
         format: 'inline',
-        sourceRoot: SOURCES_ENDPOINT + '/',
+        sourceRoot:
+          (asset.env.isNode() ? this.options.projectRoot : SOURCES_ENDPOINT) +
+          '/',
         // $FlowFixMe
         fs: asset.fs,
       });
@@ -266,7 +268,11 @@ export default class HMRServer {
 
   getSourceURL(asset: Asset): string {
     let origin = '';
-    if (!this.options.devServer) {
+    if (
+      !this.options.devServer ||
+      // $FlowFixMe
+      this.bundleGraph?.getEntryBundles().some(b => b.env.isServer())
+    ) {
       origin = `http://${this.options.host || 'localhost'}:${
         this.options.port
       }`;

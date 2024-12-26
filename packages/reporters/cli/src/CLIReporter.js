@@ -57,18 +57,6 @@ export async function _report(
       // Clear any previous output
       resetWindow();
 
-      if (options.serveOptions) {
-        persistMessage(
-          chalk.blue.bold(
-            `Server running at ${
-              options.serveOptions.https ? 'https' : 'http'
-            }://${options.serveOptions.host ?? 'localhost'}:${
-              options.serveOptions.port
-            }`,
-          ),
-        );
-      }
-
       break;
     }
     case 'buildProgress': {
@@ -120,6 +108,23 @@ export async function _report(
       }
 
       phaseStartTimes['buildSuccess'] = Date.now();
+
+      if (
+        options.serveOptions &&
+        event.bundleGraph
+          .getEntryBundles()
+          .some(b => b.env.isBrowser() || b.type === 'html')
+      ) {
+        persistMessage(
+          chalk.blue.bold(
+            `Server running at ${
+              options.serveOptions.https ? 'https' : 'http'
+            }://${options.serveOptions.host ?? 'localhost'}:${
+              options.serveOptions.port
+            }`,
+          ),
+        );
+      }
 
       persistSpinner(
         'buildProgress',

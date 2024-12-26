@@ -33,7 +33,7 @@ pub struct JsFileSystemOptions {
 pub struct JsResolverOptions {
   pub fs: Option<JsFileSystemOptions>,
   pub include_node_modules: Option<NapiSideEffectsVariants>,
-  pub conditions: Option<u16>,
+  pub conditions: Option<u32>,
   pub module_dir_resolver: Option<JsFunction>,
   pub mode: u8,
   pub entries: Option<u8>,

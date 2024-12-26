@@ -5,6 +5,36 @@ All notable changes to Parcel will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and Parcel adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.13.3] - 2024-12-16
+
+### Fixed
+
+- Resolver
+  - Ignore invalid package.json fields – [Details](https://github.com/parcel-bundler/parcel/pull/10053)
+
+## [2.13.2] - 2024-11-25
+
+### Fixed
+
+- JavaScript
+
+  - Fix HMR when asset is duplicated between multiple bundles – [Details](https://github.com/parcel-bundler/parcel/commit/bc43a4d9e7c6f3b2dc28bf115710fe8b2bf535cc)
+
+- SASS
+  - Fix SASS resolution with non `file:` URLs – [Details](https://github.com/parcel-bundler/parcel/commit/2a6bbc56d2ecad904a6a0dea4208b8cc6e6a3f07)
+
+## [2.13.1] - 2024-11-24
+
+### Fixed
+
+- JavaScript
+
+  - Improve HMR with dynamic imports – [Details](https://github.com/parcel-bundler/parcel/pull/10017)
+  - Update SWC – [Details](https://github.com/parcel-bundler/parcel/commit/15c77cbe7557fb441df5d0fc09dab220f55fa4db)
+
+- SASS
+  - Fix SASS resolution rules for modern API – [Details](https://github.com/parcel-bundler/parcel/pull/10018)
+
 ## [2.13.0] - 2024-11-12
 
 ### Added

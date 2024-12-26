@@ -584,7 +584,9 @@ function createIdealGraph(
             }
             if (
               dependency.priority === 'lazy' ||
-              childAsset.bundleBehavior === 'isolated' // An isolated Dependency, or Bundle must contain all assets it needs to load.
+              (dependency.priority !== 'parallel' &&
+                (dependency.bundleBehavior === 'isolated' ||
+                  childAsset.bundleBehavior === 'isolated')) // An isolated Dependency, or Bundle must contain all assets it needs to load.
             ) {
               if (bundleId == null) {
                 let firstBundleGroup = nullthrows(
@@ -645,6 +647,16 @@ function createIdealGraph(
                 ),
                 dependencyPriorityEdges[dependency.priority],
               );
+
+              // If this is a sync dependency on a JS asset that won't be replaced with a URL runtime,
+              // add a reference so the bundle is loaded by the parent. This happens with React Server Components.
+              if (
+                dependency.priority === 'sync' &&
+                childAsset.type === 'js' &&
+                childAsset?.meta.jsRuntime !== 'url'
+              ) {
+                assetReference.get(childAsset).push([dependency, bundle]);
+              }
             } else if (
               dependency.priority === 'parallel' ||
               childAsset.bundleBehavior === 'inline'
@@ -1089,11 +1101,10 @@ function createIdealGraph(
       if (assetId == null) return; // deleted
       let a = assets[assetId];
       if (
-        entries.has(a) ||
         !a.isBundleSplittable ||
         (bundleRoots.get(a) &&
-          (getBundleFromBundleRoot(a).needsStableName ||
-            getBundleFromBundleRoot(a).bundleBehavior === 'isolated'))
+          getBundleFromBundleRoot(a).needsStableName &&
+          a.env.context === asset.env.context)
       ) {
         // Add asset to non-splittable bundles.
         addAssetToBundleRoot(asset, a);
@@ -1126,7 +1137,7 @@ function createIdealGraph(
           uniqueKey: manualSharedBundleKey,
           target: firstSourceBundle.target,
           type: asset.type,
-          env: firstSourceBundle.env,
+          env: asset.env,
           manualSharedBundle: manualSharedObject?.name,
         });
         bundle.sourceBundles = new Set(sourceBundles);
@@ -1233,7 +1244,12 @@ function createIdealGraph(
       let sourceBundles = reachableArray.map(
         a => nullthrows(bundleRoots.get(a))[0],
       );
-      let key = reachableArray.map(a => a.id).join(',') + '.' + asset.type;
+      let key =
+        reachableArray.map(a => a.id).join(',') +
+        '.' +
+        asset.env.context +
+        '.' +
+        asset.type;
       let bundleId = bundles.get(key);
       let bundle;
       if (bundleId == null) {
@@ -1244,7 +1260,7 @@ function createIdealGraph(
         bundle = createBundle({
           target: firstSourceBundle.target,
           type: asset.type,
-          env: firstSourceBundle.env,
+          env: asset.env,
         });
         bundle.sourceBundles = new Set(sourceBundles);
         let sharedInternalizedAssets = firstSourceBundle.internalizedAssets
@@ -1539,19 +1555,30 @@ function createIdealGraph(
     let bundle = nullthrows(bundleGraph.getNode(bundleId));
     invariant(bundle !== 'root');
 
-    if (asset.type !== bundle.type) {
+    if (
+      asset.type !== bundle.type ||
+      asset.env.context !== bundle.env.context
+    ) {
       let bundleGroup = nullthrows(bundleGraph.getNode(bundleGroupId));
       invariant(bundleGroup !== 'root');
-      let key = nullthrows(bundleGroup.mainEntryAsset).id + '.' + asset.type;
+      let key =
+        nullthrows(bundleGroup.mainEntryAsset).id +
+        '.' +
+        asset.env.context +
+        '.' +
+        asset.type;
       let typeChangeBundleId = bundles.get(key);
       if (typeChangeBundleId == null) {
         let typeChangeBundle = createBundle({
           uniqueKey: key,
-          needsStableName: bundle.needsStableName,
+          needsStableName:
+            asset.env.context !== bundle.env.context
+              ? false
+              : bundle.needsStableName,
           bundleBehavior: bundle.bundleBehavior,
           type: asset.type,
           target: bundle.target,
-          env: bundle.env,
+          env: asset.env,
         });
         typeChangeBundleId = bundleGraph.addNode(typeChangeBundle);
         bundleGraph.addEdge(bundleId, typeChangeBundleId);

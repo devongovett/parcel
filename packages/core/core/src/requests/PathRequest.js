@@ -315,7 +315,8 @@ export class ResolverRunner {
           }
 
           if (result.priority != null) {
-            dependency.priority = Priority[result.priority];
+            dependency.priority = dependency.resolverPriority =
+              Priority[result.priority];
           }
 
           if (result.invalidateOnEnvChange) {

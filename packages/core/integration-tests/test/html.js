@@ -507,7 +507,7 @@ describe('html', function () {
     );
 
     assert(
-      /^<link rel="stylesheet" href="[/\\]index\.[a-f0-9]+\.css">\s*<script src="[/\\]index\.[a-f0-9]+\.js" defer=""><\/script>\s*<h1>Hello/m.test(
+      /^<link rel="stylesheet" href="[/\\]index\.[a-f0-9]+\.css">\s*<script type="module" src="[/\\]index\.[a-f0-9]+\.js"><\/script>\s*<h1>Hello/m.test(
         html,
       ),
     );
@@ -550,7 +550,7 @@ describe('html', function () {
     );
 
     assert.equal(
-      html.match(/<script src="[/\\]{1}index\.[a-f0-9]+?\.js" defer="">/g)
+      html.match(/<script type="module" src="[/\\]{1}index\.[a-f0-9]+?\.js">/g)
         .length,
       2,
     );
@@ -1734,30 +1734,6 @@ describe('html', function () {
     assert(!/class \$[a-f0-9]+\$var\$Useless \{/.test(js));
   });
 
-  it('should remove type="module" when not scope hoisting', async function () {
-    let b = await bundle(
-      path.join(__dirname, '/integration/html-js/index.html'),
-    );
-
-    await assertBundles(b, [
-      {
-        type: 'js',
-        assets: ['esmodule-helpers.js', 'index.js', 'other.js'],
-      },
-      {
-        name: 'index.html',
-        assets: ['index.html'],
-      },
-    ]);
-
-    let html = await outputFS.readFile(
-      path.join(distDir, 'index.html'),
-      'utf8',
-    );
-    assert(!html.includes('<script type="module"'));
-    assert(html.includes('<script src='));
-  });
-
   it('should not add a nomodule version when all browsers support esmodules', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/html-js/index.html'),
@@ -2184,13 +2160,7 @@ describe('html', function () {
       },
       {
         type: 'js',
-        assets: [
-          'bundle-manifest.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'index.js',
-          'js-loader.js',
-        ],
+        assets: ['bundle-manifest.js', 'index.js', 'esm-js-loader.js'],
       },
       {
         type: 'js',
@@ -2207,13 +2177,7 @@ describe('html', function () {
       },
       {
         type: 'js',
-        assets: [
-          'bundle-manifest.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'index.js',
-          'js-loader.js',
-        ],
+        assets: ['bundle-manifest.js', 'index.js', 'esm-js-loader.js'],
       },
     ]);
   });
@@ -2535,7 +2499,6 @@ describe('html', function () {
         type: 'js',
         assets: [
           'a.js',
-          'bundle-url.js',
           'esmodule-helpers.js',
           'get-worker-url.js',
           'index.js',

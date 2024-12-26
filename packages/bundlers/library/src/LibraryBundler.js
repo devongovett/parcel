@@ -10,26 +10,36 @@ export default (new Bundler({
     // Collect dependencies from the graph.
     // We do not want to mutate the graph while traversing, so this must be done first.
     let dependencies = [];
+    let entryDeps = [];
     bundleGraph.traverse((node, context) => {
       if (node.type === 'dependency') {
         let dependency = node.value;
         if (bundleGraph.isDependencySkipped(dependency)) {
           return;
         }
+        let assets = bundleGraph.getDependencyAssets(dependency);
         dependencies.push([
           dependency,
           nullthrows(dependency.target ?? context),
+          assets,
         ]);
         if (dependency.target) {
+          entryDeps.push(dependency);
           return dependency.target;
         }
       }
     });
 
+    let bundleGroupsByTarget = new Map();
+    for (let dep of entryDeps) {
+      let target = nullthrows(dep.target);
+      let bundleGroup = bundleGraph.createBundleGroup(dep, target);
+      bundleGroupsByTarget.set(target, bundleGroup);
+    }
+
     // Create bundles for each asset.
     let bundles = new Map();
-    for (let [dependency, target] of dependencies) {
-      let assets = bundleGraph.getDependencyAssets(dependency);
+    for (let [dependency, target, assets] of dependencies) {
       if (assets.length === 0) {
         continue;
       }
@@ -40,14 +50,13 @@ export default (new Bundler({
         let parentKey = getBundleKey(parentAsset, target);
         parentBundle = bundles.get(parentKey);
       }
-      let bundleGroup;
 
       // Create a separate bundle group/bundle for each asset.
       for (let asset of assets) {
         let key = getBundleKey(asset, target);
         let bundle = bundles.get(key);
         if (!bundle) {
-          bundleGroup ??= bundleGraph.createBundleGroup(dependency, target);
+          let bundleGroup = nullthrows(bundleGroupsByTarget.get(target));
           bundle = bundleGraph.createBundle({
             entryAsset: asset,
             needsStableName: dependency.isEntry,

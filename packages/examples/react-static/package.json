@@ -1,0 +1,22 @@
+{
+  "name": "parcel-rsc-static-example",
+  "version": "0.0.0",
+  "private": true,
+  "source": "pages/*.tsx",
+  "targets": {
+    "default": {
+      "context": "react-server",
+      "scopeHoist": false
+    }
+  },
+  "scripts": {
+    "start": "parcel --config .parcelrc",
+    "build": "parcel build"
+  },
+  "dependencies": {
+    "react": "^19",
+    "react-dom": "^19",
+    "react-server-dom-parcel": "^0.0.1",
+    "rsc-html-stream": "^0.0.4"
+  }
+}

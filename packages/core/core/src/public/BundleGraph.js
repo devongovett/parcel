@@ -332,4 +332,10 @@ export default class BundleGraph<TBundle: IBundle>
       targetToInternalTarget(target),
     );
   }
+
+  getEntryBundles(): Array<TBundle> {
+    return this.#graph
+      .getEntryBundles()
+      .map(b => this.#createBundle(b, this.#graph, this.#options));
+  }
 }

@@ -1,3 +1,3 @@
 import 'react';
-import 'react-dom';
+import 'react-dom/client';
 import 'lodash';

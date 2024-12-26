@@ -1,5 +1,5 @@
 import * as React from 'react';
-import ReactDOM from 'react-dom';
+import ReactDOM from 'react-dom/client';
 
 console.log({hmrOptions: module.hot});
 
@@ -13,4 +13,6 @@ if (module.hot) {
   });
 }
 
-ReactDOM.render(<div>Hello world!</div>, document.getElementById('app'));
+ReactDOM.createRoot(document.getElementById('app')).render(
+  <div>Hello world!</div>,
+);

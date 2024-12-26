@@ -27,7 +27,7 @@ oxc_resolver = "2"
 node_resolver = "0.15.0"
 criterion = { version = "*", features = ["html_reports"] }
 url = "*"
-deno_package_json = "*"
+deno_package_json = "0.1.2"
 rspack_resolver = "*"
 
 [target.'cfg(windows)'.dev-dependencies]

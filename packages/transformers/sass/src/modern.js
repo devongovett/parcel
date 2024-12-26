@@ -95,7 +95,15 @@ function resolvePathImporter({
         See also: https://github.com/sass/dart-sass/blob/006e6aa62f2417b5267ad5cdb5ba050226fab511/lib/src/importer/node/implementation.dart
       */
 
-      let containingPath = fileURLToPath(containingUrl);
+      let containingPath = containingUrl
+        ? fileURLToPath(containingUrl)
+        : asset.filePath;
+      if (!containingUrl && url.startsWith('file:')) {
+        // If containingUrl is not provided, then url should be an absolute file:/// URL.
+        let filePath = fileURLToPath(url);
+        url = path.relative(path.dirname(containingPath), filePath);
+      }
+
       let paths = [path.dirname(containingPath)];
       if (loadPaths) {
         paths.push(...loadPaths);
@@ -110,17 +118,39 @@ function resolvePathImporter({
         );
       }
 
+      // The importer should look for stylesheets by adding the prefix _ to the URL's basename,
+      // and by adding the extensions .sass and .scss if the URL doesn't already have one of those extensions.
       const urls = [url];
       const urlFileName = path.basename(url);
       if (urlFileName[0] !== '_') {
-        urls.push(path.join(path.dirname(url), `_${urlFileName}`));
+        urls.push(path.posix.join(path.dirname(url), `_${urlFileName}`));
       }
+
+      let ext = path.extname(urlFileName);
+      if (ext !== '.sass' && ext !== '.scss') {
+        for (let url of [...urls]) {
+          urls.push(url + '.sass');
+          urls.push(url + '.scss');
+        }
+      }
+
+      // If none of the possible paths is valid, the importer should perform the same resolution on the URL followed by /index.
+      urls.push(path.posix.join(url, 'index.sass'));
+      urls.push(path.posix.join(url, 'index.scss'));
+      urls.push(path.posix.join(url, '_index.sass'));
+      urls.push(path.posix.join(url, '_index.scss'));
 
       if (url[0] !== '~') {
         for (let p of paths) {
           for (let u of urls) {
-            const filePath = path.resolve(p, u);
-            if (await asset.fs.exists(filePath)) {
+            let filePath = path.resolve(p, u);
+            let stat;
+            try {
+              stat = await asset.fs.stat(filePath);
+            } catch (err) {
+              // ignore.
+            }
+            if (stat?.isFile()) {
               return pathToFileURL(filePath);
             }
 

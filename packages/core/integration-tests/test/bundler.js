@@ -1226,12 +1226,11 @@ describe('bundler', function () {
         {
           assets: [
             'bundle-manifest.js',
-            'bundle-url.js',
             'cacheLoader.js',
             'css-loader.js',
             'esmodule-helpers.js',
             'index.js',
-            'js-loader.js',
+            'esm-js-loader.js',
           ],
         },
         {
@@ -1389,12 +1388,11 @@ describe('bundler', function () {
         {
           assets: [
             'bundle-manifest.js',
-            'bundle-url.js',
             'cacheLoader.js',
             'css-loader.js',
             'esmodule-helpers.js',
             'index.js',
-            'js-loader.js',
+            'esm-js-loader.js',
           ],
         },
         {
@@ -1696,13 +1694,13 @@ describe('bundler', function () {
           assets: ['index.html'],
         },
         {
-          assets: ['a.js', 'i.js'],
+          assets: ['a.js', 'b.js', 'c.js', 'h.js', 'j.js'],
         },
         {
-          assets: ['vendor.js', 'b.js', 'j.js'],
+          assets: ['vendor.js', 'd.js', 'i.js'],
         },
         {
-          assets: ['c.js', 'd.js', 'e.js', 'f.js', 'g.js', 'h.js'],
+          assets: ['e.js', 'f.js', 'g.js'],
         },
         {
           assets: ['esmodule-helpers.js', 'index.js'],

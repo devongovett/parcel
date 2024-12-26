@@ -41,26 +41,38 @@ bitflags! {
 #[derive(serde::Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 struct SerializedPackageJson {
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   pub name: String,
-  #[serde(rename = "type", default)]
+  #[serde(rename = "type", default, deserialize_with = "ok_or_default")]
   pub module_type: ModuleType,
+  #[serde(default, deserialize_with = "ok_or_default")]
   main: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   module: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   tsconfig: Option<PathBuf>,
+  #[serde(default, deserialize_with = "ok_or_default")]
   types: Option<PathBuf>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   pub source: SourceField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   browser: BrowserField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   alias: IndexMap<Specifier<'static>, AliasValue<'static>>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   exports: ExportsField,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   imports: IndexMap<ExportsKey<'static>, ExportsField>,
-  #[serde(default)]
+  #[serde(default, deserialize_with = "ok_or_default")]
   side_effects: SideEffects,
+}
+
+fn ok_or_default<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+  T: serde::Deserialize<'de> + Default,
+  D: serde::Deserializer<'de>,
+{
+  Ok(T::deserialize(deserializer).unwrap_or_default())
 }
 
 #[derive(Debug)]
@@ -124,7 +136,12 @@ pub enum ExportsField {
 }
 
 impl ExportsField {
-  fn convert_paths(&mut self, base: &CachedPath, cache: &Cache) {
+  fn convert_paths<F: FnMut() -> bool>(
+    &mut self,
+    base: &CachedPath,
+    cache: &Cache,
+    is_source: &mut F,
+  ) {
     match self {
       ExportsField::String(target) => {
         if target.starts_with("./") && !target.contains('*') {
@@ -150,12 +167,16 @@ impl ExportsField {
       }
       ExportsField::Array(arr) => {
         for item in arr {
-          item.convert_paths(base, cache);
+          item.convert_paths(base, cache, is_source);
         }
       }
       ExportsField::Map(map) => {
-        for val in map.values_mut() {
-          val.convert_paths(base, cache);
+        for (key, val) in map.iter_mut() {
+          if matches!(key, ExportsKey::Condition(ExportsCondition::SOURCE)) && !is_source() {
+            *val = ExportsField::None;
+          } else {
+            val.convert_paths(base, cache, is_source);
+          }
         }
       }
       _ => {}
@@ -165,7 +186,7 @@ impl ExportsField {
 
 bitflags! {
   /// A common package.json "exports" field.
-  pub struct ExportsCondition: u16 {
+  pub struct ExportsCondition: u32 {
     /// The "import" condition. True when the package was referenced using the ESM `import` syntax.
     const IMPORT = 1 << 0;
     /// The "require" condition. True when the package was referenced using the CommonJS `require` function.
@@ -198,6 +219,10 @@ bitflags! {
     const LESS = 1 << 14;
     /// The "stylus" condition. True when the package was referenced from a Stylus stylesheet.
     const STYLUS = 1 << 15;
+    /// The "react-server" condition.
+    const REACT_SERVER = 1 << 16;
+    /// The "source" condition.
+    const SOURCE = 1 << 17;
   }
 }
 
@@ -227,6 +252,8 @@ impl TryFrom<&str> for ExportsCondition {
       "sass" => ExportsCondition::SASS,
       "less" => ExportsCondition::LESS,
       "stylus" => ExportsCondition::STYLUS,
+      "react-server" => ExportsCondition::REACT_SERVER,
+      "source" => ExportsCondition::SOURCE,
       _ => return Err(()),
     })
   }
@@ -310,21 +337,8 @@ pub enum ExportsResolution<'a> {
 impl PackageJson {
   pub fn read(path: &CachedPath, cache: &Cache) -> Result<PackageJson, ResolverError> {
     let contents = cache.fs.read_to_string(path.as_path())?;
-    let mut pkg = PackageJson::parse(path.clone(), contents, cache)
+    let pkg = PackageJson::parse(path.clone(), contents, cache)
       .map_err(|e| JsonError::new(path.as_path().into(), e))?;
-
-    // If the package has a `source` field, make sure
-    // - the package is behind symlinks
-    // - and the realpath to the packages does not includes `node_modules`.
-    // Since such package is likely a pre-compiled module
-    // installed with package managers, rather than including a source code.
-    if !matches!(pkg.source, SourceField::None) {
-      let realpath = pkg.path.canonicalize(&cache)?;
-      if realpath == pkg.path || realpath.in_node_modules() {
-        pkg.source = SourceField::None;
-      }
-    }
-
     Ok(pkg)
   }
 
@@ -338,7 +352,38 @@ impl PackageJson {
     mut parsed: SerializedPackageJson,
     cache: &Cache,
   ) -> PackageJson {
-    parsed.exports.convert_paths(&path, cache);
+    // If the package has a `source` field, make sure
+    // - the package is behind symlinks
+    // - and the realpath to the packages does not includes `node_modules`.
+    // Since such package is likely a pre-compiled module
+    // installed with package managers, rather than including a source code.
+    let mut is_source = None;
+
+    let mut check_in_source = || {
+      if let Some(is_source) = is_source {
+        return is_source;
+      }
+
+      if let Ok(realpath) = path.canonicalize(&cache) {
+        let is_src = realpath != path && !realpath.in_node_modules();
+        is_source = Some(is_src);
+        is_src
+      } else {
+        is_source = Some(false);
+        false
+      }
+    };
+
+    if !matches!(parsed.source, SourceField::None) {
+      if !check_in_source() {
+        parsed.source = SourceField::None;
+      }
+    }
+
+    parsed
+      .exports
+      .convert_paths(&path, cache, &mut check_in_source);
+
     PackageJson {
       name: parsed.name,
       module_type: parsed.module_type,
@@ -1932,5 +1977,7 @@ mod tests {
     assert_eq!(pkg.module_type, ModuleType::CommonJs);
     let pkg: SerializedPackageJson = serde_json::from_str(r#"{"name":"foo"}"#).unwrap();
     assert_eq!(pkg.module_type, ModuleType::CommonJs);
+    let pkg: SerializedPackageJson = serde_json::from_str(r#"{"main":false}"#).unwrap();
+    assert_eq!(pkg.main, None);
   }
 }

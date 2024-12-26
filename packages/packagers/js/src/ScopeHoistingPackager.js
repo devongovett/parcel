@@ -40,21 +40,28 @@ const REPLACEMENT_RE =
   /\n|import\s+"([0-9a-f]{16}:.+?)";|(?:\$[0-9a-f]{16}\$exports)|(?:\$[0-9a-f]{16}\$(?:import|importAsync|require)\$[0-9a-f]+(?:\$[0-9a-f]+)?)/g;
 
 const BUILTINS = Object.keys(globals.builtin);
+const BROWSER_BUILTINS = new Set([
+  ...BUILTINS,
+  ...Object.keys(globals.browser),
+]);
+const NODE_BUILTINS = new Set([...BUILTINS, ...Object.keys(globals.node)]);
 const GLOBALS_BY_CONTEXT = {
-  browser: new Set([...BUILTINS, ...Object.keys(globals.browser)]),
+  browser: BROWSER_BUILTINS,
+  'react-client': BROWSER_BUILTINS,
   'web-worker': new Set([...BUILTINS, ...Object.keys(globals.worker)]),
   'service-worker': new Set([
     ...BUILTINS,
     ...Object.keys(globals.serviceworker),
   ]),
   worklet: new Set([...BUILTINS]),
-  node: new Set([...BUILTINS, ...Object.keys(globals.node)]),
-  'electron-main': new Set([...BUILTINS, ...Object.keys(globals.node)]),
+  node: NODE_BUILTINS,
+  'electron-main': NODE_BUILTINS,
   'electron-renderer': new Set([
     ...BUILTINS,
     ...Object.keys(globals.node),
     ...Object.keys(globals.browser),
   ]),
+  'react-server': NODE_BUILTINS,
 };
 
 const OUTPUT_FORMATS = {
@@ -131,12 +138,15 @@ export class ScopeHoistingPackager {
     // picked up by another bundler later at which point runtimes will be added.
     if (
       this.bundle.env.isLibrary ||
-      this.bundle.env.outputFormat === 'commonjs'
+      this.bundle.env.outputFormat === 'commonjs' ||
+      (this.bundle.env.outputFormat === 'esmodule' && !this.isAsyncBundle)
     ) {
       for (let b of this.bundleGraph.getReferencedBundles(this.bundle, {
         recursive: false,
       })) {
-        this.externals.set(relativeBundlePath(this.bundle, b), new Map());
+        if (this.bundle.env.isLibrary || b.type === 'js') {
+          this.externals.set(relativeBundlePath(this.bundle, b), new Map());
+        }
       }
     }
 
@@ -374,7 +384,11 @@ export class ScopeHoistingPackager {
           // If the module has a namespace (e.g. commonjs), and this is not an entry, only export the namespace
           // as default, without individual exports. This mirrors the importing logic in addExternal, avoiding
           // extra unused exports and potential for non-identifier export names.
-          if (hasNamespace && this.isAsyncBundle && exportAs !== '*') {
+          if (
+            hasNamespace &&
+            !this.bundle.needsStableName &&
+            exportAs !== '*'
+          ) {
             continue;
           }
 
@@ -500,6 +514,19 @@ export class ScopeHoistingPackager {
     // TODO: maybe a meta prop?
     if (code.includes('$parcel$global')) {
       this.usedHelpers.add('$parcel$global');
+    }
+
+    let usedHelpers = asset.meta.usedHelpers;
+    if (typeof usedHelpers === 'number') {
+      if (usedHelpers & 1) {
+        this.usedHelpers.add('$parcel$distDir');
+      }
+      if (usedHelpers & 2) {
+        this.usedHelpers.add('$parcel$publicUrl');
+      }
+      if (usedHelpers & 4) {
+        this.usedHelpers.add('$parcel$import');
+      }
     }
 
     if (this.bundle.env.isNode() && asset.meta.has_node_replacements) {
@@ -1357,7 +1384,7 @@ ${code}
     for (let helper of this.usedHelpers) {
       let currentHelper = helpers[helper];
       if (typeof currentHelper === 'function') {
-        currentHelper = helpers[helper](this.bundle.env);
+        currentHelper = helpers[helper](this.bundle.env, this.bundle);
       }
       res += currentHelper;
       if (enableSourceMaps) {
@@ -1371,7 +1398,9 @@ ${code}
       let parentBundles = this.bundleGraph.getParentBundles(this.bundle);
       let mightBeFirstJS =
         parentBundles.length === 0 ||
-        parentBundles.some(b => b.type !== 'js') ||
+        parentBundles.some(
+          b => b.type !== 'js' || b.env.context !== this.bundle.env.context,
+        ) ||
         this.bundleGraph
           .getBundleGroupsContainingBundle(this.bundle)
           .some(g => this.bundleGraph.isEntryBundleGroup(g)) ||

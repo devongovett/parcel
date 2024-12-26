@@ -329,6 +329,16 @@ async function setup(entry) {
       __dirname,
       'integration/custom-configs/.parcelrc-dev-server',
     ),
+    targets: {
+      default: {
+        distDir: 'dist',
+        engines: {
+          // JSDOM doesn't support type=module
+          // https://github.com/jsdom/jsdom/issues/2475
+          browsers: 'Chrome >= 58',
+        },
+      },
+    },
   });
 
   subscription = await b.watch();

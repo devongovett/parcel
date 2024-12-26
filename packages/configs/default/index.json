@@ -48,9 +48,9 @@
   },
   "namers": ["@parcel/namer-default"],
   "runtimes": [
+    "@parcel/runtime-rsc",
     "@parcel/runtime-js",
     "@parcel/runtime-browser-hmr",
-    "@parcel/runtime-react-refresh",
     "@parcel/runtime-service-worker"
   ],
   "optimizers": {

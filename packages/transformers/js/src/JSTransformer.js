@@ -14,6 +14,7 @@ import {transform, transformAsync} from '@parcel/rust';
 import browserslist from 'browserslist';
 import semver from 'semver';
 import nullthrows from 'nullthrows';
+import invariant from 'assert';
 import ThrowableDiagnostic, {
   encodeJSONKeyComponent,
   convertSourceLocationToHighlight,
@@ -419,18 +420,15 @@ export default (new Transformer({
       used_env,
       has_node_replacements,
       is_constant_module,
+      directives,
+      helpers,
     } = await (transformAsync || transform)({
       filename: asset.filePath,
       code,
       module_id: asset.id,
       project_root: options.projectRoot,
-      replace_env: !asset.env.isNode(),
-      inline_fs: Boolean(config?.inlineFS) && !asset.env.isNode(),
-      insert_node_globals:
-        !asset.env.isNode() && asset.env.sourceType !== 'script',
-      node_replacer: asset.env.isNode(),
-      is_browser: asset.env.isBrowser(),
-      is_worker: asset.env.isWorker(),
+      inline_fs: Boolean(config?.inlineFS),
+      context: asset.env.context,
       env,
       is_type_script: asset.type === 'ts' || asset.type === 'tsx',
       is_jsx: isJSX,
@@ -439,12 +437,7 @@ export default (new Transformer({
       automatic_jsx_runtime: Boolean(config?.automaticJSXRuntime),
       jsx_import_source: config?.jsxImportSource,
       is_development: options.mode === 'development',
-      react_refresh:
-        asset.env.isBrowser() &&
-        !asset.env.isLibrary &&
-        !asset.env.isWorker() &&
-        !asset.env.isWorklet() &&
-        Boolean(config?.reactRefresh),
+      react_refresh: Boolean(config?.reactRefresh),
       decorators: Boolean(config?.decorators),
       use_define_for_class_fields: Boolean(config?.useDefineForClassFields),
       targets,
@@ -686,6 +679,56 @@ export default (new Transformer({
       asset.invalidateOnEnvChange(env);
     }
 
+    asset.meta.id = asset.id;
+    asset.meta.directives = directives;
+    asset.meta.usedHelpers = helpers;
+    if (
+      asset.env.isServer() &&
+      !asset.env.isLibrary &&
+      (directives.includes('use client') ||
+        directives.includes('use client-entry'))
+    ) {
+      asset.setEnvironment({
+        context: 'react-client',
+        sourceType: 'module',
+        outputFormat: 'esmodule',
+        engines: asset.env.engines,
+        includeNodeModules: true,
+        isLibrary: false,
+        sourceMap: asset.env.sourceMap,
+        shouldOptimize: asset.env.shouldOptimize,
+        shouldScopeHoist: asset.env.shouldScopeHoist,
+      });
+    } else if (
+      !asset.env.isServer() &&
+      !asset.env.isLibrary &&
+      directives.includes('use server')
+    ) {
+      asset.setEnvironment({
+        context: 'react-server',
+        sourceType: 'module',
+        outputFormat: 'commonjs',
+        engines: asset.env.engines,
+        includeNodeModules: false,
+        isLibrary: false,
+        sourceMap: asset.env.sourceMap,
+        shouldOptimize: asset.env.shouldOptimize,
+        shouldScopeHoist: asset.env.shouldScopeHoist,
+      });
+    } else if (directives.includes('use server-entry')) {
+      if (!asset.env.isServer()) {
+        throw new Error(
+          'use server-entry must be imported in a server environment',
+        );
+      }
+      asset.bundleBehavior = 'isolated';
+    }
+
+    // Server actions must always be wrapped so they can be parcelRequired.
+    if (directives.includes('use server')) {
+      asset.meta.shouldWrap = true;
+    }
+
     for (let dep of dependencies) {
       if (dep.kind === 'WebWorker') {
         // Use native ES module output if the worker was created with `type: 'module'` and all targets
@@ -756,6 +799,13 @@ export default (new Transformer({
         });
       } else if (dep.kind === 'File') {
         asset.invalidateOnFileChange(dep.specifier);
+      } else if (dep.kind === 'Id') {
+        // Record parcelRequire calls so that the dev packager can add them as dependencies.
+        // This allows the HMR runtime to collect parents across async boundaries (through runtimes).
+        // TODO: ideally this would result as an actual dep in the graph rather than asset.meta.
+        asset.meta.hmrDeps ??= [];
+        invariant(Array.isArray(asset.meta.hmrDeps));
+        asset.meta.hmrDeps.push(dep.specifier);
       } else {
         let meta: JSONObject = {kind: dep.kind};
         if (dep.attributes) {
@@ -846,6 +896,25 @@ export default (new Transformer({
           range = pkg.dependencies[module];
         }
 
+        if (dep.attributes?.env === 'react-server') {
+          env = {
+            ...env,
+            context: 'react-server',
+            outputFormat: 'commonjs',
+          };
+        } else if (dep.attributes?.env === 'react-client') {
+          env = {
+            ...env,
+            context: 'react-client',
+            outputFormat: 'esmodule',
+            includeNodeModules: true,
+          };
+
+          // This is a hack to prevent creating unnecessary shared bundles between actual client code
+          // and server code that runs in the client environment (e.g. react).
+          asset.isBundleSplittable = false;
+        }
+
         asset.addDependency({
           specifier: dep.specifier,
           specifierType: dep.kind === 'Require' ? 'commonjs' : 'esm',
@@ -860,7 +929,6 @@ export default (new Transformer({
       }
     }
 
-    asset.meta.id = asset.id;
     if (hoist_result) {
       asset.symbols.ensure();
       for (let {
@@ -971,7 +1039,7 @@ export default (new Transformer({
 
       asset.meta.hasCJSExports = hoist_result.has_cjs_exports;
       asset.meta.staticExports = hoist_result.static_cjs_exports;
-      asset.meta.shouldWrap = hoist_result.should_wrap;
+      asset.meta.shouldWrap ||= hoist_result.should_wrap;
     } else {
       if (symbol_result) {
         let deps = new Map(

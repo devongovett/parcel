@@ -142,6 +142,7 @@ export type Dependency = {|
   customPackageConditions?: Array<string>,
   meta: Meta,
   resolverMeta?: ?Meta,
+  resolverPriority?: $Values<typeof Priority>,
   target: ?Target,
   sourceAssetId: ?string,
   sourcePath: ?ProjectPath,

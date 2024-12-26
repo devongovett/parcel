@@ -282,7 +282,7 @@ export function shallowEqual(
   return true;
 }
 
-type RunOpts = {require?: boolean, strict?: boolean, ...};
+type RunOpts = {require?: boolean, strict?: boolean, entryAsset?: Asset, ...};
 
 export async function runBundles(
   bundleGraph: BundleGraph<PackagedBundle>,
@@ -292,18 +292,21 @@ export async function runBundles(
   opts: RunOpts = {},
   externalModules?: ExternalModules,
 ): Promise<mixed> {
-  let entryAsset = nullthrows(
-    bundles
-      .map(([, b]) => b.getMainEntry() || b.getEntryAssets()[0])
-      .filter(Boolean)[0],
-  );
+  let entryAsset =
+    opts.entryAsset ??
+    nullthrows(
+      bundles
+        .map(([, b]) => b.getMainEntry() || b.getEntryAssets()[0])
+        .filter(Boolean)[0],
+    );
   let env = entryAsset.env;
   let target = env.context;
   let outputFormat = env.outputFormat;
 
   let ctx, promises;
   switch (target) {
-    case 'browser': {
+    case 'browser':
+    case 'react-client': {
       let prepared = prepareBrowserContext(parent, globals);
       ctx = prepared.ctx;
       promises = prepared.promises;
@@ -311,6 +314,7 @@ export async function runBundles(
     }
     case 'node':
     case 'electron-main':
+    case 'react-server':
       nodeCache.clear();
       ctx = prepareNodeContext(
         outputFormat === 'commonjs' && parent.filePath,
@@ -394,19 +398,17 @@ export async function runBundles(
   }
 
   if (opts.require !== false) {
+    if (!env.shouldScopeHoist) {
+      for (let key in ctx) {
+        if (key.startsWith('parcelRequire')) {
+          // $FlowFixMe[incompatible-use]
+          return ctx[key](bundleGraph.getAssetPublicId(entryAsset));
+        }
+      }
+    }
     switch (outputFormat) {
       case 'global':
-        if (env.shouldScopeHoist) {
-          return typeof ctx.output !== 'undefined' ? ctx.output : undefined;
-        } else {
-          for (let key in ctx) {
-            if (key.startsWith('parcelRequire')) {
-              // $FlowFixMe[incompatible-use]
-              return ctx[key](bundleGraph.getAssetPublicId(entryAsset));
-            }
-          }
-        }
-        return;
+        return typeof ctx.output !== 'undefined' ? ctx.output : undefined;
       case 'commonjs':
         invariant(typeof ctx.module === 'object' && ctx.module != null);
         return ctx.module.exports;
@@ -498,6 +500,7 @@ export function assertBundles(
     type?: string,
     assets: Array<string>,
   |}>,
+  opts?: {|skipNodeModules?: boolean, skipHelpers?: boolean|},
 ) {
   let actualBundles = [];
   const byAlphabet = (a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1);
@@ -516,6 +519,17 @@ export function assertBundles(
 
       if (/runtime-[a-z0-9]{16}\.js/.test(asset.filePath)) {
         // Skip runtime assets, which have hashed filenames for source maps.
+        return;
+      }
+
+      if (
+        opts?.skipNodeModules &&
+        /node_modules|esmodule-helpers.js/.test(asset.filePath)
+      ) {
+        return;
+      }
+
+      if (opts?.skipHelpers && /esmodule-helpers.js/.test(asset.filePath)) {
         return;
       }
 
@@ -546,7 +560,9 @@ export function assertBundles(
   assert.equal(
     actualBundles.length,
     expectedBundles.length,
-    'expected number of bundles mismatched',
+    `expected number of bundles mismatched\n\nActual bundles: \n\n${util.inspect(
+      actualBundles,
+    )}`,
   );
 
   for (let bundle of expectedBundles) {

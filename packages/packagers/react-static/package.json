@@ -1,0 +1,30 @@
+{
+  "name": "@parcel/packager-react-static",
+  "version": "2.13.3",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/parcel"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/parcel.git"
+  },
+  "main": "lib/ReactStaticPackager.js",
+  "source": "src/ReactStaticPackager.js",
+  "engines": {
+    "node": ">= 16.0.0",
+    "parcel": "^2.13.3"
+  },
+  "dependencies": {
+    "@parcel/node-resolver-core": "3.4.3",
+    "@parcel/plugin": "2.13.3",
+    "@parcel/types": "2.13.3",
+    "@parcel/utils": "2.13.3",
+    "rsc-html-stream": "^0.0.4",
+    "nullthrows": "^1.1.1"
+  }
+}

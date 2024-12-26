@@ -36,6 +36,8 @@ export const PACKAGE_DESCRIPTOR_SCHEMA: SchemaObject = {
         'electron-main',
         'electron-renderer',
         'service-worker',
+        'react-server',
+        'react-client',
       ],
     },
     includeNodeModules: {

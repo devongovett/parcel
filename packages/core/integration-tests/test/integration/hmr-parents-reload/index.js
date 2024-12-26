@@ -1,0 +1,3 @@
+require('./middle');
+
+output('root');

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ReactDOM from "react-dom";
+import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { act } from "react-dom/test-utils";
 
@@ -14,4 +14,4 @@ let Main = () => {
 };
 
 export default () =>
-  act(async () => {ReactDOM.render(<Main />, document.getElementById("root"));});
+  act(async () => {ReactDOM.createRoot(document.getElementById("root")).render(<Main />);});

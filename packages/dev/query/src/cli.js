@@ -81,7 +81,9 @@ export async function run(input: string[]) {
       return;
     }
     invariant(bundleInfo != null);
-    return fromProjectPathRelative(nullthrows(bundleInfo.get(id)?.filePath));
+    return fromProjectPathRelative(
+      nullthrows(bundleInfo.get(id)?.[0].filePath),
+    );
   }
 
   function parseAssetLocator(v: string) {

@@ -1,5 +1,7 @@
 // @flow strict-local
-import type {Environment} from '@parcel/types';
+import type {Environment, NamedBundle} from '@parcel/types';
+import {relativePath} from '@parcel/utils';
+import path from 'path';
 
 export const prelude = (parcelRequireName: string): string => `
 var $parcel$modules = {};
@@ -160,10 +162,39 @@ function $parcel$defineInteropFlag(a) {
 }
 `;
 
+const $parcel$distDir = (env: Environment, bundle: NamedBundle): string => {
+  // Generate a relative path from this bundle to the root of the dist dir.
+  let distDir = relativePath(path.dirname(bundle.name), '');
+  if (distDir.endsWith('/')) {
+    distDir = distDir.slice(0, -1);
+  }
+  return `var $parcel$distDir = ${JSON.stringify(distDir)};\n`;
+};
+
+const $parcel$publicUrl = (env: Environment, bundle: NamedBundle): string => {
+  // Ensure the public url always ends with a slash to code can easily join paths to it.
+  let publicUrl = bundle.target.publicUrl;
+  if (!publicUrl.endsWith('/')) {
+    publicUrl += '/';
+  }
+  return `var $parcel$publicUrl = ${JSON.stringify(publicUrl)};\n`;
+};
+
+const $parcel$import = (env: Environment): string => {
+  return `var $parcel$import = ${fnExpr(
+    env,
+    ['url'],
+    ['return import($parcel$distDir + "/" + url);'],
+  )};\n`;
+};
+
 export const helpers = {
   $parcel$export,
   $parcel$exportWildcard,
   $parcel$interopDefault,
   $parcel$global,
   $parcel$defineInteropFlag,
+  $parcel$distDir,
+  $parcel$publicUrl,
+  $parcel$import,
 };
