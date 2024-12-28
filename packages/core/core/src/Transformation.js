@@ -569,6 +569,11 @@ export default class Transformation {
     configKeyPath?: string,
     parcelConfig: ParcelConfig,
   ): Promise<$ReadOnlyArray<TransformerResult | UncommittedAsset>> {
+    if (asset.transformers.has(transformerName)) {
+      return [asset];
+    }
+    asset.transformers.add(transformerName);
+
     const logger = new PluginLogger({origin: transformerName});
     const tracer = new PluginTracer({
       origin: transformerName,

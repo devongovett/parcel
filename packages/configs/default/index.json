@@ -8,7 +8,8 @@
       "@parcel/transformer-worklet",
       "..."
     ],
-    "*.{js,mjs,jsm,jsx,es6,cjs,ts,tsx}": [
+    "*.mdx": ["@parcel/transformer-js"],
+    "*.{js,mjs,jsm,jsx,es6,cjs,ts,tsx,mdx}": [
       "@parcel/transformer-babel",
       "@parcel/transformer-js",
       "@parcel/transformer-react-refresh-wrap"
@@ -33,7 +34,6 @@
     "*.pug": ["@parcel/transformer-pug"],
     "*.coffee": ["@parcel/transformer-coffeescript"],
     "*.elm": ["@parcel/transformer-elm"],
-    "*.mdx": ["@parcel/transformer-mdx"],
     "*.vue": ["@parcel/transformer-vue"],
     "template:*.vue": ["@parcel/transformer-vue"],
     "script:*.vue": ["@parcel/transformer-vue"],

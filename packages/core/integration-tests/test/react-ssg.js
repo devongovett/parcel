@@ -190,4 +190,83 @@ describe('react static', function () {
       ),
     );
   });
+
+  it('should support MDX', async function () {
+    await fsFixture(overlayFS, dir)`
+    index.mdx:
+      import {Layout} from './Layout';
+      export default Layout;
+
+      export const title = 'Home';
+
+      # Testing
+
+      Hello this is a test.
+
+      ## Sub title
+
+      Yo.
+
+    another.mdx:
+      import {Layout} from './Layout';
+      export default Layout;
+
+      # Another page
+
+      Hello this is a test.
+
+    Layout.jsx:
+      function Toc({toc}) {
+        return toc?.length ? <ul>{toc.map((t, i) => <li key={i}>{t.title}<Toc toc={t.children} /></li>)}</ul> : null;
+      }
+
+      export function Layout({children, pages, currentPage}) {
+        return (
+          <html>
+            <head>
+              <title>{currentPage.meta.exports.title ?? currentPage.meta.tableOfContents?.[0].title}</title>
+            </head>
+            <body>
+              <nav>
+                {pages.map(page => <a key={page.url} href={page.url}>
+                  {page.meta.exports.title ?? page.meta.tableOfContents?.[0].title}
+                </a>)}
+              </nav>
+              <aside>
+                <Toc toc={currentPage.meta.tableOfContents} />
+              </aside>
+              <main>
+                {children}
+              </main>
+            </body>
+          </html>
+        )
+      }
+    `;
+
+    let b = await bundle(path.join(dir, '/*.mdx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<title>Home</title>'));
+    assert(
+      output.includes(
+        '<a href="/index.html">Home</a><a href="/another.html">Another page</a>',
+      ),
+    );
+    assert(
+      output.includes('<ul><li>Testing<ul><li>Sub title</li></ul></li></ul>'),
+    );
+
+    output = await overlayFS.readFile(b.getBundles()[1].filePath, 'utf8');
+    assert(output.includes('<title>Another page</title>'));
+    assert(
+      output.includes(
+        '<a href="/index.html">Home</a><a href="/another.html">Another page</a>',
+      ),
+    );
+    assert(output.includes('<ul><li>Another page</li></ul>'));
+  });
 });

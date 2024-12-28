@@ -55,6 +55,7 @@ export default class UncommittedAsset {
   idBase: ?string;
   invalidations: Invalidations;
   generate: ?() => Promise<GenerateOutput>;
+  transformers: Set<string>;
 
   constructor({
     value,
@@ -74,6 +75,7 @@ export default class UncommittedAsset {
     this.isASTDirty = isASTDirty || false;
     this.idBase = idBase;
     this.invalidations = invalidations || createInvalidations();
+    this.transformers = new Set();
   }
 
   /*

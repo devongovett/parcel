@@ -13,7 +13,7 @@ use swc_core::{
 
 use crate::{
   collect::{Collect, Import},
-  dependency_collector::{DependencyDescriptor, DependencyKind},
+  dependency_collector::{DependencyDescriptor, DependencyFlags, DependencyKind},
   id,
   utils::SourceLocation,
 };
@@ -182,8 +182,7 @@ impl<'a> InlineFS<'a> {
           loc: SourceLocation::from(&self.collect.source_map, span),
           specifier: path.to_str().unwrap().into(),
           attributes: None,
-          is_optional: false,
-          is_helper: false,
+          flags: DependencyFlags::empty(),
           source_type: None,
           placeholder: None,
         });

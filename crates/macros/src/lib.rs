@@ -377,7 +377,7 @@ pub enum JsValue {
 }
 
 pub struct Evaluator<'a> {
-  constants: HashMap<Id, Result<JsValue, Span>>,
+  pub constants: HashMap<Id, Result<JsValue, Span>>,
   source_map: &'a SourceMap,
 }
 

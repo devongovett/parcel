@@ -131,6 +131,10 @@ const SCRIPT_ERRORS = {
   },
 };
 
+const OPTIONAL = 1 << 0;
+const HELPER = 1 << 1;
+const NEEDS_STABLE_NAME = 1 << 2;
+
 type TSConfig = {
   compilerOptions?: {
     // https://www.typescriptlang.org/tsconfig#jsx
@@ -407,6 +411,13 @@ export default (new Transformer({
       }
     }
 
+    let type = 'js';
+    if (asset.type === 'ts' || asset.type === 'tsx' || asset.type === 'mdx') {
+      type = asset.type;
+    } else if (isJSX) {
+      type = 'jsx';
+    }
+
     let macroAssets = [];
     let {
       dependencies,
@@ -422,6 +433,9 @@ export default (new Transformer({
       is_constant_module,
       directives,
       helpers,
+      mdx_exports,
+      mdx_toc,
+      mdx_assets,
     } = await (transformAsync || transform)({
       filename: asset.filePath,
       code,
@@ -430,8 +444,7 @@ export default (new Transformer({
       inline_fs: Boolean(config?.inlineFS),
       context: asset.env.context,
       env,
-      is_type_script: asset.type === 'ts' || asset.type === 'tsx',
-      is_jsx: isJSX,
+      type,
       jsx_pragma: config?.pragma,
       jsx_pragma_frag: config?.pragmaFrag,
       automatic_jsx_runtime: Boolean(config?.automaticJSXRuntime),
@@ -675,6 +688,57 @@ export default (new Transformer({
       asset.meta.has_node_replacements = has_node_replacements;
     }
 
+    if (asset.type === 'mdx') {
+      asset.meta.ssgMeta = {
+        exports: mdx_exports,
+        tableOfContents: mdx_toc,
+      };
+
+      for (let [i, mdxAsset] of mdx_assets.entries()) {
+        let map;
+        if (asset.env.sourceMap && mdxAsset.position) {
+          // Generate a source map that maps each line of the asset to the original code block.
+          map = new SourceMap(options.projectRoot);
+          let mappings = [];
+          let line = 1;
+          let column = mdxAsset.position.start.column;
+          for (
+            let i = mdxAsset.position.start.line + 1;
+            i < mdxAsset.position.end.line;
+            i++
+          ) {
+            mappings.push({
+              generated: {
+                line,
+                column: 0,
+              },
+              source: asset.filePath,
+              original: {
+                line: i,
+                column,
+              },
+            });
+            line++;
+            column = 0;
+          }
+
+          map.addIndexedMappings(mappings);
+          if (originalMap) {
+            map.extends(originalMap);
+          } else {
+            map.setSourceContent(asset.filePath, code.toString());
+          }
+        }
+
+        macroAssets.push({
+          type: mdxAsset.lang,
+          content: mdxAsset.code,
+          map,
+          uniqueKey: 'mdx-' + i,
+        });
+      }
+    }
+
     for (let env of used_env) {
       asset.invalidateOnEnvChange(env);
     }
@@ -793,6 +857,7 @@ export default (new Transformer({
         asset.addURLDependency(dep.specifier, {
           bundleBehavior: 'isolated',
           loc: convertLoc(dep.loc),
+          needsStableName: Boolean(dep.flags & NEEDS_STABLE_NAME),
           meta: {
             placeholder: dep.placeholder,
           },
@@ -873,7 +938,7 @@ export default (new Transformer({
 
         // Always bundle helpers, even with includeNodeModules: false, except if this is a library.
         let isHelper =
-          dep.is_helper &&
+          dep.flags & HELPER &&
           !(
             dep.specifier.endsWith('/jsx-runtime') ||
             dep.specifier.endsWith('/jsx-dev-runtime')
@@ -920,7 +985,7 @@ export default (new Transformer({
           specifierType: dep.kind === 'Require' ? 'commonjs' : 'esm',
           loc: convertLoc(dep.loc),
           priority: dep.kind === 'DynamicImport' ? 'lazy' : 'sync',
-          isOptional: dep.is_optional,
+          isOptional: Boolean(dep.flags & OPTIONAL),
           meta,
           resolveFrom: isHelper ? __filename : undefined,
           range,

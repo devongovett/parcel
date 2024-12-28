@@ -118,6 +118,16 @@ impl fmt::Display for DependencyKind {
   }
 }
 
+bitflags! {
+  #[derive(Serialize, Deserialize, Default)]
+  #[serde(transparent)]
+  pub struct DependencyFlags: u8 {
+    const OPTIONAL = 1 << 0;
+    const HELPER = 1 << 1;
+    const NEEDS_STABLE_NAME = 1 << 2;
+  }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DependencyDescriptor {
   pub kind: DependencyKind,
@@ -125,8 +135,7 @@ pub struct DependencyDescriptor {
   /// The text specifier associated with the import/export statement.
   pub specifier: swc_core::ecma::atoms::JsWord,
   pub attributes: Option<JsValue>,
-  pub is_optional: bool,
-  pub is_helper: bool,
+  pub flags: DependencyFlags,
   pub source_type: Option<SourceType>,
   pub placeholder: Option<String>,
 }
@@ -182,6 +191,7 @@ impl<'a> DependencyCollector<'a> {
     attributes: Option<JsValue>,
     is_optional: bool,
     source_type: SourceType,
+    needs_stable_name: bool,
   ) -> Option<JsWord> {
     // Rewrite SWC helpers from ESM to CJS for library output.
     let mut is_specifier_rewritten = false;
@@ -216,13 +226,17 @@ impl<'a> DependencyCollector<'a> {
       _ => None,
     };
 
+    let mut flags = DependencyFlags::empty();
+    flags.set(DependencyFlags::OPTIONAL, is_optional);
+    flags.set(DependencyFlags::HELPER, span.is_dummy());
+    flags.set(DependencyFlags::NEEDS_STABLE_NAME, needs_stable_name);
+
     self.items.push(DependencyDescriptor {
       kind,
       loc: SourceLocation::from(&self.source_map, span),
       specifier,
       attributes,
-      is_optional,
-      is_helper: span.is_dummy(),
+      flags,
       source_type: Some(source_type),
       placeholder: placeholder.clone(),
     });
@@ -236,11 +250,19 @@ impl<'a> DependencyCollector<'a> {
     span: swc_core::common::Span,
     kind: DependencyKind,
     source_type: SourceType,
+    needs_stable_name: bool,
   ) -> ast::Expr {
     // If not a library, replace with a require call pointing to a runtime that will resolve the url dynamically.
     if !self.config.is_library && !self.config.standalone {
-      let placeholder =
-        self.add_dependency(specifier.clone(), span, kind, None, false, source_type);
+      let placeholder = self.add_dependency(
+        specifier.clone(),
+        span,
+        kind,
+        None,
+        false,
+        source_type,
+        needs_stable_name,
+      );
       let specifier = if let Some(placeholder) = placeholder {
         placeholder
       } else {
@@ -263,13 +285,15 @@ impl<'a> DependencyCollector<'a> {
         ))
       )
     };
+    let mut flags = DependencyFlags::empty();
+    flags.set(DependencyFlags::OPTIONAL, span.is_dummy());
+    flags.set(DependencyFlags::NEEDS_STABLE_NAME, needs_stable_name);
     self.items.push(DependencyDescriptor {
       kind,
       loc: SourceLocation::from(&self.source_map, span),
       specifier,
       attributes: None,
-      is_optional: false,
-      is_helper: span.is_dummy(),
+      flags,
       source_type: Some(source_type),
       placeholder: Some(placeholder.clone()),
     });
@@ -378,6 +402,7 @@ impl<'a> Fold for DependencyCollector<'a> {
       attributes,
       false,
       self.config.source_type,
+      false,
     );
 
     if let Some(rewritten) = rewritten {
@@ -406,6 +431,7 @@ impl<'a> Fold for DependencyCollector<'a> {
         attributes,
         false,
         self.config.source_type,
+        false,
       );
 
       if let Some(rewritten) = rewritten {
@@ -430,6 +456,7 @@ impl<'a> Fold for DependencyCollector<'a> {
       attributes,
       false,
       self.config.source_type,
+      false,
     );
 
     if let Some(rewritten) = rewritten {
@@ -565,8 +592,7 @@ impl<'a> Fold for DependencyCollector<'a> {
                       loc: SourceLocation::from(&self.source_map, span),
                       specifier: id,
                       attributes: None,
-                      is_optional: false,
-                      is_helper: false,
+                      flags: DependencyFlags::empty(),
                       source_type: None,
                       placeholder: None,
                     });
@@ -708,7 +734,7 @@ impl<'a> Fold for DependencyCollector<'a> {
         };
         let mut node = node.clone();
 
-        let (specifier, span) = if let Some(s) = self.match_new_url(&arg.expr) {
+        let (specifier, span, needs_stable_name) = if let Some(s) = self.match_new_url(&arg.expr) {
           s
         } else if let Lit(ast::Lit::Str(str_)) = &*arg.expr {
           let (msg, docs) = if kind == DependencyKind::ServiceWorker {
@@ -741,7 +767,8 @@ impl<'a> Fold for DependencyCollector<'a> {
           return node;
         };
 
-        node.args[0].expr = Box::new(self.add_url_dependency(specifier, span, kind, source_type));
+        node.args[0].expr =
+          Box::new(self.add_url_dependency(specifier, span, kind, source_type, needs_stable_name));
 
         match opts {
           Some(opts) => {
@@ -769,6 +796,7 @@ impl<'a> Fold for DependencyCollector<'a> {
           attributes,
           kind == DependencyKind::Require && self.in_try,
           self.config.source_type,
+          false,
         );
 
         if let Some(placeholder) = placeholder {
@@ -875,40 +903,46 @@ impl<'a> Fold for DependencyCollector<'a> {
 
     if let Some(args) = &node.args {
       if !args.is_empty() {
-        let (specifier, span) = if let Some(s) = self.match_new_url(&args[0].expr) {
-          s
-        } else if let Lit(ast::Lit::Str(str_)) = &*args[0].expr {
-          let constructor = match &*node.callee {
-            Ident(id) => id.sym.to_string(),
-            _ => "Worker".to_string(),
+        let (specifier, span, needs_stable_name) =
+          if let Some(s) = self.match_new_url(&args[0].expr) {
+            s
+          } else if let Lit(ast::Lit::Str(str_)) = &*args[0].expr {
+            let constructor = match &*node.callee {
+              Ident(id) => id.sym.to_string(),
+              _ => "Worker".to_string(),
+            };
+            self.diagnostics.push(Diagnostic {
+              message: format!(
+                "Constructing a {} with a string literal is not supported.",
+                constructor
+              ),
+              code_highlights: Some(vec![CodeHighlight {
+                message: None,
+                loc: SourceLocation::from(&self.source_map, str_.span),
+              }]),
+              hints: Some(vec![format!(
+                "Replace with: new URL('{}', import.meta.url)",
+                str_.value
+              )]),
+              show_environment: false,
+              severity: DiagnosticSeverity::Error,
+              documentation_url: Some(String::from(
+                "https://parceljs.org/languages/javascript/#web-workers",
+              )),
+            });
+            return node;
+          } else {
+            return node;
           };
-          self.diagnostics.push(Diagnostic {
-            message: format!(
-              "Constructing a {} with a string literal is not supported.",
-              constructor
-            ),
-            code_highlights: Some(vec![CodeHighlight {
-              message: None,
-              loc: SourceLocation::from(&self.source_map, str_.span),
-            }]),
-            hints: Some(vec![format!(
-              "Replace with: new URL('{}', import.meta.url)",
-              str_.value
-            )]),
-            show_environment: false,
-            severity: DiagnosticSeverity::Error,
-            documentation_url: Some(String::from(
-              "https://parceljs.org/languages/javascript/#web-workers",
-            )),
-          });
-          return node;
-        } else {
-          return node;
-        };
 
         let (source_type, opts) = match_worker_type(args.get(1));
-        let placeholder =
-          self.add_url_dependency(specifier, span, DependencyKind::WebWorker, source_type);
+        let placeholder = self.add_url_dependency(
+          specifier,
+          span,
+          DependencyKind::WebWorker,
+          source_type,
+          needs_stable_name,
+        );
 
         // Replace argument with a require call to resolve the URL at runtime.
         let mut node = node.clone();
@@ -954,12 +988,13 @@ impl<'a> Fold for DependencyCollector<'a> {
       return expr;
     }
 
-    if let Some((specifier, span)) = self.match_new_url(&node) {
+    if let Some((specifier, span, needs_stable_name)) = self.match_new_url(&node) {
       let url = self.add_url_dependency(
         specifier,
         span,
         DependencyKind::Url,
         self.config.source_type,
+        needs_stable_name,
       );
 
       // If this is a library, we will already have a URL object. Otherwise, we need to
@@ -1272,7 +1307,7 @@ impl Fold for PromiseTransformer {
 }
 
 impl<'a> DependencyCollector<'a> {
-  fn match_new_url(&mut self, expr: &ast::Expr) -> Option<(JsWord, swc_core::common::Span)> {
+  fn match_new_url(&mut self, expr: &ast::Expr) -> Option<(JsWord, swc_core::common::Span, bool)> {
     use ast::*;
 
     if let Expr::New(new) = expr {
@@ -1294,8 +1329,28 @@ impl<'a> DependencyCollector<'a> {
 
         if let Some(arg) = args.get(1) {
           if self.is_import_meta_url(&arg.expr) {
-            return Some((specifier, span));
+            return Some((specifier, span, false));
           }
+        }
+      }
+    }
+
+    if let Expr::Call(call) = expr {
+      if let Callee::Expr(expr) = &call.callee {
+        if matches!(&**expr, Expr::Ident(id) if id.sym == "__parcel_url_dep__") {
+          let (specifier, span) = if let Some(arg) = call.args.first() {
+            match_str(&arg.expr)?
+          } else {
+            return None;
+          };
+
+          let needs_stable_name = if let Some(arg) = call.args.get(1) {
+            matches!(&*arg.expr, Expr::Lit(Lit::Bool(Bool { value: true, .. })))
+          } else {
+            false
+          };
+
+          return Some((specifier, span, needs_stable_name));
         }
       }
     }
@@ -1308,7 +1363,7 @@ impl<'a> DependencyCollector<'a> {
         Expr::Member(member) => member.span,
         _ => unreachable!(),
       };
-      return Some((specifier.into(), span));
+      return Some((specifier.into(), span, false));
     }
 
     None
@@ -1669,8 +1724,7 @@ mod test {
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -1705,8 +1759,7 @@ mod test {
         kind: DependencyKind::Import,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: None,
         ..items[0].clone()
@@ -1741,8 +1794,7 @@ mod test {
         kind: DependencyKind::Export,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: None,
         ..items[0].clone()
@@ -1777,8 +1829,7 @@ mod test {
         kind: DependencyKind::Export,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: None,
         ..items[0].clone()
@@ -1818,8 +1869,7 @@ mod test {
         kind: DependencyKind::Require,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -1863,8 +1913,7 @@ try {{
         kind: DependencyKind::Require,
         specifier: "other".into(),
         attributes: None,
-        is_optional: true,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -1905,8 +1954,7 @@ Promise.resolve().then(()=>require("{}"));
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -1949,8 +1997,7 @@ Promise.resolve().then(function() {{
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -1995,8 +2042,7 @@ Promise.resolve().then(function() {{
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2037,8 +2083,7 @@ new Promise((resolve)=>resolve(require("{}")));
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2081,8 +2126,7 @@ new Promise(function(resolve) {{
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2123,8 +2167,7 @@ Promise.resolve(require("{}"));
         kind: DependencyKind::DynamicImport,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2164,8 +2207,7 @@ Promise.resolve(require("{}"));
         kind: DependencyKind::WebWorker,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2205,8 +2247,7 @@ Promise.resolve(require("{}"));
         kind: DependencyKind::ServiceWorker,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2246,8 +2287,7 @@ Promise.resolve(require("{}"));
         kind: DependencyKind::Worklet,
         specifier: "other".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()
@@ -2291,8 +2331,7 @@ document.body.appendChild(img);
         kind: DependencyKind::Url,
         specifier: "hero.jpg".into(),
         attributes: None,
-        is_optional: false,
-        is_helper: false,
+        flags: DependencyFlags::empty(),
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()

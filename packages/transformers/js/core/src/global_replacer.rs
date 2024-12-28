@@ -12,7 +12,7 @@ use swc_core::{
 };
 
 use crate::{
-  dependency_collector::{DependencyDescriptor, DependencyKind},
+  dependency_collector::{DependencyDescriptor, DependencyFlags, DependencyKind},
   utils::{create_global_decl_stmt, create_require, is_unresolved, SourceLocation, SourceType},
 };
 
@@ -85,8 +85,7 @@ impl VisitMut for GlobalReplacer<'_> {
             loc: SourceLocation::from(&self.source_map, id.span),
             specifier,
             attributes: None,
-            is_optional: false,
-            is_helper: false,
+            flags: DependencyFlags::empty(),
             source_type: Some(SourceType::Module),
             placeholder: None,
           });
@@ -106,8 +105,7 @@ impl VisitMut for GlobalReplacer<'_> {
             loc: SourceLocation::from(&self.source_map, id.span),
             specifier,
             attributes: None,
-            is_optional: false,
-            is_helper: false,
+            flags: DependencyFlags::empty(),
             source_type: Some(SourceType::Module),
             placeholder: None,
           });
