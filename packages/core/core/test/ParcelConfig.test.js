@@ -9,6 +9,7 @@ import {inputFS} from '@parcel/test-utils';
 import {parseAndProcessConfig} from '../src/requests/ParcelConfigRequest';
 import {DEFAULT_OPTIONS} from './test-utils';
 import {toProjectPath} from '../src/projectPath';
+import nullthrows from 'nullthrows';
 
 const PARCELRC_PATH = toProjectPath('/', '/.parcelrc');
 
@@ -148,11 +149,13 @@ describe('ParcelConfig', () => {
       );
 
       let warnStub = sinon.stub(logger, 'warn');
-      let {plugin} = await config.loadPlugin({
-        packageName: 'parcel-transformer-no-engines',
-        resolveFrom: configFilePath,
-        keyPath: '/transformers/*.js/0',
-      });
+      let {plugin} = nullthrows(
+        await config.loadPlugin({
+          packageName: 'parcel-transformer-no-engines',
+          resolveFrom: configFilePath,
+          keyPath: '/transformers/*.js/0',
+        }),
+      );
       assert(plugin);
       assert.equal(typeof plugin.transform, 'function');
       assert(warnStub.calledOnce);
