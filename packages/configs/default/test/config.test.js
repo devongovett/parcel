@@ -2,8 +2,9 @@
 
 import assert from 'assert';
 
-import config from '../';
 import packageJson from '../package.json';
+import json5 from 'json5';
+import fs from 'fs';
 
 describe('@parcel/config-default', () => {
   let packageJsonDependencyNames: Set<string>;
@@ -13,7 +14,11 @@ describe('@parcel/config-default', () => {
     packageJsonDependencyNames = new Set([
       ...Object.keys(packageJson.dependencies || {}),
       ...Object.keys(packageJson.parcelDependencies || {}),
+      ...packageJson.optionalParcelDependencies,
     ]);
+    let config = json5.parse(
+      fs.readFileSync(__dirname + '/../index.json', 'utf8'),
+    );
     configPackageReferences = collectConfigPackageReferences(config);
   });
 

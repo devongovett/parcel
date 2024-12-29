@@ -8,8 +8,14 @@
       "@parcel/transformer-worklet",
       "..."
     ],
-    "*.mdx": ["@parcel/transformer-js"],
-    "*.{js,mjs,jsm,jsx,es6,cjs,ts,tsx,mdx}": [
+    "*.mdx": [
+      // For backward compatibility, include the old transformer
+      // so it is used if already installed in the project.
+      // Otherwise, the JS transformer will handle MDX.
+      "@parcel/transformer-mdx",
+      "@parcel/transformer-js"
+    ],
+    "*.{js,mjs,jsm,jsx,es6,cjs,ts,tsx}": [
       "@parcel/transformer-babel",
       "@parcel/transformer-js",
       "@parcel/transformer-react-refresh-wrap"

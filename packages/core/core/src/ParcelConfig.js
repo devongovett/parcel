@@ -28,6 +28,7 @@ import ThrowableDiagnostic, {
   generateJSONCodeHighlights,
 } from '@parcel/diagnostic';
 import json5 from 'json5';
+import nullthrows from 'nullthrows';
 
 import {globToRegex} from '@parcel/utils';
 import {basename} from 'path';
@@ -121,7 +122,7 @@ export default class ParcelConfig {
     version: Semver,
     resolveFrom: ProjectPath,
     range: ?SemverRange,
-  |}> {
+  |} | null> {
     let plugin = this.pluginCache.get(node.packageName);
     if (plugin) {
       return plugin;
@@ -138,8 +139,11 @@ export default class ParcelConfig {
     return plugin;
   }
 
-  async loadPlugin<T>(node: ParcelPluginNode): Promise<LoadedPlugin<T>> {
+  async loadPlugin<T>(node: ParcelPluginNode): Promise<LoadedPlugin<T> | null> {
     let plugin = await this._loadPlugin(node);
+    if (!plugin) {
+      return null;
+    }
     return {
       ...plugin,
       name: node.packageName,
@@ -151,10 +155,12 @@ export default class ParcelConfig {
     this.pluginCache.delete(packageName);
   }
 
-  loadPlugins<T>(
+  async loadPlugins<T>(
     plugins: PureParcelConfigPipeline,
   ): Promise<Array<LoadedPlugin<T>>> {
-    return Promise.all(plugins.map(p => this.loadPlugin<T>(p)));
+    return (await Promise.all(plugins.map(p => this.loadPlugin<T>(p)))).filter(
+      Boolean,
+    );
   }
 
   async getResolvers(): Promise<Array<LoadedPlugin<Resolver<mixed>>>> {
@@ -228,7 +234,7 @@ export default class ParcelConfig {
       );
     }
 
-    return this.loadPlugin<Bundler<mixed>>(this.bundler);
+    return nullthrows(await this.loadPlugin<Bundler<mixed>>(this.bundler));
   }
 
   async getNamers(): Promise<Array<LoadedPlugin<Namer<mixed>>>> {
@@ -265,7 +271,7 @@ export default class ParcelConfig {
         '/packagers',
       );
     }
-    return this.loadPlugin<Packager<mixed, mixed>>(packager);
+    return nullthrows(await this.loadPlugin<Packager<mixed, mixed>>(packager));
   }
 
   _getOptimizerNodes(

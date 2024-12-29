@@ -16,6 +16,8 @@ import {
 import {validatePackageName} from '../src/ParcelConfig.schema';
 import {DEFAULT_OPTIONS, relative} from './test-utils';
 import {toProjectPath} from '../src/projectPath';
+import json5 from 'json5';
+import fs from 'fs';
 
 describe('ParcelConfigRequest', () => {
   describe('validatePackageName', () => {
@@ -696,7 +698,7 @@ describe('ParcelConfigRequest', () => {
       let defaultConfigPath = require.resolve('@parcel/config-default');
       let defaultConfig = await processConfig(
         {
-          ...require('@parcel/config-default'),
+          ...json5.parse(fs.readFileSync(defaultConfigPath, 'utf8')),
           filePath: defaultConfigPath,
         },
         DEFAULT_OPTIONS,

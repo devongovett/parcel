@@ -1913,7 +1913,7 @@ try {{
         kind: DependencyKind::Require,
         specifier: "other".into(),
         attributes: None,
-        flags: DependencyFlags::empty(),
+        flags: DependencyFlags::OPTIONAL,
         source_type: Some(SourceType::Module),
         placeholder: Some(hash),
         ..items[0].clone()

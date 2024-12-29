@@ -74,6 +74,9 @@
     "@parcel/transformer-xml": "2.13.3",
     "@parcel/transformer-yaml": "2.13.3"
   },
+  "optionalParcelDependencies": [
+    "@parcel/transformer-mdx"
+  ],
   "peerDependencies": {
     "@parcel/core": "^2.13.3"
   }
