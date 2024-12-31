@@ -1349,32 +1349,45 @@ export default class BundleGraph {
         ? this._graph.getNodeIdByContentKey(startAsset.id)
         : bundleNodeId,
       getChildren: nodeId => {
-        let children = this._graph
-          .getNodeIdsConnectedFrom(nodeId)
-          .map(id => [id, nullthrows(this._graph.getNode(id))]);
+        let children = this._graph.getNodeIdsConnectedFrom(nodeId);
 
-        let sorted =
-          entries && bundle.entryAssetIds.length > 0
-            ? children.sort(([, a], [, b]) => {
-                let aIndex = bundle.entryAssetIds.indexOf(a.id);
-                let bIndex = bundle.entryAssetIds.indexOf(b.id);
+        if (entries && bundle.entryAssetIds.length > 0) {
+          entries = false;
+          return children.sort((a, b) => {
+            let aNode = nullthrows(this._graph.getNode(a));
+            let bNode = nullthrows(this._graph.getNode(b));
 
-                if (aIndex === bIndex) {
-                  // If both don't exist in the entry asset list, or
-                  // otherwise have the same index.
-                  return 0;
-                } else if (aIndex === -1) {
-                  return 1;
-                } else if (bIndex === -1) {
-                  return -1;
-                }
+            let aIndex = bundle.entryAssetIds.indexOf(aNode.id);
+            let bIndex = bundle.entryAssetIds.indexOf(bNode.id);
 
-                return aIndex - bIndex;
-              })
-            : children;
+            if (aIndex === bIndex) {
+              // If both don't exist in the entry asset list, or
+              // otherwise have the same index.
+              return 0;
+            } else if (aIndex === -1) {
+              return 1;
+            } else if (bIndex === -1) {
+              return -1;
+            }
 
-        entries = false;
-        return sorted.map(([id]) => id);
+            return aIndex - bIndex;
+          });
+        }
+
+        let node = nullthrows(this._graph.getNode(nodeId));
+        if (node.type === 'asset') {
+          let deps = [...node.value.dependencies.keys()];
+          return children.sort((a, b) => {
+            let aNode = nullthrows(this._graph.getNode(a));
+            let bNode = nullthrows(this._graph.getNode(b));
+
+            let aIndex = deps.indexOf(aNode.id);
+            let bIndex = deps.indexOf(bNode.id);
+            return aIndex - bIndex;
+          });
+        }
+
+        return children;
       },
     });
   }
