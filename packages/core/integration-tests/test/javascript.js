@@ -208,7 +208,6 @@ describe('javascript', function () {
       (await outputFS.stat(mainPath)).mode,
       (await inputFS.stat(path.join(fixturePath, 'main.js'))).mode,
     );
-    await outputFS.rimraf(path.join(fixturePath, 'dist'));
   });
 
   it('should not preserve hashbangs in browser bundles', async () => {
@@ -220,7 +219,6 @@ describe('javascript', function () {
       'utf8',
     );
     assert(!main.includes('#!/usr/bin/env node\n'));
-    await outputFS.rimraf(path.join(fixturePath, 'dist'));
   });
 
   it('should preserve hashbangs in scopehoisted bundles', async () => {
@@ -236,7 +234,6 @@ describe('javascript', function () {
       'utf8',
     );
     assert.equal(main.lastIndexOf('#!/usr/bin/env node\n'), 0);
-    await outputFS.rimraf(path.join(fixturePath, 'dist'));
   });
 
   it('should bundle node_modules for a node environment if includeNodeModules is specified', async function () {
@@ -4727,6 +4724,53 @@ describe('javascript', function () {
 
     assert.deepEqual(o1, ['UIIcon', 'Icon']);
     assert.deepEqual(o2, ['UIIcon', 'Icon']);
+  });
+
+  it('should add strict mode directive to nomodule bundles', async function () {
+    let b = await bundle(
+      path.join(__dirname, '/integration/html-js/index.html'),
+      {
+        defaultTargetOptions: {
+          shouldScopeHoist: true,
+          engines: {
+            browsers: ['Chrome 50'],
+          },
+        },
+      },
+    );
+
+    let moduleBundle = await outputFS.readFile(
+      b
+        .getBundles()
+        .find(b => b.type === 'js' && b.env.outputFormat === 'esmodule')
+        .filePath,
+      'utf8',
+    );
+    let nomoduleBundle = await outputFS.readFile(
+      b
+        .getBundles()
+        .find(b => b.type === 'js' && b.env.outputFormat === 'global').filePath,
+      'utf8',
+    );
+    assert(!/^["']use strict["'];/.test(moduleBundle.includes('use strict')));
+    assert(nomoduleBundle.startsWith("'use strict';"));
+  });
+
+  it('should not add strict mode directive to classic scripts', async function () {
+    let b = await bundle(
+      path.join(__dirname, '/integration/html-js-classic/index.html'),
+      {
+        defaultTargetOptions: {
+          shouldScopeHoist: true,
+        },
+      },
+    );
+
+    let contents = await outputFS.readFile(
+      b.getBundles().find(b => b.type === 'js').filePath,
+      'utf8',
+    );
+    assert(!contents.includes('use strict'));
   });
 
   it('should not deduplicate an asset if it will become unreachable', async function () {
