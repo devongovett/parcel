@@ -29,6 +29,16 @@ const paths = {
     ...IGNORED_PACKAGES,
   ],
   packageOther: ['packages/*/*/src/**/dev-prelude.js'],
+  packageFlow: [
+    'packages/core/cache/src/**/*.js',
+    'packages/core/core/src/**/*.js',
+    'packages/core/diagnostic/src/diagnostic.js',
+    'packages/core/fs/src/**/*.js',
+    'packages/core/package-manager/src/**/*.js',
+    'packages/core/plugin/src/PluginAPI.js',
+    'packages/core/utils/src/**/*.js',
+    'packages/core/workers/src/**/*.js',
+  ],
   packageJson: [
     'packages/core/parcel/package.json',
     'packages/utils/create-react-app/package.json',
@@ -66,7 +76,7 @@ exports.clean = function clean(cb) {
 };
 
 exports.default = exports.build = gulp.series(
-  gulp.parallel(buildBabel, copyOthers),
+  gulp.parallel(buildBabel, copyOthers, copyFlow),
   // Babel reads from package.json so update these after babel has run
   paths.packageJson.map(
     packageJsonPath =>
@@ -88,6 +98,13 @@ function copyOthers() {
   return gulp
     .src(paths.packageOther)
     .pipe(renameStream(relative => relative.replace('src', 'lib')))
+    .pipe(gulp.dest(paths.packages));
+}
+
+function copyFlow() {
+  return gulp
+    .src(paths.packageFlow, {base: paths.packages})
+    .pipe(renameStream(relative => relative.replace('src', 'lib') + '.flow'))
     .pipe(gulp.dest(paths.packages));
 }
 
