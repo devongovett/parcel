@@ -26,6 +26,22 @@ describe('glob', function () {
     assert.equal(await output(), 3);
   });
 
+  it('should import a glob of esm files', async function () {
+    let b = await bundle(
+      path.join(__dirname, '/integration/glob-esm/index.js'),
+    );
+    await assertBundles(b, [
+      {
+        name: 'index.js',
+        assets: ['index.js', '*.js', 'a.js', 'b.js'],
+      },
+    ]);
+    let output = (await run(b)).default;
+
+    assert.equal(typeof output, 'function');
+    assert.equal(await output(), 3);
+  });
+
   it('should require nested directories with a glob', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/glob-deep/index.js'),
@@ -115,6 +131,7 @@ describe('glob', function () {
           'index.js',
           '*.js',
           'bundle-url.js',
+          'esmodule-helpers.js',
           'cacheLoader.js',
           'js-loader.js',
         ],
@@ -234,6 +251,7 @@ describe('glob', function () {
           '*.js',
           'bundle-url.js',
           'cacheLoader.js',
+          'esmodule-helpers.js',
           'index.js',
           'js-loader.js',
         ],

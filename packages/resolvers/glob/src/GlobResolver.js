@@ -190,8 +190,18 @@ export default (new Resolver({
         set(matches, parts, relative);
       }
 
-      let {value, imports} = generate(matches, dependency.priority === 'lazy');
-      code = imports + 'module.exports = ' + value;
+      let {value, imports} = generate(
+        matches,
+        dependency.priority === 'lazy',
+        '',
+        0,
+        dependency.specifierType,
+      );
+      if (dependency.specifierType === 'esm') {
+        code = imports + 'export ' + value;
+      } else {
+        code = imports + 'module.exports = ' + value;
+      }
     } else if (sourceAssetType === 'css') {
       for (let [, relative] of results) {
         code += `@import "${relative}";\n`;
@@ -230,19 +240,27 @@ function set(obj, path, value) {
   obj[path[path.length - 1]] = value;
 }
 
-function generate(matches, isAsync, indent = '', count = 0) {
+function generate(
+  matches,
+  isAsync,
+  indent = '',
+  count = 0,
+  specifierType = 'commonjs',
+) {
   if (typeof matches === 'string') {
-    if (isAsync) {
-      return {
-        imports: '',
-        value: `() => import(${JSON.stringify(matches)})`,
-        count,
-      };
-    }
-
     let key = `_temp${count++}`;
+    let imports;
+    if (isAsync) {
+      imports = `const ${key} = () => import(${JSON.stringify(matches)});`;
+    } else {
+      if (specifierType === 'esm') {
+        imports = `import * as ${key} from ${JSON.stringify(matches)};`;
+      } else {
+        imports = `const ${key} = require(${JSON.stringify(matches)});`;
+      }
+    }
     return {
-      imports: `const ${key} = require(${JSON.stringify(matches)});`,
+      imports,
       value: key,
       count,
     };
@@ -261,14 +279,18 @@ function generate(matches, isAsync, indent = '', count = 0) {
       imports: i,
       value,
       count: c,
-    } = generate(matches[key], isAsync, indent + '  ', count);
+    } = generate(matches[key], isAsync, indent + '  ', count, specifierType);
     imports += `${i}\n`;
     count = c;
 
-    res += `\n${indent}  ${JSON.stringify(key)}: ${value}`;
+    if (specifierType === 'esm') {
+      res += `\n${indent} ${value} as ${JSON.stringify(key)}`;
+    } else {
+      res += `\n${indent} ${JSON.stringify(key)}: ${value}`;
+    }
+
     first = false;
   }
-
   res += '\n' + indent + '}';
   return {imports, value: res, count};
 }
