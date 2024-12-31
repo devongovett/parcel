@@ -65,13 +65,13 @@ export default (new Validator({
       let program = langServiceCache[configHash].service.getProgram();
       if (!program) return;
 
-      let filesToCheck = program.getSourceFiles();
-      filesToCheck.forEach(sourceFile => {
-        let diagnostics = program.getSemanticDiagnostics(sourceFile);
-        validatorResults.push(
-          getValidateResultFromDiagnostics(sourceFile.fileName, diagnostics),
-        );
-      });
+      // let filesToCheck = program.getSourceFiles();
+      // filesToCheck.forEach(sourceFile => {
+      let diagnostics = program.getSemanticDiagnostics(undefined);
+      validatorResults.push(
+        getValidateResultFromDiagnostics(undefined, diagnostics),
+      );
+      // });
     });
 
     return validatorResults;
@@ -140,7 +140,7 @@ function tryCreateLanguageService(
 
 /** Translates semantic diagnostics (from TypeScript) into a ValidateResult that Parcel understands. */
 function getValidateResultFromDiagnostics(
-  filePath: string,
+  filePath: ?string,
   diagnostics: $ReadOnlyArray<Diagnostic>,
 ): ValidateResult {
   let validatorResult = {

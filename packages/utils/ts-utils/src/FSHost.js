@@ -105,4 +105,8 @@ export class FSHost {
       dirPath => this.directoryExists(dirPath),
     );
   }
+
+  getDirectories(filePath: FilePath): Array<FilePath> {
+    return this.ts.sys.getDirectories(filePath);
+  }
 }

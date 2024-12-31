@@ -1,0 +1,19 @@
+{
+  "name": "@parcel/ts-typecheck-example2",
+  "version": "2.9.1",
+  "license": "MIT",
+  "private": true,
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "demo": "parcel build src/index.ts --no-cache",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0",
+    "@parcel/babel-register": "2.9.1",
+    "@parcel/core": "2.9.1",
+    "@parcel/validator-typescript": "2.9.1",
+    "@types/node": "18.16.0"
+  }
+}
