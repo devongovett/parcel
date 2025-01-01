@@ -8,13 +8,16 @@ use markdown::{
   mdast::{AttributeValueExpression, Code, MdxjsEsm, Node, Text},
   message::{Message, Place},
   unist::Position,
+  Location,
 };
 use mdxjs::{
-  hast::{AttributeContent, AttributeValue, MdxJsxAttribute, PropertyValue},
-  hast_util_to_swc, mdast_util_from_mdx, mdast_util_to_hast, JsxRuntime, Options,
+  hast::{AttributeContent, AttributeValue, MdxJsxAttribute},
+  hast_util_to_swc, mdast_util_from_mdx, mdast_util_to_hast, mdx_plugin_recma_document,
+  mdx_plugin_recma_jsx_rewrite, Options,
 };
 use parcel_macros::{Evaluator, JsValue};
 use swc_core::{
+  alloc::collections::FxHashSet,
   common::{
     comments::{Comments, SingleThreadedComments},
     sync::Lrc,
@@ -22,13 +25,15 @@ use swc_core::{
   },
   ecma::{
     ast::{
-      Decl, ExportDefaultExpr, ExportSpecifier, Expr, JSXElement, JSXElementName,
-      JSXOpeningElement, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
+      CallExpr, Callee, Decl, ExportDefaultExpr, ExportSpecifier, Expr, ExprOrSpread, Ident,
+      JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXElementName, JSXExpr,
+      JSXExprContainer, JSXOpeningElement, Lit, Module, ModuleDecl, ModuleItem, Stmt, VarDeclKind,
     },
     atoms::JsWord,
     codegen::to_code,
     parser::{lexer::Lexer, EsSyntax, Parser, StringInput, Syntax, TsSyntax},
     utils::for_each_binding_ident,
+    visit::{VisitMut, VisitMutWith},
   },
 };
 
@@ -51,14 +56,7 @@ pub fn mdx(config: &Config) -> Result<MdxResult, Diagnostic> {
   let mut options: Options = Options {
     filepath: Some(config.filename.clone()),
     development: config.is_development,
-    jsx_import_source: config.jsx_import_source.clone(),
-    jsx_runtime: Some(if config.automatic_jsx_runtime {
-      JsxRuntime::Automatic
-    } else {
-      JsxRuntime::Classic
-    }),
-    pragma: config.jsx_pragma.clone(),
-    pragma_frag: config.jsx_pragma_frag.clone(),
+    jsx: true,
     ..Default::default()
   };
 
@@ -82,11 +80,16 @@ pub fn mdx(config: &Config) -> Result<MdxResult, Diagnostic> {
     children.extend(imports);
   }
 
-  let mut hast = mdast_util_to_hast(&ast);
-  collect_deps(&mut hast);
-
-  let program = hast_util_to_swc(&hast, code, &options)?;
+  let hast = mdast_util_to_hast(&ast);
+  let location = Location::new(code.as_bytes());
+  let mut explicit_jsxs = FxHashSet::default();
+  let mut program = hast_util_to_swc(&hast, &options, Some(&location), &mut explicit_jsxs)?;
   let exports = constant_exports(&program.module);
+
+  program.module.visit_mut_with(&mut DependencyVisitor);
+
+  mdx_plugin_recma_document(&mut program, &options, Some(&location))?;
+  mdx_plugin_recma_jsx_rewrite(&mut program, &options, Some(&location), &explicit_jsxs)?;
 
   let comments = SingleThreadedComments::default();
   for c in program.comments {
@@ -153,52 +156,49 @@ fn text<'a>(node: &'a Node) -> Cow<'a, str> {
   }
 }
 
-fn collect_deps(node: &mut mdxjs::hast::Node) {
-  use mdxjs::hast::Node;
-  match node {
-    Node::Element(el) => {
-      for (prop, value) in &mut el.properties {
-        if is_url(&el.tag_name, prop) {
-          if let PropertyValue::String(specifier) = value {
-            *value = PropertyValue::JsxExpression(format!(
-              "__parcel_url_dep__({:?}, {})",
-              specifier,
-              el.tag_name == "a" || el.tag_name == "iframe"
-            ));
-          }
-        }
-      }
+struct DependencyVisitor;
 
-      for child in &mut el.children {
-        collect_deps(child);
-      }
-    }
-    Node::MdxJsxElement(el) => {
-      if let Some(name) = &el.name {
-        for attr in &mut el.attributes {
-          if let AttributeContent::Property(prop) = attr {
-            if let Some(AttributeValue::Literal(specifier)) = &prop.value {
-              if is_url(name, &prop.name) {
-                prop.value = Some(AttributeValue::Expression(AttributeValueExpression {
-                  value: format!(
-                    "__parcel_url_dep__({:?}, {})",
-                    specifier,
-                    name == "a" || name == "iframe"
-                  ),
-                  stops: vec![],
-                }));
-              }
-            }
+impl VisitMut for DependencyVisitor {
+  fn visit_mut_jsx_opening_element(&mut self, node: &mut JSXOpeningElement) {
+    node.visit_mut_children_with(self);
+
+    let element = match &node.name {
+      JSXElementName::Ident(id) => id.sym.as_str(),
+      _ => return,
+    };
+
+    for prop in &mut node.attrs {
+      if let JSXAttrOrSpread::JSXAttr(prop) = prop {
+        if let (JSXAttrName::Ident(name), Some(JSXAttrValue::Lit(specifier @ Lit::Str(_)))) =
+          (&prop.name, &prop.value)
+        {
+          if is_url(element, name.sym.as_str()) {
+            prop.value = Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+              expr: JSXExpr::Expr(Box::new(Expr::Call(CallExpr {
+                callee: Callee::Expr(Box::new(Expr::Ident(Ident::new_no_ctxt(
+                  "__parcel_url_dep__".into(),
+                  DUMMY_SP,
+                )))),
+                args: vec![
+                  ExprOrSpread {
+                    expr: Box::new(Expr::Lit(specifier.clone())),
+                    spread: None,
+                  },
+                  ExprOrSpread {
+                    expr: Box::new(Expr::Lit(Lit::Bool(
+                      (element == "a" || element == "iframe").into(),
+                    ))),
+                    spread: None,
+                  },
+                ],
+                ..Default::default()
+              }))),
+              span: prop.span,
+            }));
           }
         }
       }
     }
-    Node::Root(root) => {
-      for child in &mut root.children {
-        collect_deps(child);
-      }
-    }
-    _ => {}
   }
 }
 

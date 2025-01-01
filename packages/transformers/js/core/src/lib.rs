@@ -188,7 +188,7 @@ impl Config {
   }
 
   fn is_jsx(&self) -> bool {
-    matches!(self.asset_type, Type::Jsx | Type::Tsx)
+    matches!(self.asset_type, Type::Jsx | Type::Tsx | Type::Mdx)
   }
 
   fn is_type_script(&self) -> bool {

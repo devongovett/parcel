@@ -1417,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "mdxjs"
 version = "0.2.14"
-source = "git+https://github.com/devongovett/mdxjs-rs?branch=export_phases#0b2d9c30f88dc98b7f95eab340f37651298e8db7"
+source = "git+https://github.com/devongovett/mdxjs-rs?branch=export_phases#18805ce92d7e185d4a94d7748c7cb251e610e694"
 dependencies = [
  "markdown",
  "swc_core",
