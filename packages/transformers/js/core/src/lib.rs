@@ -485,7 +485,7 @@ pub fn transform(
                     source_map: source_map.clone(),
                     items: &mut global_deps,
                     global_mark,
-                    globals: HashMap::new(),
+                    globals: IndexMap::new(),
                     filename: Path::new(&config.filename),
                     unresolved_mark,
                     has_node_replacements: &mut result.has_node_replacements,

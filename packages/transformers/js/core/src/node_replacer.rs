@@ -1,5 +1,6 @@
-use std::{collections::HashMap, ffi::OsStr, path::Path};
+use std::{ffi::OsStr, path::Path};
 
+use indexmap::IndexMap;
 use swc_core::{
   common::{sync::Lrc, Mark, SourceMap, SyntaxContext, DUMMY_SP},
   ecma::{
@@ -24,7 +25,7 @@ use crate::{
 pub struct NodeReplacer<'a> {
   pub source_map: Lrc<SourceMap>,
   pub global_mark: Mark,
-  pub globals: HashMap<JsWord, (SyntaxContext, ast::Stmt)>,
+  pub globals: IndexMap<JsWord, (SyntaxContext, ast::Stmt)>,
   pub filename: &'a Path,
   pub is_esm: bool,
   pub unresolved_mark: Mark,
@@ -186,7 +187,7 @@ impl<'a> VisitMut for NodeReplacer<'a> {
       0..0,
       self
         .globals
-        .drain()
+        .drain(..)
         .map(|(_, (_, stmt))| ast::ModuleItem::Stmt(stmt)),
     );
   }
@@ -268,7 +269,7 @@ console.log(__filename);
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,
@@ -303,7 +304,7 @@ console.log(__dirname);
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,
@@ -341,7 +342,7 @@ function something(__filename, __dirname) {
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,
@@ -374,7 +375,7 @@ const filename = obj.__filename;
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,
@@ -403,7 +404,7 @@ const filename = obj[__filename];
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,
@@ -434,7 +435,7 @@ console.log(__dirname);
     let output_code = run_visit(code, |context| NodeReplacer {
       source_map: context.source_map.clone(),
       global_mark: context.global_mark,
-      globals: HashMap::new(),
+      globals: IndexMap::new(),
       filename: Path::new("/path/random.js"),
       has_node_replacements: &mut has_node_replacements,
       items: &mut items,

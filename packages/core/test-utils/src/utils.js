@@ -946,6 +946,7 @@ function prepareNodeContext(
       }
 
       if (path.extname(res) === '.node') {
+        // $FlowFixMe[unsupported-syntax]
         return require(res);
       }
 
