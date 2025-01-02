@@ -193,10 +193,23 @@ export default (new Runtime({
         .find(e => e.id === bundleGroup.entryAssetId);
       if (
         dependency.specifierType === 'url' ||
-        mainBundle.type !== 'js' ||
         mainAsset?.meta.jsRuntime === 'url'
       ) {
         assets.push(getURLRuntime(dependency, bundle, mainBundle, options));
+        continue;
+      }
+
+      if (mainBundle.type === 'node' && mainBundle.env.isNode()) {
+        let relativePathExpr = getAbsoluteUrlExpr(
+          getRelativePathExpr(bundle, mainBundle, options),
+          mainBundle,
+        );
+        assets.push({
+          filePath: __filename,
+          code: `module.exports = require('./helpers/node/node-loader.js')(${relativePathExpr});`,
+          dependency,
+          env: {sourceType: 'module'},
+        });
       }
     }
 
@@ -655,7 +668,8 @@ function getAbsoluteUrlExpr(relativePathExpr: string, bundle: NamedBundle) {
   if (
     (bundle.env.outputFormat === 'esmodule' &&
       bundle.env.supports('import-meta-url')) ||
-    bundle.env.outputFormat === 'commonjs'
+    bundle.env.outputFormat === 'commonjs' ||
+    bundle.env.isNode()
   ) {
     // This will be compiled to new URL(url, import.meta.url) or new URL(url, 'file:' + __filename).
     return `new __parcel__URL__(${relativePathExpr}).toString()`;

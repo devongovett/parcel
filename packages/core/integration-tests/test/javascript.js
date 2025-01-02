@@ -6231,4 +6231,52 @@ describe('javascript', function () {
       assert.equal(res.result, 2);
     });
   }
+
+  for (let defaultTargetOptions of [
+    {shouldScopeHoist: false},
+    {shouldScopeHoist: true, outputFormat: 'commonjs'},
+    {shouldScopeHoist: true, outputFormat: 'esmodule'},
+  ]) {
+    it(
+      'supports native .node modules with options: ' +
+        JSON.stringify(defaultTargetOptions),
+      async function () {
+        await fsFixture(overlayFS, __dirname)`
+        native-node
+          index.js:
+            output = require('@parcel/rust');
+            
+          package.json:
+            {
+              "targets": {
+                "default": {
+                  "context": "node",
+                  "includeNodeModules": true
+                }
+              }
+            }
+            
+          yarn.lock:`;
+
+        let b = await bundle(path.join(__dirname, 'native-node/index.js'), {
+          defaultTargetOptions,
+          inputFS: overlayFS,
+          outputFS: inputFS,
+        });
+
+        let res = await run(
+          b,
+          {output: null},
+          {require: false},
+          {
+            fs: () => require('fs'),
+            path: () => require('path'),
+            module: () => require('module'),
+            url: () => require('url'),
+          },
+        );
+        assert.equal(typeof res.output.hashString, 'function');
+      },
+    );
+  }
 });
