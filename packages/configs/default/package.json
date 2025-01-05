@@ -44,6 +44,7 @@
     "@parcel/transformer-image": "2.13.3",
     "@parcel/transformer-js": "2.13.3",
     "@parcel/transformer-json": "2.13.3",
+    "@parcel/transformer-node": "2.13.3",
     "@parcel/transformer-postcss": "2.13.3",
     "@parcel/transformer-posthtml": "2.13.3",
     "@parcel/transformer-raw": "2.13.3",

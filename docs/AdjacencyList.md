@@ -401,7 +401,7 @@ Given a capacity of `c`:
 
 - The first 3 values in the `Uint32Array` are the header: `HEADER_SIZE = 3`
 - The hash table is always equal to the capacity: `c`
-- The addressable space is equal to the capacity times the item size: `IITEM_SIZE * c`
+- The addressable space is equal to the capacity times the item size: `ITEM_SIZE * c`
 - The item size is equal to the number of fields on an edge record: `ITEM_SIZE = 8`
 
 The size of the `Uint32Array` is therefore `3 + 9c`.
@@ -611,7 +611,7 @@ Given a capacity of `c`:
   - `TYPE` have the same meaning as in `SharedTypeMap`
   - `NEXT_ID` tracks the number of unique node ids issued by `addNode`
 - The hash table is always equal to the capacity: `c`
-- The addressable space is equal to the capacity times the item size: `IITEM_SIZE * c`
+- The addressable space is equal to the capacity times the item size: `ITEM_SIZE * c`
 - The item size is equal to the number of fields on a node record: `ITEM_SIZE = 6`
   - these are the 6 fields describe in [Node fields](#node-fields)
 

@@ -365,6 +365,9 @@ export async function runBundles(
       overlayFS,
       externalModules,
       true,
+      target === 'node' ||
+        target === 'electron-main' ||
+        target === 'react-server',
     );
 
     esmOutput = bundles.length === 1 ? res[0] : res;
@@ -927,6 +930,9 @@ function prepareNodeContext(
           readFileSync: (file, encoding) => {
             return overlayFS.readFileSync(file, encoding);
           },
+          existsSync: file => {
+            return overlayFS.existsSync(file);
+          },
         };
       }
 
@@ -937,6 +943,11 @@ function prepareNodeContext(
 
       if (path.extname(res) === '.css') {
         return {};
+      }
+
+      if (path.extname(res) === '.node') {
+        // $FlowFixMe[unsupported-syntax]
+        return require(res);
       }
 
       let cached = nodeCache.get(res);
@@ -1002,6 +1013,7 @@ export async function runESM(
   fs: FileSystem,
   externalModules: ExternalModules = {},
   requireExtensions: boolean = false,
+  isNode: boolean = false,
 ): Promise<Array<{|[string]: mixed|}>> {
   let id = instanceId++;
   let cache = new Map();
@@ -1048,7 +1060,11 @@ export async function runESM(
           entry(specifier, referrer),
         context,
         initializeImportMeta(meta) {
-          meta.url = `http://localhost/${path.basename(filename)}`;
+          if (isNode) {
+            meta.url = url.pathToFileURL(filename).toString();
+          } else {
+            meta.url = `http://localhost/${path.basename(filename)}`;
+          }
         },
       });
       cache.set(filename, m);

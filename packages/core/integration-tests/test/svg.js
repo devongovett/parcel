@@ -314,7 +314,7 @@ describe('svg', function () {
 
     assertBundles(b, [
       {
-        assets: ['index.js', 'bundle-url.js'],
+        assets: ['index.js'],
       },
       {
         assets: ['circle.svg'],

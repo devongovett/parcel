@@ -2,6 +2,9 @@
   "name": "@parcel/config-react-static",
   "version": "2.13.3",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
@@ -11,5 +14,8 @@
     "@parcel/config-default": "2.13.3",
     "@parcel/namer-static": "2.13.3",
     "@parcel/packager-react-static": "2.13.3"
+  },
+  "peerDependencies": {
+    "@parcel/core": "^2.13.3"
   }
 }
