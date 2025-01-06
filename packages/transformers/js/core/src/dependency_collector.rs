@@ -125,6 +125,7 @@ bitflags! {
     const OPTIONAL = 1 << 0;
     const HELPER = 1 << 1;
     const NEEDS_STABLE_NAME = 1 << 2;
+    const REACT_LAZY = 1 << 3;
   }
 }
 

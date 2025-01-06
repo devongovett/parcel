@@ -415,4 +415,72 @@ describe('react static', function () {
     assert(output.includes('<link rel="stylesheet"'));
     assert(output.includes('<script type="module"'));
   });
+
+  it('should support dynamic importing an object with components attached', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        export default async function Index() {
+          let {default: components} = await import('./server');
+          return (
+            <html>
+              <body>
+                <components.Server />
+              </body>
+            </html>
+          );
+        }
+
+      server.jsx:
+        import './server.css';
+        function Server() {
+          return <h1>Server</h1>;
+        }
+        export default {Server};
+
+      server.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+  });
+
+  it('should support dynamic importing a React.memo component', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        export default async function Index() {
+          let {default: Server} = await import('./server');
+          return (
+            <html>
+              <body>
+                <Server />
+              </body>
+            </html>
+          );
+        }
+
+      server.jsx:
+        import './server.css';
+        import {memo} from 'react';
+        export default memo(function Server() {
+          return <h1>Server</h1>;
+        });
+
+      server.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+  });
 });

@@ -587,7 +587,7 @@ pub fn transform(
 
           // Collect dependencies
           let ignore_mark = Mark::fresh(Mark::root());
-          let (mut module, helpers) = dependency_collector(
+          let (module, helpers) = dependency_collector(
             module,
             source_map.clone(),
             &mut result.dependencies,
@@ -625,7 +625,7 @@ pub fn transform(
             config.context,
             EnvContext::ReactClient | EnvContext::ReactServer
           ) {
-            module.visit_mut_with(&mut ReactLazy::new(&collect));
+            module.visit_with(&mut ReactLazy::new(&collect, &mut result.dependencies));
           }
 
           let mut module = if config.scope_hoist {

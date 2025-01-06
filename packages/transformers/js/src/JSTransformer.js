@@ -134,6 +134,7 @@ const SCRIPT_ERRORS = {
 const OPTIONAL = 1 << 0;
 const HELPER = 1 << 1;
 const NEEDS_STABLE_NAME = 1 << 2;
+const REACT_LAZY = 1 << 3;
 
 type TSConfig = {
   compilerOptions?: {
@@ -255,15 +256,6 @@ export default (new Transformer({
 
         if (automaticJSXRuntime) {
           jsxImportSource = reactLib;
-        }
-
-        if (
-          automaticJSXRuntime &&
-          jsxImportSource === 'react' &&
-          (config.env.context === 'react-server' ||
-            config.env.context === 'react-client')
-        ) {
-          jsxImportSource = '@parcel/runtime-rsc';
         }
       }
 
@@ -888,6 +880,10 @@ export default (new Transformer({
 
         if (dep.placeholder) {
           meta.placeholder = dep.placeholder;
+        }
+
+        if (dep.flags & REACT_LAZY) {
+          meta.isReactLazy = true;
         }
 
         let env;

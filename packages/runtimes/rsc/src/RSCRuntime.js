@@ -77,21 +77,23 @@ export default (new Runtime({
             }
           }
 
+          let count = 0;
           for (let symbol of bundleGraph.getExportedSymbols(
             resolvedAsset,
             bundle,
           )) {
-            code += `exports[${JSON.stringify(
-              symbol.exportAs,
-            )}] = createClientReference(${JSON.stringify(
+            let ref = `createClientReference(${JSON.stringify(
               bundleGraph.getAssetPublicId(symbol.asset),
             )}, ${JSON.stringify(symbol.exportSymbol)}, ${JSON.stringify(
               jsBundles,
-            )});\n`;
+            )})`;
             if (resources.length) {
+              code += `var Ref${++count} = ${ref};\n`;
               code += `exports[${JSON.stringify(
                 symbol.exportAs,
-              )}][resourcesSymbol] = resources;\n`;
+              )}] = (props) => <>{resources}<Ref${count} {...props} /></>;\n`;
+            } else {
+              code += `exports[${JSON.stringify(symbol.exportAs)}] = ${ref};\n`;
             }
           }
 
@@ -99,9 +101,6 @@ export default (new Runtime({
 
           if (node.value.priority === 'lazy') {
             code += 'module.exports = Promise.resolve(exports);\n';
-            if (resources.length) {
-              code += `module.exports[resourcesSymbol] = resources;\n`;
-            }
           }
 
           runtimes.push({
@@ -199,23 +198,21 @@ export default (new Runtime({
             );
             let resources = [];
             let js = [];
+            let preinit = [];
+            let css = [];
             let bootstrapModules = [];
             let entry;
-            let hasCSS = false;
             for (let b of bundles) {
               if (b.type === 'css') {
                 resources.push(renderStylesheet(b));
                 if (bundle.env.isBrowser()) {
-                  // If resources were requested, then a <link> element was rendered in the React tree.
-                  // We don't need to wait for the CSS to render the component because React will suspend.
-                  // In other cases where we aren't rendering a component, we still need to wait on the CSS.
                   let url = urlJoin(b.target.publicUrl, b.name);
-                  js.push(
-                    `Promise.resolve().then(() => requestedResources ? null : cssLoader(${JSON.stringify(
+                  preinit.push(
+                    `preinit(${JSON.stringify(
                       url,
-                    )}))`,
+                    )}, {as: 'style', precedence: 'default'});`,
                   );
-                  hasCSS = true;
+                  css.push(`waitForCSS(${JSON.stringify(url)})`);
                 }
               } else if (b.type === 'js') {
                 if (b.env.isBrowser()) {
@@ -263,20 +260,23 @@ export default (new Runtime({
             if (resources) {
               // Use a proxy to attach resources to all exports.
               // This will be used by the JSX runtime to automatically render CSS at bundle group boundaries.
-              let code = `let resources = ${
-                resources.length > 1
-                  ? '<>' + resources.join('\n') + '</>'
-                  : resources[0]
-              };\n`;
-
+              let code = `import {createResourcesProxy, waitForCSS} from '@parcel/runtime-rsc/rsc-helpers';\n`;
               if (node.value.priority === 'lazy') {
-                if (hasCSS) {
-                  code += `let cssLoader = require('@parcel/runtime-js/src/helpers/browser/css-loader');\n`;
-                  code += 'let requestedResources = false;\n';
+                if (preinit.length) {
+                  // Start preloading CSS via React.
+                  code += `import {preinit} from 'react-dom';\n`;
+                  code += preinit.join('\n') + '\n';
                 }
                 code += `let promise = Promise.all([${js.join(
                   ', ',
                 )}]).then(() => {\n`;
+                // If promise is not being loaded by React.lazy, wait for CSS to load.
+                // Otherwise, React will suspend on the rendered <link> element in the resources.
+                // This allows React to start rendering earlier if the CSS takes longer to load.
+                if (css.length && node.value.meta.isReactLazy !== true) {
+                  code += `  return Promise.all([${css.join(', ')}]);\n`;
+                  code += '}).then(() => {\n';
+                }
               }
 
               // Also attach a bootstrap script which will be injected into the initial HTML.
@@ -297,7 +297,12 @@ export default (new Runtime({
               code += `let originalModule = parcelRequire(${JSON.stringify(
                 bundleGraph.getAssetPublicId(resolvedAsset),
               )});\n`;
-              code += `let res = require('@parcel/runtime-rsc/rsc-helpers').createResourcesProxy(originalModule, resources ${
+              code += `let resources = ${
+                resources.length > 1
+                  ? '<>\n  ' + resources.join('\n  ') + '\n</>'
+                  : resources[0]
+              };\n`;
+              code += `let res = createResourcesProxy(originalModule, resources ${
                 node.value.priority !== 'lazy' && entry
                   ? ', bootstrapScript'
                   : ''
@@ -306,14 +311,6 @@ export default (new Runtime({
               if (node.value.priority === 'lazy') {
                 code += `  return res;\n`;
                 code += `});\n`;
-
-                // Also attach resources to the promise itself so React.lazy can render them early.
-                code += `Object.defineProperty(promise, Symbol.for('react.resources'), {
-                  get() {
-                    requestedResources = true;
-                    return resources;
-                  }
-                });\n`;
                 code += `module.exports = promise;\n`;
               } else {
                 code += `module.exports = res;\n`;

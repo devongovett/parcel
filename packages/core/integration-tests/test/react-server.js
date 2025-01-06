@@ -657,7 +657,9 @@ describe('react server components', function () {
           let res = (await run(b, {output: null}, {require: false})).output;
           let output = res.render();
 
-          let link = output.props.children[0];
+          output.type.$$typeof;
+          let rendered = output.type();
+          let link = rendered.props.children[0];
           assert.equal(link.type, 'link');
           assert.equal(link.props.rel, 'stylesheet');
           assert.equal(link.props.precedence, 'default');
@@ -795,7 +797,9 @@ describe('react server components', function () {
           );
 
           let res = (await run(b, null, {require: false})).output;
-          let result = await res.Server();
+          let output = await res.Server();
+          output.type.$$typeof;
+          let result = output.type();
           assert.equal(
             result.props.children[1].type.$$typeof,
             Symbol.for('react.client.reference'),
@@ -867,7 +871,9 @@ describe('react server components', function () {
           );
 
           let res = (await run(b, null, {require: false})).output;
-          let result = await res.Server();
+          let output = await res.Server();
+          output.type.$$typeof;
+          let result = output.type();
 
           let link = result.props.children[0];
           assert.equal(link.type, 'link');

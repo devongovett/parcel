@@ -19,7 +19,7 @@
       "source": "./src/RSCRuntime.js",
       "default": "./lib/RSCRuntime.js"
     },
-    "./rsc-helpers": "./rsc-helpers.js",
+    "./rsc-helpers": "./rsc-helpers.jsx",
     "./jsx-dev-runtime": "./jsx-dev-runtime.js",
     "./jsx-runtime": "./jsx-runtime"
   },
