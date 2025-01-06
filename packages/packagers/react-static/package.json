@@ -22,6 +22,7 @@
   "dependencies": {
     "@parcel/node-resolver-core": "3.4.3",
     "@parcel/plugin": "2.13.3",
+    "@parcel/rust": "2.13.3",
     "@parcel/types": "2.13.3",
     "@parcel/utils": "2.13.3",
     "rsc-html-stream": "^0.0.4",

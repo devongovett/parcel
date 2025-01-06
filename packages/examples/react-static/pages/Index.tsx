@@ -1,5 +1,4 @@
 import type { PageProps } from "../types";
-import { Resources } from "@parcel/runtime-rsc";
 import { Counter } from "../components/Counter";
 import { Nav } from '../components/Nav';
 import '../components/style.css';
@@ -10,7 +9,6 @@ export default function Index({pages, currentPage}: PageProps) {
     <html>
       <head>
         <title>Static RSC</title>
-        <Resources />
       </head>
       <body>
         <h1>This is an RSC!</h1>

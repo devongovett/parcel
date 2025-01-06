@@ -276,12 +276,21 @@ export class DevPackager {
         )}");\n`;
       }
     } else if (this.bundle.env.isNode()) {
-      let bundles = this.bundleGraph.getReferencedBundles(this.bundle);
+      let bundles = this.bundleGraph.getReferencedBundles(this.bundle, {
+        includeInline: false,
+      });
       for (let b of bundles) {
         if (b.type !== 'js') {
           continue;
         }
-        importScripts += `require("${relativeBundlePath(this.bundle, b)}");\n`;
+        if (this.bundle.env.outputFormat === 'esmodule') {
+          importScripts += `import "${relativeBundlePath(this.bundle, b)}";\n`;
+        } else {
+          importScripts += `require("${relativeBundlePath(
+            this.bundle,
+            b,
+          )}");\n`;
+        }
       }
     }
 

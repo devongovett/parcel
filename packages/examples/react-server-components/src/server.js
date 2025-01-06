@@ -26,11 +26,11 @@ app.options('/', function (req, res) {
 app.use(express.static('dist'));
 
 app.get('/', async (req, res) => {
-  await render(req, res, <App />);
+  await render(req, res, <App />, App.bootstrapScript);
 });
 
 app.get('/files/*', async (req, res) => {
-  await render(req, res, <FilePage file={req.params[0]} />);
+  await render(req, res, <FilePage file={req.params[0]} />, FilePage.bootstrapScript);
 });
 
 app.post('/', async (req, res) => {
@@ -54,7 +54,7 @@ app.post('/', async (req, res) => {
       // We handle the error on the client
     }
 
-    await render(req, res, <App />, result);
+    await render(req, res, <App />, App.bootstrapScript, result);
   } else {
     // Form submitted by browser (progressive enhancement).
     let formData = await request.formData();
@@ -65,11 +65,11 @@ app.post('/', async (req, res) => {
     } catch (err) {
       // TODO render error page?
     }
-    await render(req, res, <App />);
+    await render(req, res, <App />, App.bootstrapScript);
   }
 });
 
-async function render(req, res, component, actionResult) {
+async function render(req, res, component, bootstrapScript, actionResult) {
   // Render RSC payload.
   let root = component;
   if (actionResult) {
@@ -88,7 +88,9 @@ async function render(req, res, component, actionResult) {
       return ReactClient.use(data);
     }
 
-    let htmlStream = await renderHTMLToReadableStream(<Content />);
+    let htmlStream = await renderHTMLToReadableStream(<Content />, {
+      bootstrapScriptContent: bootstrapScript,
+    });
     let response = htmlStream.pipeThrough(injectRSCPayload(s2));
     Readable.fromWeb(response).pipe(res);
   } else {

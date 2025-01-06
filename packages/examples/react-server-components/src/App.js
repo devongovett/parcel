@@ -4,19 +4,19 @@ import Container from './Container.js';
 import {Counter} from './Counter.js';
 import Button from './Button.js';
 import {Files} from './Files';
-import {Suspense} from 'react';
+import React, {lazy, Suspense} from 'react';
 import './App.css';
 import {getServerState} from './ServerState';
 import {like} from './actions.js';
-import {Resources} from '@parcel/runtime-rsc';
 import './bootstrap';
+
+const Dynamic = lazy(() => import('./Dynamic'));
 
 export default async function App() {
   return (
     <html>
       <head>
         <title>RSC</title>
-        <Resources />
       </head>
       <body>
         <Container>
@@ -32,6 +32,7 @@ export default async function App() {
         <Suspense fallback={<>Loading files...</>}>
           <Files />
         </Suspense>
+        <Dynamic />
       </body>
     </html>
   );

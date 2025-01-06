@@ -18,6 +18,9 @@ import {ResolverBase} from '@parcel/node-resolver-core';
 import vm from 'vm';
 import nullthrows from 'nullthrows';
 import {Readable} from 'stream';
+import {hashString} from '@parcel/rust';
+// $FlowFixMe
+import {AsyncLocalStorage} from 'node:async_hooks';
 
 export interface Page {
   url: string;
@@ -45,7 +48,7 @@ let moduleCache = new Map<string, ParcelModule>();
 let loadedBundles = new Map<NamedBundle, any>();
 
 export default (new Packager({
-  loadConfig({options, config}) {
+  async loadConfig({options, config}) {
     config.invalidateOnBuild();
     packagingBundles.clear();
     moduleCache.clear();
@@ -60,11 +63,28 @@ export default (new Packager({
       packageExports: true,
       conditions: 1 << 16, // "react-server"
     });
+
+    // This logic must be synced with the packager...
+    let packageName = await config.getConfigFrom(
+      options.projectRoot + '/index',
+      [],
+      {
+        packageKey: 'name',
+      },
+    );
+
+    let name = packageName?.contents ?? '';
+    return {
+      parcelRequireName: 'parcelRequire' + hashString(name).slice(-4),
+    };
   },
-  async package({bundle, bundleGraph, getInlineBundleContents}) {
+  async package({bundle, bundleGraph, getInlineBundleContents, config}) {
     if (bundle.env.shouldScopeHoist) {
       throw new Error('Scope hoisting is not supported with SSG');
     }
+
+    // $FlowFixMe
+    globalThis.AsyncLocalStorage ??= AsyncLocalStorage;
 
     let {load, loadModule} = await loadBundle(
       bundle,
@@ -112,15 +132,68 @@ export default (new Packager({
       },
     };
 
-    let stream = renderToReadableStream(React.createElement(Component, props));
+    let resources = [];
+    let bootstrapModules = [];
+    let entry;
+    for (let b of bundleGraph.getReferencedBundles(bundle, {
+      includeInline: false,
+    })) {
+      if (b.type === 'css') {
+        resources.push(
+          React.createElement('link', {
+            rel: 'stylesheet',
+            href: urlJoin(b.target.publicUrl, b.name),
+            precedence: 'default',
+          }),
+        );
+      } else if (b.type === 'js' && b.env.isBrowser()) {
+        bootstrapModules.push(urlJoin(b.target.publicUrl, b.name));
+        resources.push(
+          React.createElement('script', {
+            type: 'module',
+            async: true,
+            src: urlJoin(b.target.publicUrl, b.name),
+          }),
+        );
+
+        if (!entry) {
+          b.traverseAssets((a, ctx, actions) => {
+            if (
+              Array.isArray(a.meta.directives) &&
+              a.meta.directives.includes('use client-entry')
+            ) {
+              entry = a;
+              actions.stop();
+            }
+          });
+        }
+      }
+    }
+
+    let stream = renderToReadableStream([
+      ...resources,
+      React.createElement(Component, props),
+    ]);
     let [s1, renderStream] = stream.tee();
     let [injectStream, rscStream] = s1.tee();
-    let data = createFromReadableStream(renderStream);
+    let data;
     function Content() {
+      data ??= createFromReadableStream(renderStream);
       return React.use(data);
     }
 
-    let {prelude} = await prerender(React.createElement(Content));
+    let bootstrapScriptContent;
+    if (entry) {
+      bootstrapScriptContent = `Promise.all([${bootstrapModules
+        .map(m => `import("${m}")`)
+        .join(',')}]).then(()=>${
+        nullthrows(config).parcelRequireName
+      }(${JSON.stringify(bundleGraph.getAssetPublicId(entry))}))`;
+    }
+
+    let {prelude} = await prerender(React.createElement(Content), {
+      bootstrapScriptContent,
+    });
     let response = prelude.pipeThrough(injectRSCPayload(injectStream));
 
     return [
@@ -162,7 +235,9 @@ async function loadBundleUncached(
   ) => Async<{|contents: Blob|}>,
 ) {
   // Load all asset contents.
-  let queue = new PromiseQueue({maxConcurrent: 32});
+  let queue = new PromiseQueue<Array<[string, [Asset, string]]>>({
+    maxConcurrent: 32,
+  });
   bundle.traverse(node => {
     if (node.type === 'dependency') {
       let dep = node.value;
@@ -182,18 +257,32 @@ async function loadBundleUncached(
           let contents = await blobToString(packagedBundle.contents);
           contents = `module.exports = ${contents}`;
           return [
-            entryBundle.id,
-            [nullthrows(entryBundle.getMainEntry()), contents],
+            [
+              entryBundle.id,
+              [nullthrows(entryBundle.getMainEntry()), contents],
+            ],
           ];
+        });
+      } else if (entryBundle) {
+        // console.log('here', entryBundle)
+        queue.add(async () => {
+          let {assets: subAssets} = await loadBundle(
+            entryBundle,
+            bundleGraph,
+            getInlineBundleContents,
+          );
+          return Array.from(subAssets);
         });
       }
     } else if (node.type === 'asset') {
       let asset = node.value;
-      queue.add(async () => [asset.id, [asset, await asset.getCode()]]);
+      queue.add(async () => [[asset.id, [asset, await asset.getCode()]]]);
     }
   });
 
-  let assets = new Map<string, [Asset, string]>(await queue.run());
+  let assets = new Map<string, [Asset, string]>(
+    (await queue.run()).flatMap(v => v),
+  );
   let assetsByFilePath = new Map<string, string>();
   let assetsByPublicId = new Map<string, string>();
   for (let [asset] of assets.values()) {
@@ -251,10 +340,14 @@ async function loadBundleUncached(
         id = resolution.specifier;
       }
 
+      if (id.startsWith('.')) {
+        // Another bundle. Should already be loaded.
+        return {};
+      }
+
       return defaultRequire(id);
     };
 
-    // @ts-ignore
     require.resolve = defaultRequire.resolve;
 
     return runModule(code, asset.filePath, cacheKey, require, parcelRequire);
@@ -264,13 +357,13 @@ async function loadBundleUncached(
     return loadAsset(nullthrows(assetsByPublicId.get(publicId)));
   };
 
-  // @ts-ignore
+  parcelRequire.root = parcelRequire;
+
   parcelRequire.meta = {
     distDir: bundle.target.distDir,
     publicUrl: bundle.target.publicUrl,
   };
 
-  // @ts-ignore
   parcelRequire.load = async (filePath: string) => {
     let bundle = bundleGraph.getBundles().find(b => b.name === filePath);
     if (bundle) {
@@ -327,7 +420,6 @@ async function loadBundleUncached(
         return loadModule(id, filePath, env);
       };
 
-      // @ts-ignore
       require.resolve = defaultRequire.resolve;
 
       return runModule(code, filePath, cacheKey, require, parcelRequire);
@@ -346,6 +438,7 @@ function runModule(
   require: (id: string) => any,
   parcelRequire: (id: string) => any,
 ) {
+  // code = code.replace(/import\((['"].*?['"])\)/g, (_, m) => `parcelRequire.load(${m[0] + m.slice(3)})`);
   let moduleFunction = vm.compileFunction(
     code,
     [
@@ -369,6 +462,7 @@ function runModule(
     filename,
     id,
     path: dirname,
+    bundle: parcelRequire,
   };
 
   moduleCache.set(id, module);

@@ -8,6 +8,7 @@ mod hoist;
 mod mdx;
 mod modules;
 mod node_replacer;
+mod react_lazy;
 #[cfg(test)]
 mod test_utils;
 mod typeof_replacer;
@@ -35,6 +36,7 @@ use modules::esm2cjs;
 use node_replacer::NodeReplacer;
 use parcel_macros::{JsValue, MacroCallback, MacroError, Macros};
 use path_slash::PathExt;
+use react_lazy::ReactLazy;
 use serde::{Deserialize, Serialize};
 use swc_core::{
   common::{
@@ -585,7 +587,7 @@ pub fn transform(
 
           // Collect dependencies
           let ignore_mark = Mark::fresh(Mark::root());
-          let (module, helpers) = dependency_collector(
+          let (mut module, helpers) = dependency_collector(
             module,
             source_map.clone(),
             &mut result.dependencies,
@@ -617,6 +619,13 @@ pub fn transform(
           module.visit_with(&mut collect);
           if let Some(bailouts) = &collect.bailouts {
             diagnostics.extend(bailouts.iter().map(|bailout| bailout.to_diagnostic()));
+          }
+
+          if matches!(
+            config.context,
+            EnvContext::ReactClient | EnvContext::ReactServer
+          ) {
+            module.visit_mut_with(&mut ReactLazy::new(&collect));
           }
 
           let mut module = if config.scope_hoist {

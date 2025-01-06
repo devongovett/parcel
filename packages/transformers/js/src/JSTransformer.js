@@ -256,6 +256,15 @@ export default (new Transformer({
         if (automaticJSXRuntime) {
           jsxImportSource = reactLib;
         }
+
+        if (
+          automaticJSXRuntime &&
+          jsxImportSource === 'react' &&
+          (config.env.context === 'react-server' ||
+            config.env.context === 'react-client')
+        ) {
+          jsxImportSource = '@parcel/runtime-rsc';
+        }
       }
 
       isJSX = Boolean(compilerOptions?.jsx || pragma);

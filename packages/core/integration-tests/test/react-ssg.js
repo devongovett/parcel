@@ -43,7 +43,6 @@ describe('react static', function () {
     await fsFixture(overlayFS, dir)`
     index.jsx:
       import {Client} from './client';
-      import {Resources} from "@parcel/runtime-rsc";
       import './bootstrap';
 
       export default function Index() {
@@ -51,7 +50,6 @@ describe('react static', function () {
           <html>
             <head>
               <title>Static RSC</title>
-              <Resources />
             </head>
             <body>
               <h1>This is an RSC!</h1>
@@ -85,7 +83,7 @@ describe('react static', function () {
       [
         {
           name: 'index.html',
-          assets: ['index.jsx', 'resources.js'],
+          assets: ['index.jsx'],
         },
         {
           assets: ['client.jsx', 'bootstrap.js'],
@@ -101,7 +99,7 @@ describe('react static', function () {
 
     let output = await overlayFS.readFile(files[0].filePath, 'utf8');
     assert(output.includes('<h1>This is an RSC!</h1><p>Client</p>'));
-    assert(output.includes('<script type="module">import '));
+    assert(output.includes('<script>Promise.all('));
 
     let rsc = await overlayFS.readFile(files[1].filePath, 'utf8');
     assert(rsc.includes('{"children":"This is an RSC!"}'));
@@ -268,5 +266,153 @@ describe('react static', function () {
       ),
     );
     assert(output.includes('<ul><li>Another page</li></ul>'));
+  });
+
+  it('should support dynamic importing a server component from a server component', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        export default async function Index() {
+          let {Server} = await import('./server');
+          return (
+            <html>
+              <body>
+                <Server />
+              </body>
+            </html>
+          );
+        }
+
+      server.jsx:
+        import './server.css';
+        export function Server() {
+          return <h1>Server</h1>;
+        }
+
+      server.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+  });
+
+  it('should support dynamic importing a client component from a server component', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        export default async function Index() {
+          let {Client} = await import('./client');
+          return (
+            <html>
+              <body>
+                <Client />
+              </body>
+            </html>
+          );
+        }
+
+      client.jsx:
+        "use client";
+        import './client.css';
+        export function Client() {
+          return <h1>Client</h1>;
+        }
+
+      client.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    // CSS is injected via JSX. Scripts are injected by React's prepareDestinationForModule.
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+    assert(output.includes('<script '));
+  });
+
+  it('should support dynamic importing a client component from a server component with React.lazy', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        import {lazy} from 'react';
+        const Client = lazy(() => import('./client'));
+        export default async function Index() {
+          return (
+            <html>
+              <body>
+                <Client />
+              </body>
+            </html>
+          );
+        }
+
+      client.jsx:
+        "use client";
+        import './client.css';
+        export default function Client() {
+          return <h1>Client</h1>;
+        }
+
+      client.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    // CSS is injected via JSX. Scripts are injected by React's prepareDestinationForModule.
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+    assert(output.includes('<script '));
+  });
+
+  it('should support dynamic importing a client component from a client component', async function () {
+    await fsFixture(overlayFS, dir)`
+      index.jsx:
+        import {Client} from './client';
+        export default async function Index() {
+          return (
+            <html>
+              <body>
+                <Client />
+              </body>
+            </html>
+          );
+        }
+
+      client.jsx:
+        "use client";
+        import {lazy} from 'react';
+        const Dynamic = lazy(() => import('./dynamic'));
+        export function Client() {
+          return <Dynamic />;
+        }
+          
+      dynamic.jsx:
+        import './client.css';
+        export default function Dynamic() {
+          return <h1>Dynamic</h1>
+        }
+
+      client.css:
+        h1 { color: red }
+    `;
+
+    let b = await bundle(path.join(dir, '/index.jsx'), {
+      inputFS: overlayFS,
+      targets: ['default'],
+    });
+
+    let output = await overlayFS.readFile(b.getBundles()[0].filePath, 'utf8');
+    assert(output.includes('<link rel="stylesheet"'));
+    assert(output.includes('<script type="module"'));
   });
 });

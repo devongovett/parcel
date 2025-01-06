@@ -6,6 +6,7 @@ packages/*/*/test/dist
 packages/*/*/test/mochareporters.json
 packages/*/*/test/fixtures
 packages/*/*/test/.parcel-cache
+packages/examples/react-server-components/src/server.js
 vendor
 tmp
 .parcel-cache

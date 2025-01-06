@@ -4,7 +4,6 @@ import {readFile, stat} from 'fs/promises';
 import {Files} from './Files';
 import Container from './Container';
 import {Counter} from './Counter';
-import {Resources} from '@parcel/runtime-rsc';
 import './bootstrap';
 
 export default async function FilePage({file}) {
@@ -18,7 +17,6 @@ export default async function FilePage({file}) {
     <html>
       <head>
         <title>{file}</title>
-        <Resources />
       </head>
       <body>
         <Container>

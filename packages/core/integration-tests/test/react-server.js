@@ -31,14 +31,7 @@ describe('react server components', function () {
               targets: {
                 default: {
                   context: 'react-server',
-                  outputFormat: 'commonjs',
                 },
-              },
-              '@parcel/resolver-default': {
-                packageExports: true,
-              },
-              '@parcel/bundler-default': {
-                minBundleSize: 0,
               },
             }),
           );
@@ -383,7 +376,6 @@ describe('react server components', function () {
                   'client.jsx',
                   'react-jsx-dev-runtime.development.js',
                   'index.js',
-                  'jsx-dev-runtime.js',
                   'react.development.js',
                 ],
               },
@@ -487,7 +479,6 @@ describe('react server components', function () {
                 assets: [
                   'client.jsx',
                   'index.js',
-                  'jsx-dev-runtime.js',
                   'react-jsx-dev-runtime.development.js',
                   'react.development.js',
                 ],
@@ -610,7 +601,6 @@ describe('react server components', function () {
                 // Client: shared bundle.
                 assets: [
                   'index.js',
-                  'jsx-dev-runtime.js',
                   'react-jsx-dev-runtime.development.js',
                   'react.development.js',
                 ],
@@ -620,32 +610,27 @@ describe('react server components', function () {
           );
         });
 
-        it('should support <Resources>', async function () {
+        it('should support inject CSS resources', async function () {
           await fsFixture(overlayFS, dir)`
+          index.jsx:
+            import {Server} from './Page.jsx';
+            function render() {
+              return <Server />;
+            }
+            output = {render};
+
           Page.jsx:
-            import {Client} from './Client';
-            import {Resources} from '@parcel/runtime-rsc';
+            "use server-entry";
             import './server.css';
             export function Server() {
-              return <><Resources /><Client /></>;
+              return <h1>Server</h1>;
             }
-            output = {Resources};
 
           server.css:
             .server { color: red }
-
-          Client.jsx:
-            "use client";
-            import './client.css';
-            export function Client() {
-              return <p>Client</p>;
-            }
-
-          client.css:
-            .client { color: green }
         `;
 
-          let b = await bundle(path.join(dir, '/Page.jsx'), {
+          let b = await bundle(path.join(dir, '/index.jsx'), {
             inputFS: overlayFS,
             targets: ['default'],
             defaultTargetOptions: {
@@ -657,22 +642,22 @@ describe('react server components', function () {
             b,
             [
               {
-                assets: ['Page.jsx', 'resources.js'],
+                assets: ['index.jsx'],
               },
               {
-                assets: ['Client.jsx'],
+                assets: ['Page.jsx'],
               },
               {
-                assets: ['server.css', 'client.css'],
+                assets: ['server.css'],
               },
             ],
             {skipNodeModules: true},
           );
 
-          let res = (await run(b, null, {require: false})).output;
-          let resources = res.Resources();
+          let res = (await run(b, {output: null}, {require: false})).output;
+          let output = res.render();
 
-          let link = resources.props.children;
+          let link = output.props.children[0];
           assert.equal(link.type, 'link');
           assert.equal(link.props.rel, 'stylesheet');
           assert.equal(link.props.precedence, 'default');
@@ -687,14 +672,17 @@ describe('react server components', function () {
 
         it('should generate an inline script for bootstrap with "use client-entry"', async function () {
           await fsFixture(overlayFS, dir)`
+          index.jsx:
+            import {Server} from './Page';
+            output = {Server};
+
           Page.jsx:
+            "use server-entry";
             import {Client} from './Client';
-            import {Resources} from '@parcel/runtime-rsc';
             import './client-entry.jsx';
             export function Server() {
-              return <><Resources /><Client /></>;
+              return <Client />;
             }
-            output = {Resources};
 
           client-entry.jsx:
             "use client-entry";
@@ -707,7 +695,7 @@ describe('react server components', function () {
             }
         `;
 
-          let b = await bundle(path.join(dir, '/Page.jsx'), {
+          let b = await bundle(path.join(dir, '/index.jsx'), {
             inputFS: overlayFS,
             targets: ['default'],
             defaultTargetOptions: {
@@ -719,7 +707,10 @@ describe('react server components', function () {
             b,
             [
               {
-                assets: ['Page.jsx', 'resources.js'],
+                assets: ['index.jsx'],
+              },
+              {
+                assets: ['Page.jsx'],
               },
               {
                 assets: ['client-entry.jsx', 'Client.jsx'],
@@ -729,12 +720,11 @@ describe('react server components', function () {
           );
 
           let res = await run(b, null, {require: false});
-          let resources = res.output.Resources();
           let parcelRequireName = nullthrows(
             Object.keys(res).find(k => /^parcelRequire(.+)$/.test(k)),
           );
           let clientEntry;
-          b.getBundles()[1].traverseAssets(a => {
+          b.getBundles()[2].traverseAssets(a => {
             if (
               Array.isArray(a.meta.directives) &&
               a.meta.directives.includes('use client-entry')
@@ -743,41 +733,35 @@ describe('react server components', function () {
             }
           });
 
-          let script = resources.props.children;
-          assert.equal(script.type, 'script');
-          assert.equal(script.props.type, 'module');
           assert.equal(
-            script.props.children,
-            `import "/${path.basename(
-              b.getBundles()[1].filePath,
-            )}";${parcelRequireName}("${b.getAssetPublicId(
+            res.output.Server.bootstrapScript,
+            `Promise.all([import("/${path.basename(
+              b.getBundles()[2].filePath,
+            )}")]).then(()=>${parcelRequireName}("${b.getAssetPublicId(
               nullthrows(clientEntry),
-            )}")`,
+            )}"))`,
           );
         });
 
-        it('dynamic import works with client components', async function () {
+        it('dynamic import of server component to client component', async function () {
           await fsFixture(overlayFS, dir)`
           Page.jsx:
-            import {Resources} from '@parcel/runtime-rsc/resources';
             import './server.css';
             export async function Server() {
               let {Client} = await import('./Client');
-              return [<Resources />, <Client />];
+              return <Client />;
             }
-            output = {Server, Resources};
+            output = {Server};
 
           server.css:
             .server { color: red }
   
           Client.jsx:
             "use client";
-            import {Resources} from '@parcel/runtime-rsc/resources';
             import './client.css';
             export function Client() {
-              return <p><Resources />Client</p>;
+              return <p>Client</p>;
             }
-            output = {Resources};
 
           client.css:
             .client { color: green }
@@ -795,10 +779,10 @@ describe('react server components', function () {
             b,
             [
               {
-                assets: ['Page.jsx', 'resources.js'],
+                assets: ['Page.jsx'],
               },
               {
-                assets: ['Client.jsx', 'resources.js'],
+                assets: ['Client.jsx'],
               },
               {
                 assets: ['server.css'],
@@ -813,52 +797,16 @@ describe('react server components', function () {
           let res = (await run(b, null, {require: false})).output;
           let result = await res.Server();
           assert.equal(
-            result[1].type.$$typeof,
+            result.props.children[1].type.$$typeof,
             Symbol.for('react.client.reference'),
           );
-          assert.equal(result[1].type.$$name, 'Client');
-          assert.equal(typeof result[1].type.$$id, 'string');
-          assert.deepEqual(result[1].type.$$bundles, [
+          assert.equal(result.props.children[1].type.$$name, 'Client');
+          assert.equal(typeof result.props.children[1].type.$$id, 'string');
+          assert.deepEqual(result.props.children[1].type.$$bundles, [
             path.basename(b.getBundles()[1].filePath),
           ]);
 
-          let resources = res.Resources();
-          let link = resources.props.children;
-          assert.equal(link.type, 'link');
-          assert.equal(link.props.rel, 'stylesheet');
-          assert.equal(link.props.precedence, 'default');
-          assert.equal(
-            link.props.href,
-            '/' +
-              path.basename(
-                nullthrows(
-                  b
-                    .getBundles()
-                    .find(b => b.type === 'css' && b.name.startsWith('Page')),
-                ).filePath,
-              ),
-          );
-
-          let entryAsset;
-          b.getBundles()[1].traverseAssets(a => {
-            if (a.filePath.endsWith('Client.jsx')) {
-              entryAsset = a;
-            }
-          });
-
-          let client = (await runBundle(
-            b,
-            b.getBundles()[1],
-            {output: null},
-            {require: false, entryAsset},
-          ): any);
-          let parcelRequire = nullthrows(
-            Object.keys(client).find(k => k.startsWith('parcelRequire')),
-          );
-          client[parcelRequire](b.getAssetPublicId(nullthrows(entryAsset)));
-          resources = client.output.Resources();
-
-          link = resources.props.children;
+          let link = result.props.children[0];
           assert.equal(link.type, 'link');
           assert.equal(link.props.rel, 'stylesheet');
           assert.equal(link.props.precedence, 'default');
@@ -870,6 +818,71 @@ describe('react server components', function () {
                   b
                     .getBundles()
                     .find(b => b.type === 'css' && b.name.startsWith('Client')),
+                ).filePath,
+              ),
+          );
+        });
+
+        it('dynamic import of server component to server component', async function () {
+          await fsFixture(overlayFS, dir)`
+          Page.jsx:
+            export async function Server() {
+              let {Dynamic} = await import('./Dynamic');
+              return <Dynamic />;
+            }
+            output = {Server};
+  
+          Dynamic.jsx:
+            import './dynamic.css';
+            export function Dynamic() {
+              return <p>Dynamic</p>;
+            }
+
+          dynamic.css:
+            .dynamic { color: green }
+        `;
+
+          let b = await bundle(path.join(dir, '/Page.jsx'), {
+            inputFS: overlayFS,
+            targets: ['default'],
+            defaultTargetOptions: {
+              shouldScopeHoist,
+            },
+          });
+
+          assertBundles(
+            b,
+            [
+              {
+                assets: ['Page.jsx'],
+              },
+              {
+                assets: ['Dynamic.jsx'],
+              },
+              {
+                assets: ['dynamic.css'],
+              },
+            ],
+            {skipNodeModules: true},
+          );
+
+          let res = (await run(b, null, {require: false})).output;
+          let result = await res.Server();
+
+          let link = result.props.children[0];
+          assert.equal(link.type, 'link');
+          assert.equal(link.props.rel, 'stylesheet');
+          assert.equal(link.props.precedence, 'default');
+          assert.equal(
+            link.props.href,
+            '/' +
+              path.basename(
+                nullthrows(
+                  b
+                    .getBundles()
+                    .find(
+                      b => b.type === 'css' && b.name.startsWith('Dynamic'),
+                    ),
                 ).filePath,
               ),
           );

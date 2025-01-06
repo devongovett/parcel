@@ -11998,10 +11998,10 @@ react-resizable-panels@^0.0.61:
   resolved "https://registry.yarnpkg.com/react-resizable-panels/-/react-resizable-panels-0.0.61.tgz#2260ec8ca591431d367d172bced49733cc3308aa"
   integrity sha512-Vk2a4LEHWkI6hGPnPmXxa/2twLYMAMMUTyA2PtR1ijvH2Nkg/AhGqrPsIi/eI85uVWtYCFNZKEsbR3uGuJl/yg==
 
-react-server-dom-parcel@^0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/react-server-dom-parcel/-/react-server-dom-parcel-0.0.1.tgz#2653c2b39a857fbd17770d27d6f08bd139803f09"
-  integrity sha512-f93wv8gycm4ltcQRqpSlgYyT6cJxmjJdRmXw3deQoXowDlP44W4RRzwHQ70u1xseCpHFIORmuHVXk7+Fk8RFtQ==
+react-server-dom-parcel@canary:
+  version "19.1.0-canary-3b009b4c-20250102"
+  resolved "https://registry.yarnpkg.com/react-server-dom-parcel/-/react-server-dom-parcel-19.1.0-canary-3b009b4c-20250102.tgz#9df3ca23021d0249ecabf86af0e9b99b9b8978c8"
+  integrity sha512-yeDOqigHwwLYhXWzNmDwxYB2SW1vn4D172+r+3cV+dGl1nY25lhd5xroLIKmltPcp0jcFhk5Rn2TbIXB/5rMqQ==
 
 react-universal-interface@^0.6.2:
   version "0.6.2"

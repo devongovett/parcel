@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "server": "dist/server.js",
-  "source": "src/server.tsx",
+  "source": "src/server.js",
   "targets": {
     "server": {
       "context": "react-server",
@@ -21,7 +21,7 @@
     "express": "^4.18.2",
     "react": "^19",
     "react-dom": "^19",
-    "react-server-dom-parcel": "^0.0.1",
+    "react-server-dom-parcel": "canary",
     "rsc-html-stream": "^0.0.4"
   }
 }

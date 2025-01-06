@@ -72,7 +72,7 @@ pub(crate) fn run_fold<V: Fold>(
 
 /// Parse code, run resolver over it, then run the `tranform` function with the parsed module
 /// codegen and return the results.
-fn run_with_transformation<R>(
+pub(crate) fn run_with_transformation<R>(
   code: &str,
   transform: impl FnOnce(RunTestContext, &mut Module) -> R,
 ) -> (String, R) {
