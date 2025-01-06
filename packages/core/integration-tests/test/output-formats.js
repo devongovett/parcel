@@ -552,12 +552,18 @@ describe('output formats', function () {
       };
 
       let out = [];
-      await run(b, {
-        require: () => external,
-        output(o) {
-          out.push(o);
+      await run(
+        b,
+        {
+          output(o) {
+            out.push(o);
+          },
         },
-      });
+        {},
+        {
+          external: () => external,
+        },
+      );
 
       assert.deepEqual(out, [1, 2]);
     });

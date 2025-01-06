@@ -31,7 +31,11 @@ import EventEmitter from 'events';
 import http from 'http';
 import https from 'https';
 
-import {makeDeferredWithPromise, normalizeSeparators} from '@parcel/utils';
+import {
+  makeDeferredWithPromise,
+  normalizeSeparators,
+  loadConfig,
+} from '@parcel/utils';
 import _chalk from 'chalk';
 import resolve from 'resolve';
 
@@ -303,6 +307,8 @@ export async function runBundles(
   let target = env.context;
   let outputFormat = env.outputFormat;
 
+  nodeCache.clear();
+
   let ctx, promises;
   switch (target) {
     case 'browser':
@@ -315,23 +321,11 @@ export async function runBundles(
     case 'node':
     case 'electron-main':
     case 'react-server':
-      nodeCache.clear();
-      ctx = prepareNodeContext(
-        outputFormat === 'commonjs' && parent.filePath,
-        globals,
-        undefined,
-        externalModules,
-      );
+      ctx = prepareNodeContext(globals);
       break;
     case 'electron-renderer': {
-      nodeCache.clear();
       let prepared = prepareBrowserContext(parent, globals);
-      prepareNodeContext(
-        outputFormat === 'commonjs' && parent.filePath,
-        globals,
-        prepared.ctx,
-        externalModules,
-      );
+      prepareNodeContext(globals, prepared.ctx);
       ctx = prepared.ctx;
       promises = prepared.promises;
       break;
@@ -357,6 +351,7 @@ export async function runBundles(
 
   vm.createContext(ctx);
   let esmOutput;
+  let cjsOutput;
   if (outputFormat === 'esmodule') {
     let res = await runESM(
       bundles[0][1].target.distDir,
@@ -371,9 +366,21 @@ export async function runBundles(
     );
 
     esmOutput = bundles.length === 1 ? res[0] : res;
+  } else if (outputFormat === 'commonjs' || env.isNode()) {
+    for (let [code, b] of bundles) {
+      let res = runModule(
+        b.target.distDir,
+        ctx,
+        b.filePath,
+        code,
+        externalModules,
+        opts.strict ?? false,
+      );
+      cjsOutput ??= res;
+    }
   } else {
     for (let [code, b] of bundles) {
-      // require, parcelRequire was set up in prepare*Context
+      // parcelRequire was set up in prepare*Context
       new vm.Script((opts.strict ? '"use strict";\n' : '') + code, {
         filename:
           b.bundleBehavior === 'inline'
@@ -395,6 +402,7 @@ export async function runBundles(
       }).runInContext(ctx);
     }
   }
+
   if (promises) {
     // await any ongoing dynamic imports during the run
     await Promise.all(promises);
@@ -413,8 +421,7 @@ export async function runBundles(
       case 'global':
         return typeof ctx.output !== 'undefined' ? ctx.output : undefined;
       case 'commonjs':
-        invariant(typeof ctx.module === 'object' && ctx.module != null);
-        return ctx.module.exports;
+        return nullthrows(cjsOutput);
       case 'esmodule':
         return esmOutput;
       default:
@@ -525,14 +532,16 @@ export function assertBundles(
         return;
       }
 
-      if (
-        opts?.skipNodeModules &&
-        /node_modules|esmodule-helpers.js/.test(asset.filePath)
-      ) {
+      if (opts?.skipNodeModules && /node_modules/.test(asset.filePath)) {
         return;
       }
 
-      if (opts?.skipHelpers && /esmodule-helpers.js/.test(asset.filePath)) {
+      if (
+        (opts?.skipHelpers || opts?.skipNodeModules) &&
+        /esmodule-helpers.js|jsx-dev-runtime.js|jsx-runtime.js|rsc-helpers.js/.test(
+          asset.filePath,
+        )
+      ) {
         return;
       }
 
@@ -683,8 +692,6 @@ function prepareBrowserContext(
     currentScript: null,
   };
 
-  var exports = {};
-
   function PatchedError(message) {
     const patchedError = new Error(message);
     const stackStart = patchedError.stack.match(/at (new )?Error/)?.index;
@@ -721,8 +728,6 @@ function prepareBrowserContext(
   var ctx = Object.assign(
     {
       Error: PatchedError,
-      exports,
-      module: {exports},
       document: fakeDocument,
       WebSocket,
       TextEncoder,
@@ -819,11 +824,8 @@ function prepareWorkerContext(
 |} {
   let promises = [];
 
-  var exports = {};
   var ctx = Object.assign(
     {
-      exports,
-      module: {exports},
       WebSocket,
       console,
       TextEncoder,
@@ -878,15 +880,83 @@ function prepareWorkerContext(
 }
 
 const nodeCache = new Map();
-// no filepath = ESM
 function prepareNodeContext(
-  filePath,
   globals,
   // $FlowFixMe
   ctx: any = {},
-  externalModules?: ExternalModules,
 ) {
-  let exports = {};
+  ctx.console = console;
+  ctx.process = process;
+  ctx.setTimeout = setTimeout;
+  ctx.setImmediate = setImmediate;
+  ctx.global = ctx;
+  ctx.URL = URL;
+  ctx.TextEncoder = TextEncoder;
+  ctx.TextDecoder = TextDecoder;
+  Object.assign(ctx, globals);
+  return ctx;
+}
+
+function runModule(
+  distDir: string,
+  // $FlowFixMe
+  ctx: any,
+  filePath: string,
+  code: string,
+  externalModules?: ExternalModules,
+  strict: boolean,
+) {
+  let cached = nodeCache.get(filePath);
+  if (cached) {
+    return cached.exports;
+  }
+
+  let f = vm.compileFunction(
+    (strict ? '"use strict";\n' : '') + code,
+    ['module', 'exports', '__filename', '__dirname', 'require'],
+    {
+      filename: path.basename(filePath),
+      parsingContext: ctx,
+      async importModuleDynamically(specifier) {
+        let resolved = path.resolve(path.dirname(filePath), specifier);
+        let code = await overlayFS.readFile(resolved, 'utf8');
+        if (path.extname(resolved) === '.mjs' || (await isESM(resolved))) {
+          let modules = await runESM(
+            distDir,
+            [[code, filePath]],
+            ctx,
+            overlayFS,
+            externalModules,
+            true,
+          );
+          return modules[0];
+        } else {
+          let mod = runModule(
+            distDir,
+            ctx,
+            resolved,
+            code,
+            externalModules,
+            strict,
+          );
+          // $FlowFixMe Experimental
+          let m = new vm.SyntheticModule(
+            Object.keys(mod),
+            function () {
+              for (let [k, v] of Object.entries(mod)) {
+                this.setExport(k, v);
+              }
+            },
+            {identifier: resolved, context: ctx},
+          );
+          await m.link(() => {});
+          await m.evaluate();
+          return m;
+        }
+      },
+    },
+  );
+
   let req =
     filePath &&
     (specifier => {
@@ -950,59 +1020,26 @@ function prepareNodeContext(
         return require(res);
       }
 
-      let cached = nodeCache.get(res);
-      if (cached) {
-        return cached.module.exports;
-      }
-
-      let g = {
-        ...globals,
-      };
-
-      for (let key in ctx) {
-        if (
-          key !== 'module' &&
-          key !== 'exports' &&
-          key !== '__filename' &&
-          key !== '__dirname' &&
-          key !== 'require'
-        ) {
-          g[key] = ctx[key];
-        }
-      }
-
-      let childCtx = prepareNodeContext(res, g);
-      nodeCache.set(res, childCtx);
-
-      vm.createContext(childCtx);
-      new vm.Script(
-        //'"use strict";\n' +
+      return runModule(
+        distDir,
+        ctx,
+        res,
         overlayFS.readFileSync(res, 'utf8'),
-        {
-          filename: path.basename(res),
-        },
-      ).runInContext(childCtx);
-      return childCtx.module.exports;
+        externalModules,
+        strict,
+      );
     });
 
-  if (filePath) {
-    ctx.module = {exports, require: req};
-    ctx.exports = exports;
-    ctx.__filename = filePath;
-    ctx.__dirname = path.dirname(filePath);
-    ctx.require = req;
-  }
+  let exports = {};
+  let module = {exports, require: req};
+  nodeCache.set(filePath, module);
+  f(module, exports, filePath, path.dirname(filePath), req);
+  return module.exports;
+}
 
-  ctx.console = console;
-  ctx.process = process;
-  ctx.setTimeout = setTimeout;
-  ctx.setImmediate = setImmediate;
-  ctx.global = ctx;
-  ctx.URL = URL;
-  ctx.TextEncoder = TextEncoder;
-  ctx.TextDecoder = TextDecoder;
-  Object.assign(ctx, globals);
-  return ctx;
+async function isESM(filePath: string) {
+  let pkg = await loadConfig(overlayFS, filePath, ['package.json'], '/');
+  return pkg?.config?.type === 'module';
 }
 
 let instanceId = 0;
@@ -1152,7 +1189,7 @@ export async function assertESMExports(
   let [nodeResult] = await runESM(
     b.getBundles()[0].target.distDir,
     [[await inputFS.readFile(entry.filePath, 'utf8'), entry.filePath]],
-    vm.createContext(prepareNodeContext(false, {})),
+    vm.createContext(prepareNodeContext({})),
     inputFS,
     externalModules,
   );
