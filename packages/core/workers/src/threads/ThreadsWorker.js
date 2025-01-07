@@ -26,7 +26,7 @@ export default class ThreadsWorker implements WorkerImpl {
     onError: ErrorHandler,
     onExit: ExitHandler,
   ) {
-    this.execArgv = execArgv;
+    this.execArgv = execArgv.filter(arg => !/use-openssl-ca/.test(arg));
     this.onMessage = onMessage;
     this.onError = onError;
     this.onExit = onExit;
