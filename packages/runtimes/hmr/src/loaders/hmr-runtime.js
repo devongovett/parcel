@@ -50,6 +50,7 @@ declare var globalThis: typeof self;
 declare var ServiceWorkerGlobalScope: Object;
 */
 
+var HMR_ENDPOINT = '/__parcel_hmr';
 var OVERLAY_ID = '__parcel__error__overlay__';
 
 var OldModule = module.bundle.Module;
@@ -118,19 +119,18 @@ if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
       ? 'wss'
       : 'ws';
 
-  var ws;
-  if (HMR_USE_SSE) {
-    ws = new EventSource('/__parcel_hmr');
-  } else {
-    try {
+  var ws = {};
+  try {
+    if (HMR_USE_SSE) {
+      ws = new EventSource(HMR_ENDPOINT);
+    } else {
       ws = new WebSocket(
-        protocol + '://' + hostname + (port ? ':' + port : '') + '/',
+        protocol + '://' + hostname + (port ? ':' + port : '') + HMR_ENDPOINT,
       );
-    } catch (err) {
-      if (err.message) {
-        console.error(err.message);
-      }
-      ws = {};
+    }
+  } catch (err) {
+    if (err.message) {
+      console.error(err.message);
     }
   }
 

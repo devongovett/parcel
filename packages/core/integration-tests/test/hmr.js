@@ -46,6 +46,8 @@ async function nextWSMessage(ws: WebSocket) {
   return json5.parse(await new Promise(resolve => ws.once('message', resolve)));
 }
 
+const HMR_ENDPOINT = '/__parcel_hmr';
+
 describe('hmr', function () {
   let subscription, ws;
 
@@ -77,7 +79,7 @@ describe('hmr', function () {
 
     subscription = await b.watch();
     let {bundleGraph} = await getNextBuildSuccess(b);
-    ws = await openSocket('ws://localhost:' + port);
+    ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
     let outputs = [];
     let reloaded = false;
@@ -147,7 +149,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('ws://localhost:' + port);
+      ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       outputFS.writeFile(
         path.join(__dirname, '/input/local.js'),
@@ -178,7 +180,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('ws://localhost:' + port);
+      ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       outputFS.writeFile(
         path.join(__dirname, '/input/local.js'),
@@ -203,7 +205,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('ws://localhost:' + port);
+      ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       outputFS.writeFile(
         path.join(__dirname, '/input/local.js'),
@@ -235,7 +237,7 @@ describe('hmr', function () {
         'require("fs"; exports.a = 5; exports.b = 5;',
       );
 
-      ws = await openSocket('ws://localhost:' + port);
+      ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
       let message = await nextWSMessage(ws);
 
       assert.equal(message.type, 'error');
@@ -252,7 +254,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('ws://localhost:' + port);
+      ws = await openSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       await outputFS.writeFile(
         path.join(__dirname, '/input/local.js'),
@@ -289,7 +291,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('wss://localhost:' + port, {
+      ws = await openSocket('wss://localhost:' + port + HMR_ENDPOINT, {
         rejectUnauthorized: false,
       });
 
@@ -322,7 +324,7 @@ describe('hmr', function () {
       subscription = await b.watch();
       await getNextBuild(b);
 
-      ws = await openSocket('wss://localhost:' + port, {
+      ws = await openSocket('wss://localhost:' + port + HMR_ENDPOINT, {
         rejectUnauthorized: false,
       });
 
@@ -730,7 +732,7 @@ module.hot.dispose((data) => {
 
       assert.deepEqual(outputs, [3]);
 
-      let ws = new WebSocket('ws://localhost:' + port);
+      let ws = new WebSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       await sleep(50);
       fs.writeFile(
@@ -820,7 +822,7 @@ module.hot.dispose((data) => {
       );
 
       let spy = sinon.spy(ctx.document.body, 'appendChild');
-      let ws = new WebSocket('ws://localhost:' + port);
+      let ws = new WebSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       await sleep(50);
       fs.writeFile(
@@ -876,7 +878,7 @@ module.hot.dispose((data) => {
 
       let appendSpy = sinon.spy(ctx.document.body, 'appendChild');
       let removeSpy = sinon.spy(ctx.document.getElementById('tmp'), 'remove');
-      let ws = new WebSocket('ws://localhost:' + port);
+      let ws = new WebSocket('ws://localhost:' + port + HMR_ENDPOINT);
 
       await sleep(50);
       fs.writeFile(
