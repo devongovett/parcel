@@ -1,0 +1,8 @@
+nav a {
+  color: ButtonText;
+}
+
+nav a[aria-current] {
+  background: ButtonText;
+  color: Canvas;
+}

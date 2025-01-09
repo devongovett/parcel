@@ -1,0 +1,23 @@
+{
+  "name": "create-parcel",
+  "version": "2.13.3",
+  "bin": {
+    "create-parcel": "lib/create-parcel.js"
+  },
+  "main": "src/create-parcel.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/parcel.git",
+    "directory": "packages/utils/create-parcel"
+  },
+  "source": "src/create-parcel.js",
+  "files": [
+    "templates",
+    "lib"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {}
+}

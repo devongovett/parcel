@@ -264,7 +264,6 @@ async function loadBundleUncached(
           ];
         });
       } else if (entryBundle) {
-        // console.log('here', entryBundle)
         queue.add(async () => {
           let {assets: subAssets} = await loadBundle(
             entryBundle,
