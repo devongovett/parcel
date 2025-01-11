@@ -941,7 +941,7 @@ export class TargetResolver {
         loc = {
           filePath: pkgFilePath,
           ...getJSONSourceLocation(
-            pkgMap.pointers[`/targets/${targetName}`],
+            pkgMap.pointers[`/targets/${encodeJSONKeyComponent(targetName)}`],
             'key',
           ),
         };

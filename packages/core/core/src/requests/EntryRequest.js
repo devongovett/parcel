@@ -12,6 +12,7 @@ import {
   findAlternativeFiles,
 } from '@parcel/utils';
 import ThrowableDiagnostic, {
+  encodeJSONKeyComponent,
   md,
   generateJSONCodeHighlights,
   getJSONSourceLocation,
@@ -220,9 +221,9 @@ export class EntryResolver {
                 } else {
                   sources = [source];
                 }
-                let keyPath = `/targets/${targetName}/source${
-                  Array.isArray(target.source) ? `/${i}` : ''
-                }`;
+                let keyPath = `/targets/${encodeJSONKeyComponent(
+                  targetName,
+                )}/source${Array.isArray(target.source) ? `/${i}` : ''}`;
                 for (let relativeSource of sources) {
                   let source = path.join(entry, relativeSource);
                   await assertFile(

@@ -1,6 +1,6 @@
 {
   "targets": {
-    "app": {
+    "/dist/app": {
       "engines": {
         "browsers": "> 0.25%"
       },
