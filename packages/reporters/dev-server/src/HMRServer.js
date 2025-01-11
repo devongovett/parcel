@@ -160,16 +160,16 @@ export default class HMRServer {
     this.broadcast(this.unresolvedError);
   }
 
-  async emitUpdate(event: {
+  async getUpdate(event: {
     +bundleGraph: BundleGraph<PackagedBundle> | BundleGraph<NamedBundle>,
     +changedAssets: Map<string, Asset>,
     ...
-  }) {
+  }): Promise<?HMRMessage> {
     this.unresolvedError = null;
     this.bundleGraph = event.bundleGraph;
 
     let changedAssets = new Set(event.changedAssets.values());
-    if (changedAssets.size === 0) return;
+    if (changedAssets.size === 0) return Promise.resolve(null);
 
     let queue = new PromiseQueue({maxConcurrent: FS_CONCURRENCY});
     for (let asset of changedAssets) {
@@ -227,15 +227,14 @@ export default class HMRServer {
     }
 
     let assets = await queue.run();
-
     if (assets.length >= BROADCAST_MAX_ASSETS) {
       // Too many assets to send via an update without errors, just reload instead
-      this.broadcast({type: 'reload'});
-    } else {
-      this.broadcast({
+      return {type: 'reload'};
+    } else if (assets.length > 0) {
+      return {
         type: 'update',
         assets,
-      });
+      };
     }
   }
 

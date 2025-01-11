@@ -116,7 +116,15 @@ export default (new Reporter({
           // no stale bundles are served. Otherwise emit it for 'buildSuccess'.
           options.serveOptions !== false
         ) {
-          await hmrServer.emitUpdate(event);
+          let update = await hmrServer.getUpdate(event);
+          if (update) {
+            // If running in node, wait for the server to update before emitting the update
+            // on the client. This ensures that when the client reloads the server is ready.
+            if (nodeRunner) {
+              await nodeRunner.emitUpdate(update);
+            }
+            hmrServer.broadcast(update);
+          }
         }
         break;
       case 'buildSuccess': {
@@ -131,7 +139,10 @@ export default (new Reporter({
           server.buildSuccess(event.bundleGraph, event.requestBundle);
         }
         if (hmrServer && options.serveOptions === false) {
-          await hmrServer.emitUpdate(event);
+          let update = await hmrServer.getUpdate(event);
+          if (update) {
+            hmrServer.broadcast(update);
+          }
         }
 
         if (!nodeRunner && options.serveOptions) {
