@@ -18,7 +18,8 @@
     "world": "ISOLATED"
   }],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_state": "disabled"
   },
   "side_panel": {
     "default_path": "side-panel.html"
