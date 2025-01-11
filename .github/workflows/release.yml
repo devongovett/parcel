@@ -272,7 +272,7 @@ jobs:
       - name: Build native packages
         run: yarn build-native-${{ inputs.profile }}
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           path: artifacts
       - name: Move bindings
