@@ -63,8 +63,7 @@
     "@parcel/watcher-watchman-js": "2.13.3",
     "graceful-fs": "^4.2.4",
     "ncp": "^2.0.0",
-    "nullthrows": "^1.1.1",
-    "utility-types": "^3.10.0"
+    "nullthrows": "^1.1.1"
   },
   "peerDependencies": {
     "@parcel/core": "^2.13.3"
