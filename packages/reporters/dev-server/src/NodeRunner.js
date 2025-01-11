@@ -5,6 +5,7 @@ import {md, errorToDiagnostic} from '@parcel/diagnostic';
 import nullthrows from 'nullthrows';
 import {Worker} from 'worker_threads';
 import path from 'path';
+import type {HMRMessage} from './HMRServer';
 
 export type NodeRunnerOptions = {|
   hmr: boolean,
@@ -37,7 +38,7 @@ export class NodeRunner {
     }
   }
 
-  startWorker() {
+  startWorker(): Promise<void> {
     let entry = nullthrows(this.bundleGraph)
       .getEntryBundles()
       .find(b => b.env.isNode() && b.type === 'js');
@@ -52,12 +53,6 @@ export class NodeRunner {
         },
         stdout: true,
         stderr: true,
-      });
-
-      worker.on('message', msg => {
-        if (msg === 'restart') {
-          this.restartWorker();
-        }
       });
 
       worker.on('error', (err: Error) => {
@@ -91,6 +86,12 @@ export class NodeRunner {
       });
 
       this.worker = worker;
+
+      return new Promise(resolve => {
+        worker.once('online', () => resolve());
+      });
+    } else {
+      return Promise.resolve();
     }
   }
 
@@ -105,7 +106,30 @@ export class NodeRunner {
     // HMR updates are sent before packaging is complete.
     // If the build is still pending, wait until it completes to restart.
     if (!this.pending) {
-      this.startWorker();
+      await this.startWorker();
     }
+  }
+
+  emitUpdate(update: HMRMessage): Promise<void> {
+    if (update.type === 'reload') {
+      return this.restartWorker();
+    }
+
+    return new Promise((resolve, reject) => {
+      let worker = this.worker;
+      if (worker) {
+        worker.once('message', msg => {
+          if (msg === 'restart') {
+            this.restartWorker().then(resolve, reject);
+          } else {
+            resolve();
+          }
+        });
+
+        worker.postMessage(update);
+      } else {
+        resolve();
+      }
+    });
   }
 }
