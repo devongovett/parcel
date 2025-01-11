@@ -20,9 +20,9 @@
     "rsc-html-stream": "^0.0.4"
   },
   "devDependencies": {
-    "@parcel/config-react-static": "nightly",
+    "@parcel/config-react-static": "canary",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "parcel": "nightly"
+    "parcel": "canary"
   }
 }

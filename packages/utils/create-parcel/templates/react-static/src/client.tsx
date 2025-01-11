@@ -13,7 +13,7 @@ function Content() {
   // Store the current root element in state, along with a callback
   // to call once rendering is complete.
   let [[root, cb], setRoot] = useState<[ReactElement, (() => void) | null]>([use(initialRSCPayload), null]);
-  updateRoot ??= (root, cb) => setRoot([root, cb ?? null]);
+  updateRoot = (root, cb) => setRoot([root, cb ?? null]);
   useInsertionEffect(() => cb?.());
   return root;
 }

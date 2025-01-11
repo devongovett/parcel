@@ -404,12 +404,10 @@ export default (new Transformer({
     let supportsModuleWorkers =
       asset.env.shouldScopeHoist && asset.env.supports('worker-module', true);
     let isJSX = Boolean(config?.isJSX);
-    if (asset.isSource) {
-      if (asset.type === 'ts') {
-        isJSX = false;
-      } else if (!isJSX) {
-        isJSX = Boolean(JSX_EXTENSIONS[asset.type]);
-      }
+    if (asset.type === 'ts') {
+      isJSX = false;
+    } else if (!isJSX) {
+      isJSX = Boolean(JSX_EXTENSIONS[asset.type]);
     }
 
     let type = 'js';
