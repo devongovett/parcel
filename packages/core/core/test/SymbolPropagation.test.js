@@ -19,7 +19,7 @@ import {
   toProjectPath as _toProjectPath,
   type ProjectPath,
 } from '../src/projectPath';
-import {propagateSymbols} from '../src/SymbolPropagation';
+import {propagateSymbols as _propagateSymbols} from '../src/SymbolPropagation';
 import dumpGraphToGraphViz from '../src/dumpGraphToGraphViz';
 import {DEFAULT_ENV, DEFAULT_OPTIONS, DEFAULT_TARGETS} from './test-utils';
 import type {
@@ -28,6 +28,7 @@ import type {
   AssetGraphNode,
   Dependency,
   DependencyNode,
+  ParcelOptions,
 } from '../src/types';
 
 const stats = {size: 0, time: 0};
@@ -321,15 +322,13 @@ async function testPropagation(
   );
   await dumpGraphToGraphViz(graph, 'test_before');
 
-  handlePropagationErrors(
-    propagateSymbols({
-      options: DEFAULT_OPTIONS,
-      assetGraph: graph,
-      changedAssetsPropagation: new Set(changedAssets.keys()),
-      assetGroupsWithRemovedParents: new Set(),
-      previousErrors: undefined,
-    }),
-  );
+  await propagateSymbols({
+    options: DEFAULT_OPTIONS,
+    assetGraph: graph,
+    changedAssetsPropagation: new Set(changedAssets.keys()),
+    assetGroupsWithRemovedParents: new Set(),
+    previousErrors: undefined,
+  });
 
   await dumpGraphToGraphViz(graph, 'test_after');
 
@@ -343,8 +342,16 @@ async function testPropagation(
   return graph;
 }
 
-function handlePropagationErrors(errors: Map<NodeId, Array<Diagnostic>>) {
+async function propagateSymbols(opts: {|
+  options: ParcelOptions,
+  assetGraph: AssetGraph,
+  changedAssetsPropagation: Set<string>,
+  assetGroupsWithRemovedParents: Set<NodeId>,
+  previousErrors?: ?Map<NodeId, Array<Diagnostic>>,
+|}) {
+  let errors = _propagateSymbols(opts);
   if (errors.size > 0) {
+    await dumpGraphToGraphViz(opts.assetGraph, 'test_fail');
     throw new ThrowableDiagnostic({
       diagnostic: [...errors.values()][0],
     });
@@ -447,7 +454,7 @@ describe('SymbolPropagation', () => {
         });
       }),
     ];
-    propagateSymbols({
+    await propagateSymbols({
       options: DEFAULT_OPTIONS,
       assetGraph: graph,
       changedAssetsPropagation: new Set(new Map(changedAssets).keys()),
@@ -488,7 +495,7 @@ describe('SymbolPropagation', () => {
         });
       }),
     ];
-    let errors = propagateSymbols({
+    let errors = _propagateSymbols({
       options: DEFAULT_OPTIONS,
       assetGraph: graph,
       changedAssetsPropagation: new Set(new Map(changedAssets).keys()),
@@ -531,7 +538,7 @@ describe('SymbolPropagation', () => {
       }),
     ];
 
-    let errors = propagateSymbols({
+    let errors = _propagateSymbols({
       options: DEFAULT_OPTIONS,
       assetGraph: graph,
       changedAssetsPropagation: new Set(new Map(changedAssets).keys()),
@@ -577,7 +584,7 @@ describe('SymbolPropagation', () => {
         });
       }),
     ];
-    propagateSymbols({
+    await propagateSymbols({
       options: DEFAULT_OPTIONS,
       assetGraph: graph,
       changedAssetsPropagation: new Set(new Map(changedAssets).keys()),
@@ -640,7 +647,7 @@ describe('SymbolPropagation', () => {
     await testPropagation(
       [
         ['/index.js', [], true, []],
-        ['/lib.js', [['a', {local: 'lib1$foo'}], ['b', {local: 'lib$b'}]], true, ['b']],
+        ['/lib.js', [['a', {local: 'lib1$foo'}], ['b', {local: 'lib$b'}]], true, ['*', 'b']],
         ['/lib1.js', [['b', {local: 'v'}]], true, ['b']],
         ['/lib2.js', [['c', {local: 'v'}]], false, ['*']],
       ],
@@ -652,12 +659,31 @@ describe('SymbolPropagation', () => {
     );
   });
 
+  it('dependency with both normal and cleared incoming dependency', async () => {
+    // prettier-ignore
+    await testPropagation(
+      [
+        ['/index.js', [], true, []],
+        ['/store.js', [['Store', {local: 'Store'}]], false, ['Store']],
+        ['/addons.js', [], false, ['*']],
+        ['/addons-hooks.js', [['Hooks', {local: 'Hooks'}]], false, ['*', 'Hooks']],
+      ],
+      [
+        ['/index.js', '/store.js', [['Store', {local: 'store', isWeak: false}]], [['Store']]],
+        // ['/index.js', '/addons.js', [['*', {local: "addons", isWeak: false}]], [['*']]],
+        ['/index.js', '/addons.js', null, []],
+        ['/store.js', '/addons.js', [['Hooks', {local: 'Hooks', isWeak: false}]], [['Hooks', ['/addons-hooks.js', 'Hooks']]]],
+        ['/addons.js', '/addons-hooks.js', [['*', {local: '*', isWeak: true}]], [['*'], ['Hooks']]],
+      ],
+    );
+  });
+
   it('dependency with cleared symbols imports side-effect-free package', async () => {
     // prettier-ignore
     await testPropagation(
       [
         ['/index.js', [], true, []],
-        ['/lib.js', [['a', {local: 'lib$a'}], ['b', {local: 'lib1$b'}], ['c', {local: 'lib2$c'}]], false, ['a']],
+        ['/lib.js', [['a', {local: 'lib$a'}], ['b', {local: 'lib1$b'}], ['c', {local: 'lib2$c'}]], false, ['a', '*']],
         ['/lib1.js', [['b', {local: 'v'}]], false, ['b']],
         ['/lib2.js', [['c', {local: 'v'}]], false, ['c']],
         ['/lib3.js', [['d', {local: 'v'}]], false, ['*']],
