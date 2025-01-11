@@ -94,13 +94,5 @@ async function handleAction(req: ExpressRequest, res: ExpressResponse, component
   }
 }
 
-let server = app.listen(3001);
+app.listen(3001);
 console.log('Server listening on port 3001');
-
-// if (module.hot) {
-//   module.hot.dispose(() => {
-//     server.close();
-//   });
-
-//   module.hot.accept();
-// }

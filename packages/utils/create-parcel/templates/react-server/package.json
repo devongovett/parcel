@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@types/express": "^4",
+    "@types/parcel-env": "^0.0.6",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

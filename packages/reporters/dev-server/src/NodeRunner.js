@@ -5,6 +5,7 @@ import {md, errorToDiagnostic} from '@parcel/diagnostic';
 import nullthrows from 'nullthrows';
 import {Worker} from 'worker_threads';
 import path from 'path';
+import {type Deferred, makeDeferredWithPromise} from '@parcel/utils';
 import type {HMRMessage} from './HMRServer';
 
 export type NodeRunnerOptions = {|
@@ -15,7 +16,8 @@ export type NodeRunnerOptions = {|
 export class NodeRunner {
   worker: Worker | null = null;
   bundleGraph: BundleGraph<PackagedBundle> | null = null;
-  pending: boolean = true;
+  pending: Promise<void> | null = null;
+  deferred: Deferred<void> | null = null;
   logger: PluginLogger;
   hmr: boolean;
 
@@ -25,17 +27,25 @@ export class NodeRunner {
   }
 
   buildStart() {
-    this.pending = true;
+    let {deferred, promise} = makeDeferredWithPromise();
+    this.pending = promise;
+    this.deferred = deferred;
   }
 
-  buildSuccess(bundleGraph: BundleGraph<PackagedBundle>) {
+  async buildSuccess(bundleGraph: BundleGraph<PackagedBundle>) {
     this.bundleGraph = bundleGraph;
-    this.pending = false;
+
+    let deferred = this.deferred;
+    this.pending = null;
+    this.deferred = null;
+
     if (this.worker == null) {
-      this.startWorker();
+      await this.startWorker();
     } else if (!this.hmr) {
-      this.restartWorker();
+      await this.restartWorker();
     }
+
+    deferred?.resolve();
   }
 
   startWorker(): Promise<void> {
@@ -88,7 +98,11 @@ export class NodeRunner {
       this.worker = worker;
 
       return new Promise(resolve => {
-        worker.once('online', () => resolve());
+        if (this.hmr) {
+          worker.once('message', () => resolve());
+        } else {
+          worker.once('online', () => resolve());
+        }
       });
     } else {
       return Promise.resolve();
@@ -107,6 +121,8 @@ export class NodeRunner {
     // If the build is still pending, wait until it completes to restart.
     if (!this.pending) {
       await this.startWorker();
+    } else {
+      await this.pending;
     }
   }
 

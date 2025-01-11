@@ -153,6 +153,9 @@ if (!parent || !parent.isParcelRequire) {
             parentPort.postMessage('restart');
           }
         });
+
+        // After the bundle has finished running, notify the dev server that the HMR update is complete.
+        queueMicrotask(() => parentPort.postMessage('ready'));
       }
     } catch {
       if (typeof WebSocket !== 'undefined') {

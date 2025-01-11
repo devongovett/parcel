@@ -121,9 +121,13 @@ export default (new Reporter({
             // If running in node, wait for the server to update before emitting the update
             // on the client. This ensures that when the client reloads the server is ready.
             if (nodeRunner) {
-              await nodeRunner.emitUpdate(update);
+              // Don't await here because that blocks the build from continuing
+              // and we may need to wait for the buildSuccess event.
+              let hmr = hmrServer;
+              nodeRunner.emitUpdate(update).then(() => hmr.broadcast(update));
+            } else {
+              hmrServer.broadcast(update);
             }
-            hmrServer.broadcast(update);
           }
         }
         break;

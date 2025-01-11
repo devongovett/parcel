@@ -73,9 +73,7 @@ window.addEventListener('popstate', e => {
 // Intercept HMR window reloads, and do it with RSC instead.
 window.addEventListener('parcelhmrreload', e => {
   e.preventDefault();
-  setTimeout(() => {
-    navigate(location.pathname);
-  }, 500);
+  navigate(location.pathname);
 });
 
 // Setup a callback to perform server actions.
