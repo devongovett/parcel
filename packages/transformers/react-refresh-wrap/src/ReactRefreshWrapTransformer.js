@@ -6,12 +6,13 @@ import {Transformer} from '@parcel/plugin';
 function shouldExclude(asset, options) {
   return (
     !asset.isSource ||
+    !asset.type === 'css' ||
     !options.hmrOptions ||
     !asset.env.isBrowser() ||
     asset.env.isLibrary ||
     asset.env.isWorker() ||
     asset.env.isWorklet() ||
-    options.mode !== 'development' ||
+    options.mode === 'production' ||
     !asset
       .getDependencies()
       .find(
