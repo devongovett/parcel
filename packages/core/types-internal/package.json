@@ -18,7 +18,6 @@
   "dependencies": {
     "@parcel/diagnostic": "2.13.3",
     "@parcel/feature-flags": "2.13.3",
-    "@parcel/source-map": "^2.1.1",
-    "utility-types": "^3.10.0"
+    "@parcel/source-map": "^2.1.1"
   }
 }
