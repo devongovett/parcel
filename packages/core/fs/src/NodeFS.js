@@ -138,7 +138,11 @@ export class NodeFS implements FileSystem {
 
     writeStream.once('error', () => {
       failed = true;
-      fs.unlinkSync(tmpFilePath);
+      try {
+        fs.unlinkSync(tmpFilePath);
+      } catch (e) {
+        // ignore error
+      }
     });
 
     return writeStream;
