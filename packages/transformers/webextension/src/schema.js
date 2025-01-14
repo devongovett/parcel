@@ -32,6 +32,10 @@ const actionProps = {
   },
   default_popup: string,
   default_title: string,
+  default_state: {
+    type: 'string',
+    enum: ['disabled', 'enabled'],
+  },
 };
 
 const arrStr = {
