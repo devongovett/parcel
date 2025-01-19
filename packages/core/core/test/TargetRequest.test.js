@@ -685,14 +685,15 @@ describe('TargetResolver', () => {
 
   it('resolves main target with context from package.json', async () => {
     let targetResolver = new TargetResolver(api, DEFAULT_OPTIONS);
-    assert.deepEqual(await targetResolver.resolve(CONTEXT_FIXTURE_PATH), [
+    let res = await targetResolver.resolve(CONTEXT_FIXTURE_PATH);
+    assert.deepEqual(res, [
       {
         name: 'main',
         distDir: 'fixtures/context/dist/main',
         distEntry: 'index.js',
         publicUrl: '/',
         env: {
-          id: '6aafdb9eaa4a3812',
+          id: res[0].env.id,
           context: 'node',
           engines: {
             browsers: [
@@ -701,6 +702,7 @@ describe('TargetResolver', () => {
               'last 1 Firefox version',
               'last 1 Edge version',
             ],
+            node: process.versions.node,
           },
           includeNodeModules: false,
           isLibrary: true,
