@@ -525,7 +525,16 @@ export class ScopeHoistingPackager {
         this.usedHelpers.add('$parcel$publicUrl');
       }
       if (usedHelpers & 4) {
+        this.needsPrelude = true;
         this.usedHelpers.add('$parcel$import');
+      }
+      if (usedHelpers & 8) {
+        this.needsPrelude = true;
+        this.usedHelpers.add('$parcel$resolve');
+      }
+      if (usedHelpers & 16) {
+        this.needsPrelude = true;
+        this.usedHelpers.add('$parcel$extendImportMap');
       }
     }
 
@@ -1384,7 +1393,11 @@ ${code}
     for (let helper of this.usedHelpers) {
       let currentHelper = helpers[helper];
       if (typeof currentHelper === 'function') {
-        currentHelper = helpers[helper](this.bundle.env, this.bundle);
+        currentHelper = helpers[helper](
+          this.bundle.env,
+          this.bundle,
+          this.usedHelpers,
+        );
       }
       res += currentHelper;
       if (enableSourceMaps) {

@@ -856,6 +856,19 @@ export class TargetResolver {
             ? moduleContext
             : mainContext);
 
+        let engines = descriptor.engines ?? pkgEngines;
+        if (context === 'browser' && engines.browsers == null) {
+          engines = {
+            ...engines,
+            browsers: defaultEngines?.browsers ?? DEFAULT_ENGINES.browsers,
+          };
+        } else if (context === 'node' && engines.node == null) {
+          engines = {
+            ...engines,
+            node: defaultEngines?.node ?? DEFAULT_ENGINES.node,
+          };
+        }
+
         targets.set(targetName, {
           name: targetName,
           distDir,
@@ -863,7 +876,7 @@ export class TargetResolver {
           publicUrl:
             descriptor.publicUrl ?? this.options.defaultTargetOptions.publicUrl,
           env: createEnvironment({
-            engines: descriptor.engines ?? pkgEngines,
+            engines,
             context,
             includeNodeModules: descriptor.includeNodeModules ?? false,
             outputFormat,
@@ -1050,6 +1063,19 @@ export class TargetResolver {
           ? true
           : this.options.defaultTargetOptions.shouldScopeHoist;
 
+        let engines = descriptor.engines ?? pkgEngines;
+        if (descriptor.context === 'browser' && engines.browsers == null) {
+          engines = {
+            ...engines,
+            browsers: defaultEngines?.browsers ?? DEFAULT_ENGINES.browsers,
+          };
+        } else if (descriptor.context === 'node' && engines.node == null) {
+          engines = {
+            ...engines,
+            node: defaultEngines?.node ?? DEFAULT_ENGINES.node,
+          };
+        }
+
         targets.set(targetName, {
           name: targetName,
           distDir: toProjectPath(
@@ -1062,7 +1088,7 @@ export class TargetResolver {
           publicUrl:
             descriptor.publicUrl ?? this.options.defaultTargetOptions.publicUrl,
           env: createEnvironment({
-            engines: descriptor.engines ?? pkgEngines,
+            engines,
             context: descriptor.context,
             includeNodeModules: descriptor.includeNodeModules,
             outputFormat:

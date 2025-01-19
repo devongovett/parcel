@@ -8,7 +8,7 @@ import {
   runBundle,
 } from '@parcel/test-utils';
 
-describe('parcel', function () {
+describe('worklets', function () {
   beforeEach(async () => {
     await removeDistDirectory();
   });
@@ -49,7 +49,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'url-worklet.js',
-        assets: ['bundle-url.js', 'url-worklet.js'],
+        assets: ['url-worklet.js'],
       },
       {
         type: 'js',
@@ -95,7 +95,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'pipeline.js',
-        assets: ['bundle-url.js', 'pipeline.js', 'bundle-manifest.js'],
+        assets: ['pipeline.js'],
       },
       {
         type: 'js',
@@ -136,7 +136,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'url.js',
-        assets: ['bundle-url.js', 'esmodule-helpers.js', 'url.js'],
+        assets: ['esmodule-helpers.js', 'url.js'],
       },
       {
         type: 'js',
@@ -234,7 +234,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'worklet-pipeline.js',
-        assets: ['bundle-url.js', 'bundle-manifest.js', 'worklet-pipeline.js'],
+        assets: ['worklet-pipeline.js'],
       },
       {
         type: 'js',

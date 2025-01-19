@@ -251,6 +251,7 @@ export type EnvironmentFeature =
   | 'worker-module'
   | 'service-worker-module'
   | 'import-meta-url'
+  | 'import-meta-resolve'
   | 'arrow-functions'
   | 'global-this';
 

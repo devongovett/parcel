@@ -150,7 +150,6 @@ describe('watcher', function () {
         'common.js',
         'common-dep.js',
         'bundle-loader.js',
-        'bundle-url.js',
         'js-loader.js',
       ],
       childBundles: [
@@ -187,7 +186,7 @@ describe('watcher', function () {
     bundle = await nextBundle(b);
     await assertBundleTree(bundle, {
       name: 'index.js',
-      assets: ['index.js', 'bundle-loader.js', 'bundle-url.js', 'js-loader.js'],
+      assets: ['index.js', 'bundle-loader.js', 'js-loader.js'],
       childBundles: [
         {
           assets: ['a.js', 'common.js', 'common-dep.js'],
@@ -256,7 +255,6 @@ describe('watcher', function () {
         'common.js',
         'common-dep.js',
         'bundle-loader.js',
-        'bundle-url.js',
         'js-loader.js',
       ],
       childBundles: [
@@ -294,13 +292,7 @@ describe('watcher', function () {
     bundle = await nextBundle(b);
     await assertBundleTree(bundle, {
       name: 'index.js',
-      assets: [
-        'index.js',
-        'common.js',
-        'bundle-loader.js',
-        'bundle-url.js',
-        'js-loader.js',
-      ],
+      assets: ['index.js', 'common.js', 'bundle-loader.js', 'js-loader.js'],
       childBundles: [
         {
           assets: ['a.js'],
@@ -413,7 +405,7 @@ describe('watcher', function () {
     assertBundles(bundleGraph, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'cacheLoader.js', 'js-loader.js'],
+        assets: ['index.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {assets: ['local.js']},
     ]);
@@ -429,7 +421,7 @@ describe('watcher', function () {
     assertBundles(bundleGraph, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'cacheLoader.js', 'js-loader.js'],
+        assets: ['index.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {assets: ['local.js']},
       {assets: ['other.js']},

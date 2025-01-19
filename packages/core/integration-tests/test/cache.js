@@ -5203,10 +5203,8 @@ describe('cache', function () {
                   assets: [
                     'index.js',
                     'c.js',
-                    'bundle-url.js',
                     'cacheLoader.js',
                     'js-loader.js',
-                    'bundle-manifest.js',
                   ],
                 },
                 {
@@ -5238,14 +5236,7 @@ describe('cache', function () {
           },
           {
             name: 'index.js',
-            assets: [
-              'index.js',
-              'c.js',
-              'bundle-url.js',
-              'cacheLoader.js',
-              'js-loader.js',
-              'bundle-manifest.js',
-            ],
+            assets: ['index.js', 'c.js', 'cacheLoader.js', 'js-loader.js'],
           },
         ]);
       });
@@ -5317,10 +5308,8 @@ describe('cache', function () {
                   assets: [
                     'index.js',
                     'c.js',
-                    'bundle-url.js',
                     'cacheLoader.js',
                     'js-loader.js',
-                    'bundle-manifest.js',
                   ],
                 },
                 {
@@ -5352,14 +5341,7 @@ describe('cache', function () {
           },
           {
             name: 'index.js',
-            assets: [
-              'index.js',
-              'c.js',
-              'bundle-url.js',
-              'cacheLoader.js',
-              'js-loader.js',
-              'bundle-manifest.js',
-            ],
+            assets: ['index.js', 'c.js', 'cacheLoader.js', 'js-loader.js'],
           },
         ]);
       });
@@ -5395,10 +5377,8 @@ describe('cache', function () {
                   assets: [
                     'index.js',
                     'c.js',
-                    'bundle-url.js',
                     'cacheLoader.js',
                     'js-loader.js',
-                    'bundle-manifest.js',
                   ],
                 },
               ]);
@@ -5424,14 +5404,7 @@ describe('cache', function () {
           },
           {
             name: 'index.js',
-            assets: [
-              'index.js',
-              'c.js',
-              'bundle-url.js',
-              'cacheLoader.js',
-              'js-loader.js',
-              'bundle-manifest.js',
-            ],
+            assets: ['index.js', 'c.js', 'cacheLoader.js', 'js-loader.js'],
           },
           {
             assets: ['common.js', 'lodash.js'],

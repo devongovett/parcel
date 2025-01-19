@@ -6,21 +6,6 @@ import path from 'path';
 
 const FILES = new Map([
   [
-    '/app/packages/runtimes/js/src/helpers/bundle-manifest.js',
-    fs.readFileSync(
-      __dirname +
-        '/../../../../packages/runtimes/js/src/helpers/bundle-manifest.js',
-      'utf8',
-    ),
-  ],
-  [
-    '/app/packages/runtimes/js/src/helpers/bundle-url.js',
-    fs.readFileSync(
-      __dirname + '/../../../../packages/runtimes/js/src/helpers/bundle-url.js',
-      'utf8',
-    ),
-  ],
-  [
     '/app/packages/runtimes/js/src/helpers/cacheLoader.js',
     fs.readFileSync(
       __dirname +

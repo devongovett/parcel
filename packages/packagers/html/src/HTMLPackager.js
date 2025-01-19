@@ -4,13 +4,13 @@ import type {Bundle, BundleGraph, NamedBundle} from '@parcel/types';
 import assert from 'assert';
 import {Readable} from 'stream';
 import {Packager} from '@parcel/plugin';
-import {setDifference} from '@parcel/utils';
 import posthtml from 'posthtml';
 import {
   bufferStream,
   replaceInlineReferences,
   replaceURLReferences,
   urlJoin,
+  getImportMap,
 } from '@parcel/utils';
 import nullthrows from 'nullthrows';
 
@@ -57,18 +57,12 @@ export default (new Packager({
     let asset = assets[0];
     let code = await asset.getCode();
 
-    // Add bundles in the same bundle group that are not inline. For example, if two inline
-    // bundles refer to the same library that is extracted into a shared bundle.
-    let referencedBundles = [
-      ...setDifference(
-        new Set(bundleGraph.getReferencedBundles(bundle)),
-        new Set(bundleGraph.getReferencedBundles(bundle, {recursive: false})),
-      ),
-    ];
     let renderConfig = config?.render;
 
     let {html} = await posthtml([
-      tree => insertBundleReferences(referencedBundles, tree),
+      // Add bundles in the same bundle group that are not inline. For example, if two inline
+      // bundles refer to the same library that is extracted into a shared bundle.
+      tree => insertBundleReferences(bundleGraph, bundle, tree),
       tree =>
         replaceInlineAssetContent(bundleGraph, getInlineBundleContents, tree),
     ]).process(code, {
@@ -181,11 +175,19 @@ async function replaceInlineAssetContent(
   return tree;
 }
 
-function insertBundleReferences(siblingBundles, tree) {
-  const bundles = [];
+function insertBundleReferences(bundleGraph, htmlBundle, tree) {
+  let bundles = [];
+  let importMap = {};
 
-  for (let bundle of siblingBundles) {
-    if (bundle.type === 'css') {
+  let useImportMap = htmlBundle.env.supports('import-meta-resolve');
+  let referencedBundles = new Set(bundleGraph.getReferencedBundles(htmlBundle));
+  let nonRecursiveReferencedBundles = new Set(
+    bundleGraph.getReferencedBundles(htmlBundle, {recursive: false}),
+  );
+
+  for (let bundle of referencedBundles) {
+    let isDirectlyReferenced = nonRecursiveReferencedBundles.has(bundle);
+    if (bundle.type === 'css' && !isDirectlyReferenced) {
       bundles.push({
         tag: 'link',
         attrs: {
@@ -193,7 +195,7 @@ function insertBundleReferences(siblingBundles, tree) {
           href: urlJoin(bundle.target.publicUrl, bundle.name),
         },
       });
-    } else if (bundle.type === 'js') {
+    } else if (bundle.type === 'js' && !isDirectlyReferenced) {
       let nomodule =
         bundle.env.outputFormat !== 'esmodule' &&
         bundle.env.sourceType === 'module' &&
@@ -208,6 +210,35 @@ function insertBundleReferences(siblingBundles, tree) {
         },
       });
     }
+
+    if (useImportMap && bundle.type === 'js') {
+      Object.assign(importMap, getImportMap(bundleGraph, bundle));
+    }
+  }
+
+  if (useImportMap && Object.keys(importMap).length > 0) {
+    for (let id in importMap) {
+      importMap[id] = urlJoin(htmlBundle.target.publicUrl, importMap[id]);
+    }
+
+    // If there is an existing <script type="importmap">, merge with that.
+    // This will remove the existing node so it is moved before all other scripts.
+    let existingImportMap = findImportMap(tree);
+
+    if (existingImportMap) {
+      if (!existingImportMap.imports) {
+        existingImportMap.imports = {};
+      }
+      importMap = Object.assign(existingImportMap.imports, importMap);
+    }
+
+    bundles.unshift({
+      tag: 'script',
+      attrs: {
+        type: 'importmap',
+      },
+      content: JSON.stringify({imports: importMap}),
+    });
   }
 
   addBundlesToTree(bundles, tree);
@@ -219,6 +250,30 @@ function addBundlesToTree(bundles, tree) {
   const index = findBundleInsertIndex(content);
 
   content.splice(index, 0, ...bundles);
+}
+
+function findImportMap(tree) {
+  if (Array.isArray(tree)) {
+    for (let i = 0; i < tree.length; i++) {
+      let node = tree[i];
+      if (
+        node.tag === 'script' &&
+        node.attrs?.type === 'importmap' &&
+        Array.isArray(node.content)
+      ) {
+        let importMap = JSON.parse(node.content.join(''));
+        tree.splice(i, 1);
+        return importMap;
+      } else {
+        let res = findImportMap(node);
+        if (res) {
+          return res;
+        }
+      }
+    }
+  } else if (tree && typeof tree.content === 'object') {
+    return findImportMap(tree.content);
+  }
 }
 
 function find(tree, tag) {

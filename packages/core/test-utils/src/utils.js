@@ -131,7 +131,7 @@ export function getParcelOptions(
         distDir,
         engines: {
           browsers: ['last 1 Chrome version'],
-          node: '8',
+          node: '18',
         },
       },
     },
@@ -295,6 +295,7 @@ export async function runBundles(
   globals: mixed,
   opts: RunOpts = {},
   externalModules?: ExternalModules,
+  importMap?: ?ImportMap,
 ): Promise<mixed> {
   let entryAsset =
     opts.entryAsset ??
@@ -363,6 +364,7 @@ export async function runBundles(
       target === 'node' ||
         target === 'electron-main' ||
         target === 'react-server',
+      importMap,
     );
 
     esmOutput = bundles.length === 1 ? res[0] : res;
@@ -396,6 +398,10 @@ export async function runBundles(
             overlayFS,
             externalModules,
             true,
+            target === 'node' ||
+              target === 'electron-main' ||
+              target === 'react-server',
+            importMap,
           );
           return modules[0];
         },
@@ -449,6 +455,7 @@ export async function runBundle(
 
     let bundles = bundleGraph.getBundles({includeInline: true});
     let scripts = [];
+    let importMap: ?ImportMap = null;
     postHtml().walk.call(ast, node => {
       if (node.attrs?.nomodule != null) {
         return node;
@@ -460,6 +467,12 @@ export async function runBundle(
           let b = nullthrows(bundles.find(b => b.filePath === p));
           scripts.push([overlayFS.readFileSync(b.filePath, 'utf8'), b]);
         }
+      } else if (
+        node.tag === 'script' &&
+        node.content &&
+        node.attrs?.type === 'importmap'
+      ) {
+        importMap = JSON.parse(node.content.join(''));
       } else if (node.tag === 'script' && node.content && !node.attrs?.src) {
         let content = node.content.join('');
         let inline = bundles.filter(
@@ -477,6 +490,7 @@ export async function runBundle(
       globals,
       opts,
       externalModules,
+      importMap,
     );
   } else {
     return runBundles(
@@ -1042,6 +1056,10 @@ async function isESM(filePath: string) {
   return pkg?.config?.type === 'module';
 }
 
+type ImportMap = {|
+  imports: {[string]: string},
+|};
+
 let instanceId = 0;
 export async function runESM(
   baseDir: FilePath,
@@ -1051,12 +1069,23 @@ export async function runESM(
   externalModules: ExternalModules = {},
   requireExtensions: boolean = false,
   isNode: boolean = false,
+  importMap?: ?ImportMap,
 ): Promise<Array<{|[string]: mixed|}>> {
   let id = instanceId++;
   let cache = new Map();
   function load(inputSpecifier, referrer, code = null) {
+    let specifier = inputSpecifier;
+    if (importMap) {
+      if (importMap.imports[inputSpecifier]) {
+        specifier = importMap.imports[inputSpecifier];
+      }
+    }
+
     // ESM can request bundles with an absolute URL. Normalize this to the baseDir.
-    let specifier = inputSpecifier.replace('http://localhost', baseDir);
+    if (specifier.startsWith('/')) {
+      specifier = path.join(baseDir, specifier);
+    }
+    specifier = specifier.replace('http://localhost', baseDir);
 
     if (path.isAbsolute(specifier) || specifier.startsWith('.')) {
       let extname = path.extname(specifier);
@@ -1102,6 +1131,16 @@ export async function runESM(
           } else {
             meta.url = `http://localhost/${path.basename(filename)}`;
           }
+
+          meta.resolve = inputSpecifier => {
+            let specifier = inputSpecifier;
+            if (importMap) {
+              if (importMap.imports[inputSpecifier]) {
+                specifier = importMap.imports[inputSpecifier];
+              }
+            }
+            return new URL(specifier, 'http://localhost').toString();
+          };
         },
       });
       cache.set(filename, m);
@@ -1158,7 +1197,9 @@ export async function runESM(
 
   let modules = [];
   for (let [code, f] of entries) {
-    modules.push(await entry(f, {identifier: ''}, code));
+    modules.push(
+      await entry('/' + path.relative(baseDir, f), {identifier: ''}, code),
+    );
   }
 
   for (let m of modules) {

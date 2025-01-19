@@ -24,12 +24,7 @@ describe.skip('rust', function () {
 
     await assertBundleTree(b, {
       name: 'index.js',
-      assets: [
-        'bundle-loader.js',
-        'bundle-url.js',
-        'index.js',
-        'wasm-loader.js',
-      ],
+      assets: ['bundle-loader.js', 'index.js', 'wasm-loader.js'],
       childBundles: [
         {
           type: 'wasm',
@@ -59,12 +54,7 @@ describe.skip('rust', function () {
 
     await assertBundleTree(b, {
       name: 'index.js',
-      assets: [
-        'bundle-loader.js',
-        'bundle-url.js',
-        'index.js',
-        'wasm-loader.js',
-      ],
+      assets: ['bundle-loader.js', 'index.js', 'wasm-loader.js'],
       childBundles: [
         {
           type: 'wasm',
@@ -93,12 +83,7 @@ describe.skip('rust', function () {
 
     await assertBundleTree(bundle, {
       name: 'index.js',
-      assets: [
-        'bundle-loader.js',
-        'bundle-url.js',
-        'index.js',
-        'wasm-loader.js',
-      ],
+      assets: ['bundle-loader.js', 'index.js', 'wasm-loader.js'],
       childBundles: [
         {
           type: 'map',
@@ -123,12 +108,7 @@ describe.skip('rust', function () {
 
     await assertBundleTree(b, {
       name: 'index.js',
-      assets: [
-        'bundle-loader.js',
-        'bundle-url.js',
-        'index.js',
-        'wasm-loader.js',
-      ],
+      assets: ['bundle-loader.js', 'index.js', 'wasm-loader.js'],
       childBundles: [
         {
           type: 'map',
@@ -156,12 +136,7 @@ describe.skip('rust', function () {
 
     await assertBundleTree(b, {
       name: 'index.js',
-      assets: [
-        'bundle-loader.js',
-        'bundle-url.js',
-        'index.js',
-        'wasm-loader.js',
-      ],
+      assets: ['bundle-loader.js', 'index.js', 'wasm-loader.js'],
       childBundles: [
         {
           type: 'map',

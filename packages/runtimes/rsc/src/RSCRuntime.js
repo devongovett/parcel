@@ -2,7 +2,12 @@
 
 import {Runtime} from '@parcel/plugin';
 import nullthrows from 'nullthrows';
-import {urlJoin, normalizeSeparators, relativeBundlePath} from '@parcel/utils';
+import {
+  urlJoin,
+  normalizeSeparators,
+  relativeBundlePath,
+  getImportMap,
+} from '@parcel/utils';
 import path from 'path';
 import {hashString} from '@parcel/rust';
 
@@ -52,18 +57,23 @@ export default (new Runtime({
             bundles = bundleGraph.getReferencedBundles(bundle);
           }
 
+          let importMap = {};
           let jsBundles = bundles
             .filter(b => b.type === 'js' && b.env.isBrowser())
-            .map(b => normalizeSeparators(b.name));
+            .map(b => {
+              let name = normalizeSeparators(b.name);
+              Object.assign(importMap, getImportMap(bundleGraph, b));
+              return name;
+            });
 
           let code = `import {createClientReference} from "react-server-dom-parcel/server.edge";\n`;
           let resources = [];
           if (node.value.priority === 'lazy') {
             // If this is an async boundary, inject CSS.
-            // JS for client components in injected by prepareDestinationForModule in React.
+            // JS for client components is injected by prepareDestinationForModule in React.
             for (let b of bundles) {
               if (b.type === 'css') {
-                resources.push(renderStylesheet(b));
+                resources.push(renderStylesheet(bundle, b));
               }
             }
 
@@ -73,7 +83,6 @@ export default (new Runtime({
                   ? '<>' + resources.join('\n') + '</>'
                   : resources[0]
               };\n`;
-              code += `let resourcesSymbol = Symbol.for('react.resources');\n`;
             }
           }
 
@@ -86,7 +95,11 @@ export default (new Runtime({
               bundleGraph.getAssetPublicId(symbol.asset),
             )}, ${JSON.stringify(symbol.exportSymbol)}, ${JSON.stringify(
               jsBundles,
-            )})`;
+            )}${
+              Object.keys(importMap).length > 0
+                ? ', ' + JSON.stringify(importMap)
+                : ''
+            })`;
             if (resources.length) {
               code += `var Ref${++count} = ${ref};\n`;
               code += `exports[${JSON.stringify(
@@ -202,15 +215,16 @@ export default (new Runtime({
             let css = [];
             let bootstrapModules = [];
             let entry;
+            let importMap = {};
             for (let b of bundles) {
               if (b.type === 'css') {
-                resources.push(renderStylesheet(b));
+                resources.push(renderStylesheet(bundle, b));
                 if (bundle.env.isBrowser()) {
                   let url = urlJoin(b.target.publicUrl, b.name);
                   preinit.push(
-                    `preinit(${JSON.stringify(
-                      url,
-                    )}, {as: 'style', precedence: 'default'});`,
+                    `preinit(parcelRequire.resolve(${JSON.stringify(
+                      b.publicId,
+                    )}), {as: 'style', precedence: 'default'});`,
                   );
                   css.push(`waitForCSS(${JSON.stringify(url)})`);
                 }
@@ -218,16 +232,33 @@ export default (new Runtime({
                 if (b.env.isBrowser()) {
                   let url = urlJoin(b.target.publicUrl, b.name);
                   // Preload scripts for dynamic imports during SSR.
-                  // TODO: is this safe? may not have prelude yet
-                  resources.push(
-                    `<script type="module" async src=${JSON.stringify(url)} />`,
-                  );
+                  // Can't use <script> because there might not be a prelude available yet.
+                  if (bundle.env.isBrowser()) {
+                    if (b.env.outputFormat === 'esmodule') {
+                      resources.push(
+                        `<link rel="modulepreload" href=${resolveURL(
+                          bundle,
+                          b,
+                        )} />`,
+                      );
+                    } else {
+                      resources.push(
+                        `<link rel="preload" as="script" href=${resolveURL(
+                          bundle,
+                          b,
+                        )} />`,
+                      );
+                    }
+                  }
                   bootstrapModules.push(url);
+                  Object.assign(importMap, getImportMap(bundleGraph, b));
                 }
 
                 if (b.env.context === bundle.env.context) {
                   if (b.env.outputFormat === 'esmodule') {
-                    js.push(`parcelRequire.load(${JSON.stringify(b.name)})`);
+                    js.push(
+                      `parcelRequire.load(${JSON.stringify(b.publicId)})`,
+                    );
                   } else if (b.env.outputFormat === 'commonjs') {
                     let relativePath = JSON.stringify(
                       relativeBundlePath(bundle, b),
@@ -281,11 +312,21 @@ export default (new Runtime({
 
               // Also attach a bootstrap script which will be injected into the initial HTML.
               if (node.value.priority !== 'lazy' && entry) {
+                let parcelRequireName = nullthrows(config).parcelRequireName;
                 let bootstrapScript = `Promise.all([${bootstrapModules
                   .map(m => `import("${m}")`)
-                  .join(',')}]).then(()=>${
-                  nullthrows(config).parcelRequireName
-                }(${JSON.stringify(bundleGraph.getAssetPublicId(entry))}))`;
+                  .join(',')}]).then(()=>`;
+                if (Object.keys(importMap).length > 0) {
+                  bootstrapScript += `(Object.assign(${parcelRequireName}.i??={},${JSON.stringify(
+                    importMap,
+                  )}),`;
+                }
+                bootstrapScript += `${parcelRequireName}(${JSON.stringify(
+                  bundleGraph.getAssetPublicId(entry),
+                )}))`;
+                if (Object.keys(importMap).length > 0) {
+                  bootstrapScript += ')';
+                }
                 code += `let bootstrapScript = ${JSON.stringify(
                   bootstrapScript,
                 )};\n`;
@@ -395,9 +436,18 @@ function replaceExtension(filePath, extension = '.jsx') {
   return filePath.slice(0, -ext.length) + extension;
 }
 
-function renderStylesheet(b) {
-  let url = urlJoin(b.target.publicUrl, b.name);
-  return `<link rel="stylesheet" href=${JSON.stringify(
-    url,
+function renderStylesheet(from, to) {
+  return `<link rel="stylesheet" href=${resolveURL(
+    from,
+    to,
   )} precedence="default" />`;
+}
+
+function resolveURL(from, to) {
+  if (from.env.isServer()) {
+    let url = urlJoin(to.target.publicUrl, to.name);
+    return JSON.stringify(url);
+  }
+
+  return `{parcelRequire.resolve(${JSON.stringify(to.publicId)})}`;
 }

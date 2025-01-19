@@ -13,6 +13,7 @@ import invariant from 'assert';
 import path from 'path';
 import fs from 'fs';
 import {replaceScriptDependencies, getSpecifier} from './utils';
+import {helpers} from './helpers';
 
 const PRELUDE = fs
   .readFileSync(path.join(__dirname, 'dev-prelude.js'), 'utf8')
@@ -186,11 +187,25 @@ export class DevPackager {
       mainEntry = null;
     }
 
+    let load = '';
     if (usedHelpers & 4) {
-      prefix = prefix.replace(
-        '// INSERT_LOAD_HERE',
-        'newRequire.load = function (url) { return import(distDir + "/" + url); }',
-      );
+      load += helpers.$parcel$import(this.bundle.env, this.bundle, new Set());
+      load += 'newRequire.load = $parcel$import;\n';
+    }
+
+    if (usedHelpers & 8) {
+      load += helpers.$parcel$resolve(this.bundle.env, this.bundle, new Set());
+      load += 'newRequire.resolve = $parcel$resolve;\n';
+    }
+
+    if (usedHelpers & 16) {
+      load += helpers.$parcel$extendImportMap(this.bundle.env);
+      load += `newRequire.extendImportMap = $parcel$extendImportMap;\n`;
+    }
+
+    if (load) {
+      usedHelpers |= 1 | 2;
+      prefix = prefix.replace('// INSERT_LOAD_HERE', load);
     }
 
     let contents =
@@ -211,8 +226,8 @@ export class DevPackager {
     if (usedHelpers & 1) {
       // Generate a relative path from this bundle to the root of the dist dir.
       let distDir = relativePath(path.dirname(this.bundle.name), '');
-      if (distDir.endsWith('/')) {
-        distDir = distDir.slice(0, -1);
+      if (!distDir.endsWith('/')) {
+        distDir += '/';
       }
       contents += ', ' + JSON.stringify(distDir);
     } else if (usedHelpers & 2) {

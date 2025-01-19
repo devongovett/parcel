@@ -19,12 +19,7 @@ describe.skip('wasm', function () {
 
         await assertBundleTree(b, {
           name: 'index.js',
-          assets: [
-            'index.js',
-            'bundle-loader.js',
-            'bundle-url.js',
-            'wasm-loader.js',
-          ],
+          assets: ['index.js', 'bundle-loader.js', 'wasm-loader.js'],
           childBundles: [
             {
               type: 'wasm',
@@ -52,12 +47,7 @@ describe.skip('wasm', function () {
 
         await assertBundleTree(b, {
           name: 'index.js',
-          assets: [
-            'index.js',
-            'bundle-loader.js',
-            'bundle-url.js',
-            'wasm-loader.js',
-          ],
+          assets: ['index.js', 'bundle-loader.js', 'wasm-loader.js'],
           childBundles: [
             {
               type: 'wasm',
@@ -87,7 +77,6 @@ describe.skip('wasm', function () {
           assets: [
             'index.js',
             'bundle-loader.js',
-            'bundle-url.js',
             'js-loader.js',
             'wasm-loader.js',
           ],

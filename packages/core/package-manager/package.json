@@ -50,7 +50,7 @@
     "@parcel/types": "2.13.3",
     "@parcel/utils": "2.13.3",
     "@parcel/workers": "2.13.3",
-    "@swc/core": "^1.7.26",
+    "@swc/core": "^1.10.7",
     "semver": "^7.5.2"
   },
   "devDependencies": {

@@ -364,7 +364,9 @@ async function loadBundleUncached(
   };
 
   parcelRequire.load = async (filePath: string) => {
-    let bundle = bundleGraph.getBundles().find(b => b.name === filePath);
+    let bundle = bundleGraph
+      .getBundles()
+      .find(b => b.publicId === filePath || b.name === filePath);
     if (bundle) {
       let {assets: subAssets} = await loadBundle(
         bundle,
@@ -382,6 +384,20 @@ async function loadBundleUncached(
       throw new Error('Bundle not found');
     }
   };
+
+  parcelRequire.resolve = (url: string) => {
+    let bundle = bundleGraph
+      .getBundles()
+      .find(b => b.publicId === url || b.name === url);
+    if (bundle) {
+      return urlJoin(bundle.target.publicUrl, bundle.name);
+    } else {
+      throw new Error('Bundle not found');
+    }
+  };
+
+  // No-op. We can access the bundle graph directly.
+  parcelRequire.extendImportMap = () => {};
 
   // Resolve and load a module by specifier.
   let loadModule = (id: string, from: string, env = 'react-client') => {

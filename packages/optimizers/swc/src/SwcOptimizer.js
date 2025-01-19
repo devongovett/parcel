@@ -45,6 +45,7 @@ export default (new Optimizer({
             module: bundle.env.outputFormat === 'esmodule',
           },
         },
+        isModule: bundle.env.outputFormat === 'esmodule',
         minify: true,
         sourceMaps: !!bundle.env.sourceMap,
         configFile: false,

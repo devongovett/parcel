@@ -128,11 +128,11 @@ describe('mdx', function () {
       [
         {
           name: 'index.js',
-          assets: ['index.mdx', 'bundle-url.js'],
+          assets: ['index.mdx'],
         },
         {
           name: 'another.js',
-          assets: ['another.mdx', 'bundle-url.js'],
+          assets: ['another.mdx'],
         },
         {
           assets: ['img.png'],

@@ -10,7 +10,7 @@ import {
   runBundle,
 } from '@parcel/test-utils';
 
-describe('parcel', function () {
+describe('workers', function () {
   beforeEach(async () => {
     await removeDistDirectory();
   });
@@ -27,7 +27,6 @@ describe('parcel', function () {
           'worker-client.js',
           'feature.js',
           'get-worker-url.js',
-          'bundle-url.js',
         ],
       },
       {
@@ -50,15 +49,10 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index.js', 'get-worker-url.js'],
       },
       {
-        assets: [
-          'worker.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-        ],
+        assets: ['worker.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['async.js', 'esmodule-helpers.js'],
@@ -90,15 +84,10 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index.js', 'get-worker-url.js'],
       },
       {
-        assets: [
-          'worker.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-        ],
+        assets: ['worker.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['async.js'],
@@ -121,24 +110,18 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index-nested.js',
-        assets: ['index-nested.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index-nested.js', 'get-worker-url.js'],
       },
       {
         assets: [
           'worker-nested.js',
-          'bundle-url.js',
           'get-worker-url.js',
           'cacheLoader.js',
           'js-loader.js',
         ],
       },
       {
-        assets: [
-          'worker.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-        ],
+        assets: ['worker.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['async.js', 'esmodule-helpers.js'],
@@ -163,19 +146,13 @@ describe('parcel', function () {
         name: 'index-async.js',
         assets: [
           'index-async.js',
-          'bundle-url.js',
           'get-worker-url.js',
           'cacheLoader.js',
           'js-loader.js',
         ],
       },
       {
-        assets: [
-          'worker.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-        ],
+        assets: ['worker.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['async.js', 'esmodule-helpers.js'],
@@ -203,7 +180,6 @@ describe('parcel', function () {
         name: 'index.js',
         assets: [
           'index.js',
-          'bundle-url.js',
           'get-worker-url.js',
           'workerHelpers.js',
           'esmodule-helpers.js',
@@ -212,7 +188,6 @@ describe('parcel', function () {
       {
         assets: [
           'workerHelpers.js',
-          'bundle-url.js',
           'get-worker-url.js',
           'esmodule-helpers.js',
         ],
@@ -229,20 +204,10 @@ describe('parcel', function () {
 
     assertBundles(b, [
       {
-        assets: [
-          'import-meta.js',
-          'bundle-url.js',
-          'get-worker-url.js',
-          'esmodule-helpers.js',
-        ],
+        assets: ['import-meta.js', 'get-worker-url.js', 'esmodule-helpers.js'],
       },
       {
-        assets: [
-          'import-meta.js',
-          'bundle-url.js',
-          'get-worker-url.js',
-          'esmodule-helpers.js',
-        ],
+        assets: ['import-meta.js', 'get-worker-url.js', 'esmodule-helpers.js'],
       },
     ]);
 
@@ -266,12 +231,7 @@ describe('parcel', function () {
       },
       {
         name: 'index.js',
-        assets: [
-          'index.js',
-          'bundle-url.js',
-          'get-worker-url.js',
-          'bundle-manifest.js',
-        ],
+        assets: ['index.js', 'get-worker-url.js'],
       },
       {
         assets: ['shared-worker.js'],
@@ -331,12 +291,7 @@ describe('parcel', function () {
         },
         {
           name: 'index.js',
-          assets: [
-            'index.js',
-            'bundle-url.js',
-            'get-worker-url.js',
-            'bundle-manifest.js',
-          ],
+          assets: ['index.js', 'get-worker-url.js'],
         },
         {
           assets: [
@@ -402,7 +357,7 @@ describe('parcel', function () {
         },
         {
           name: 'index.js',
-          assets: ['index.js', 'bundle-manifest.js', 'get-worker-url.js'],
+          assets: ['index.js', 'get-worker-url.js'],
         },
         {
           type: 'js',
@@ -546,7 +501,6 @@ describe('parcel', function () {
           'common.js',
           'worker-client.js',
           'feature.js',
-          'bundle-url.js',
           'get-worker-url.js',
         ],
       },
@@ -669,7 +623,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         type: 'js',
-        assets: ['index-variable.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index-variable.js', 'get-worker-url.js'],
       },
       {
         type: 'js',
@@ -692,7 +646,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         type: 'js',
-        assets: ['index-external.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index-external.js', 'get-worker-url.js'],
       },
       {
         type: 'js',
@@ -712,7 +666,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'index.js', 'bundle-url.js'],
+        assets: ['index.js', 'index.js'],
       },
       {
         assets: ['worker-nested.js'],
@@ -736,7 +690,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'module.js',
-        assets: ['module.js', 'bundle-url.js'],
+        assets: ['module.js'],
       },
       {
         assets: ['module-worker.js'],
@@ -765,7 +719,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'scope.js',
-        assets: ['bundle-url.js', 'scope.js'],
+        assets: ['scope.js'],
       },
       {
         assets: ['module-worker.js'],
@@ -869,7 +823,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'manifest.js',
-        assets: ['manifest.js', 'bundle-url.js'],
+        assets: ['manifest.js'],
       },
       {
         assets: ['manifest-worker.js', 'service-worker.js'],
@@ -900,7 +854,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js'],
+        assets: ['index.js'],
       },
       {
         assets: ['worker.js'],
@@ -1024,7 +978,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index.js', 'get-worker-url.js'],
       },
       {
         assets: ['worker.js', 'worker-dep.js'],
@@ -1040,7 +994,7 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['index.js', 'bundle-url.js', 'get-worker-url.js'],
+        assets: ['index.js', 'get-worker-url.js'],
       },
       {
         assets: ['worker.js'],
@@ -1179,19 +1133,12 @@ describe('parcel', function () {
         assets: [
           'index.js',
           'lodash.js',
-          'bundle-url.js',
           'get-worker-url.js',
-          'bundle-manifest.js',
           'esmodule-helpers.js',
         ],
       },
       {
-        assets: [
-          'worker-a.js',
-          'bundle-url.js',
-          'get-worker-url.js',
-          'bundle-manifest.js',
-        ],
+        assets: ['worker-a.js', 'get-worker-url.js'],
       },
       {
         assets: ['worker-b.js'],
@@ -1231,7 +1178,6 @@ describe('parcel', function () {
           'get-worker-url.js',
           'lodash.js',
           'esmodule-helpers.js',
-          'bundle-manifest.js',
         ],
       },
       {
@@ -1288,8 +1234,6 @@ describe('parcel', function () {
       },
       {
         assets: [
-          'bundle-manifest.js',
-          'bundle-url.js',
           'cacheLoader.js',
           'get-worker-url.js',
           'index.js',
@@ -1298,23 +1242,10 @@ describe('parcel', function () {
         ],
       },
       {
-        assets: [
-          'bundle-manifest.js',
-          'bundle-url.js',
-          'cacheLoader.js',
-          'js-loader.js',
-          'large.js',
-          'worker.js',
-        ],
+        assets: ['cacheLoader.js', 'js-loader.js', 'large.js', 'worker.js'],
       },
       {
-        assets: [
-          'bundle-manifest.js',
-          'esm-js-loader.js',
-          'get-worker-url.js',
-          'index.js',
-          'large.js',
-        ],
+        assets: ['get-worker-url.js', 'index.js', 'large.js'],
       },
       {
         assets: ['async.js'],
@@ -1341,11 +1272,10 @@ describe('parcel', function () {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: ['bundle-url.js', 'get-worker-url.js', 'index.js'],
+        assets: ['get-worker-url.js', 'index.js'],
       },
       {
         assets: [
-          'bundle-url.js',
           'get-worker-url.js',
           'worker1.js',
           'worker2.js',

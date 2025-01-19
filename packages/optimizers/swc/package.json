@@ -24,7 +24,7 @@
     "@parcel/plugin": "2.13.3",
     "@parcel/source-map": "^2.1.1",
     "@parcel/utils": "2.13.3",
-    "@swc/core": "^1.7.26",
+    "@swc/core": "^1.10.7",
     "nullthrows": "^1.1.1"
   }
 }

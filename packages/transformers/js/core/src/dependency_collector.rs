@@ -109,6 +109,10 @@ bitflags! {
     const PUBLIC_URL = 1 << 1;
     /// `parcelRequire.load`
     const LOAD = 1 << 2;
+    /// `parcelRequire.resolve`
+    const RESOLVE = 1 << 3;
+    /// `parcelRequire.extendImportMap`
+    const EXTEND_IMPORT_MAP = 1 << 4;
   }
 }
 
@@ -625,7 +629,46 @@ impl<'a> Fold for DependencyCollector<'a> {
                 ))
               };
               call.callee = ast::Callee::Expr(Box::new(callee));
-              self.helpers |= Helpers::DIST_DIR | Helpers::LOAD;
+              self.helpers |= Helpers::LOAD;
+              return call;
+            } else if match_member_expr(
+              member,
+              vec!["parcelRequire", "resolve"],
+              self.unresolved_mark,
+            ) {
+              let mut call = node.fold_children_with(self);
+              let callee = if self.config.scope_hoist {
+                ast::Expr::Ident(ast::Ident::new_no_ctxt("$parcel$resolve".into(), call.span))
+              } else {
+                ast::Expr::Member(member_expr!(
+                  Default::default(),
+                  call.span,
+                  module.bundle.resolve
+                ))
+              };
+              call.callee = ast::Callee::Expr(Box::new(callee));
+              self.helpers |= Helpers::RESOLVE;
+              return call;
+            } else if match_member_expr(
+              member,
+              vec!["parcelRequire", "extendImportMap"],
+              self.unresolved_mark,
+            ) {
+              let mut call = node.fold_children_with(self);
+              let callee = if self.config.scope_hoist {
+                ast::Expr::Ident(ast::Ident::new_no_ctxt(
+                  "$parcel$extendImportMap".into(),
+                  call.span,
+                ))
+              } else {
+                ast::Expr::Member(member_expr!(
+                  Default::default(),
+                  call.span,
+                  module.bundle.extendImportMap
+                ))
+              };
+              call.callee = ast::Callee::Expr(Box::new(callee));
+              self.helpers |= Helpers::EXTEND_IMPORT_MAP;
               return call;
             } else if match_member_expr(member, vec!["module", "require"], self.unresolved_mark) {
               DependencyKind::Require
@@ -1018,6 +1061,9 @@ impl<'a> Fold for DependencyCollector<'a> {
 
     let is_require = match &node {
       Expr::Ident(ident) => {
+        if ident.sym == "__parcel__import__" {
+          return ast::Expr::Ident("import".into());
+        }
         // Free `require` -> undefined
         ident.sym == js_word!("require") && is_unresolved(&ident, self.unresolved_mark)
       }

@@ -583,13 +583,7 @@ describe('server', function () {
     assertBundles(build.bundleGraph, [
       {
         name: 'index.js',
-        assets: [
-          'bundle-url.js',
-          'cacheLoader.js',
-          'css-loader.js',
-          'index.js',
-          'js-loader.js',
-        ],
+        assets: ['cacheLoader.js', 'css-loader.js', 'index.js', 'js-loader.js'],
       },
       {name: /local\.[0-9a-f]{8}\.js/, assets: ['local.js']},
       {name: 'index.css', assets: ['index.css']},
@@ -623,13 +617,7 @@ describe('server', function () {
     assertBundles(build.bundleGraph, [
       {
         name: 'index.js',
-        assets: [
-          'bundle-url.js',
-          'cacheLoader.js',
-          'css-loader.js',
-          'index.js',
-          'js-loader.js',
-        ],
+        assets: ['cacheLoader.js', 'css-loader.js', 'index.js', 'js-loader.js'],
       },
       {name: 'index.css', assets: ['index.css']},
       {name: /local\.[0-9a-f]{8}\.js/, assets: ['local.js']},

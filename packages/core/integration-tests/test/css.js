@@ -77,7 +77,7 @@ describe('css', () => {
       {
         name: 'entry.js',
         type: 'js',
-        assets: ['bundle-url.js', 'cacheLoader.js', 'entry.js', 'js-loader.js'],
+        assets: ['cacheLoader.js', 'entry.js', 'js-loader.js'],
       },
       {
         type: 'js',
@@ -98,13 +98,7 @@ describe('css', () => {
       {
         name: 'entry.js',
         type: 'js',
-        assets: [
-          'bundle-url.js',
-          'cacheLoader.js',
-          'css-loader.js',
-          'entry.js',
-          'js-loader.js',
-        ],
+        assets: ['cacheLoader.js', 'css-loader.js', 'entry.js', 'js-loader.js'],
       },
       {
         type: 'js',
@@ -122,13 +116,7 @@ describe('css', () => {
     assertBundles(b, [
       {
         name: 'index.js',
-        assets: [
-          'bundle-url.js',
-          'cacheLoader.js',
-          'css-loader.js',
-          'index.js',
-          'js-loader.js',
-        ],
+        assets: ['cacheLoader.js', 'css-loader.js', 'index.js', 'js-loader.js'],
       },
       {name: /local\.[0-9a-f]{8}\.js/, assets: ['local.js']},
       {name: /local\.[0-9a-f]{8}\.css/, assets: ['local.css']},

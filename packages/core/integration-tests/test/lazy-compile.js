@@ -80,7 +80,7 @@ describe('lazy compile', function () {
     // `parallel-lazy-1` which wasn't requested.
     assertBundles(result.bundleGraph, [
       {
-        assets: ['index.js', 'bundle-url.js', 'cacheLoader.js', 'js-loader.js'],
+        assets: ['index.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['lazy-1.js', 'esmodule-helpers.js'],
@@ -155,7 +155,7 @@ describe('lazy compile', function () {
     assertBundles(result.bundleGraph, [
       {
         name: /^index.*/,
-        assets: ['index.js', 'bundle-url.js', 'cacheLoader.js', 'js-loader.js'],
+        assets: ['index.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         // This will be a placeholder, but that info isn't available in the BundleGraph
@@ -219,7 +219,7 @@ describe('lazy compile', function () {
     assertBundles(result.bundleGraph, [
       {
         name: /^index.*/,
-        assets: ['index.js', 'bundle-url.js', 'cacheLoader.js', 'js-loader.js'],
+        assets: ['index.js', 'cacheLoader.js', 'js-loader.js'],
       },
       {
         assets: ['lazy-1.js', 'esmodule-helpers.js'],
