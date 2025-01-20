@@ -1,0 +1,31 @@
+{
+  "name": "@parcel/rsc",
+  "version": "2.13.0",
+  "exports": {
+    "./client": {
+      "types": "./lib/client.d.ts",
+      "default": "./src/client.tsx"
+    },
+    "./server": {
+      "types": "./lib/server.d.ts",
+      "default": "./src/server.tsx"
+    },
+    "./node": {
+      "types": "./lib/node.d.ts",
+      "default": "./src/node.tsx"
+    }
+  },
+  "dependencies": {
+    "react-server-dom-parcel": "canary",
+    "rsc-html-stream": "^0.0.4"
+  },
+  "devDependencies": {
+    "@types/node": ">= 18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  }
+}

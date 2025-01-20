@@ -1,41 +1,24 @@
 "use client-entry";
 
-import {useState, use, startTransition, useInsertionEffect, ReactElement} from 'react';
-import {hydrateRoot} from 'react-dom/client';
-import {createFromReadableStream, createFromFetch} from 'react-server-dom-parcel/client';
-import {rscStream} from 'rsc-html-stream/client';
+import type { ReactNode } from 'react';
+import {hydrate, fetchRSC} from '@parcel/rsc/client';
 
-// Stream in initial RSC payload embedded in the HTML.
-let initialRSCPayload = createFromReadableStream<ReactElement>(rscStream);
-let updateRoot: ((root: ReactElement, cb?: () => void) => void) | null = null;
-
-function Content() {
-  // Store the current root element in state, along with a callback
-  // to call once rendering is complete.
-  let [[root, cb], setRoot] = useState<[ReactElement, (() => void) | null]>([use(initialRSCPayload), null]);
-  updateRoot = (root, cb) => setRoot([root, cb ?? null]);
-  useInsertionEffect(() => cb?.());
-  return root;
-}
-
-// Hydrate initial page content.
-startTransition(() => {
-  hydrateRoot(document, <Content />);
+let updateRoot = hydrate({
+  // Intercept HMR window reloads, and do it with RSC instead.
+  onHmrReload() {
+    navigate(location.pathname);
+  }
 });
 
 // A very simple router. When we navigate, we'll fetch a new RSC payload,
 // and in a React transition, stream in the new page. Once complete, we'll
 // pushState to update the URL in the browser.
 async function navigate(pathname: string, push = false) {
-  let res = fetch(pathname.replace(/\.html$/, '.rsc'));
-  let root = await createFromFetch<ReactElement>(res);
-  startTransition(() => {
-    updateRoot!(root, () => {
-      if (push) {
-        history.pushState(null, '', pathname);
-        push = false;
-      }
-    });
+  let root = await fetchRSC<ReactNode>(pathname.replace(/\.html$/, '.rsc'));
+  updateRoot(root, () => {
+    if (push) {
+      history.pushState(null, '', pathname);
+    }
   });
 }
 
@@ -63,11 +46,5 @@ document.addEventListener('click', e => {
 
 // When the user clicks the back button, navigate with RSC.
 window.addEventListener('popstate', e => {
-  navigate(location.pathname);
-});
-
-// Intercept HMR window reloads, and do it with RSC instead.
-window.addEventListener('parcelhmrreload', e => {
-  e.preventDefault();
   navigate(location.pathname);
 });

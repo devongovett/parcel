@@ -233,26 +233,30 @@ export default (new Transformer({
           pkg?.alias && pkg.alias['react'] === 'preact/compat'
             ? 'preact'
             : reactLib;
-        let automaticVersion = JSX_PRAGMA[effectiveReactLib]?.automatic;
         let reactLibVersion =
           pkg?.dependencies?.[effectiveReactLib] ||
           pkg?.devDependencies?.[effectiveReactLib] ||
           pkg?.peerDependencies?.[effectiveReactLib];
-        reactLibVersion = reactLibVersion
-          ? semver.validRange(reactLibVersion)
-          : null;
-        let minReactLibVersion =
-          reactLibVersion !== null && reactLibVersion !== '*'
-            ? semver.minVersion(reactLibVersion)?.toString()
+        if (effectiveReactLib === 'react' && reactLibVersion === 'canary') {
+          automaticJSXRuntime = true;
+        } else {
+          let automaticVersion = JSX_PRAGMA[effectiveReactLib]?.automatic;
+          reactLibVersion = reactLibVersion
+            ? semver.validRange(reactLibVersion)
             : null;
+          let minReactLibVersion =
+            reactLibVersion !== null && reactLibVersion !== '*'
+              ? semver.minVersion(reactLibVersion)?.toString()
+              : null;
 
-        automaticJSXRuntime =
-          automaticVersion &&
-          !compilerOptions?.jsxFactory &&
-          minReactLibVersion != null &&
-          semver.satisfies(minReactLibVersion, automaticVersion, {
-            includePrerelease: true,
-          });
+          automaticJSXRuntime =
+            automaticVersion &&
+            !compilerOptions?.jsxFactory &&
+            minReactLibVersion != null &&
+            semver.satisfies(minReactLibVersion, automaticVersion, {
+              includePrerelease: true,
+            });
+        }
 
         if (automaticJSXRuntime) {
           jsxImportSource = reactLib;

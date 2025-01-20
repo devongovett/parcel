@@ -14,9 +14,8 @@
     "build": "parcel build"
   },
   "dependencies": {
+    "@parcel/rsc": "*",
     "react": "^19",
-    "react-dom": "^19",
-    "react-server-dom-parcel": "canary",
-    "rsc-html-stream": "^0.0.4"
+    "react-dom": "^19"
   }
 }

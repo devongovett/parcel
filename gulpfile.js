@@ -3,6 +3,7 @@ const babel = require('gulp-babel');
 const gulp = require('gulp');
 const path = require('path');
 const {rimraf} = require('rimraf');
+const swc = require('@swc/core');
 const babelConfig = require('./babel.config.json');
 
 const IGNORED_PACKAGES = [
@@ -67,7 +68,7 @@ exports.clean = function clean(cb) {
 };
 
 exports.default = exports.build = gulp.series(
-  gulp.parallel(buildBabel, copyOthers),
+  gulp.parallel(buildBabel, buildRSC, copyOthers),
   // Babel reads from package.json so update these after babel has run
   paths.packageJson.map(
     packageJsonPath =>
@@ -90,6 +91,33 @@ function copyOthers() {
     .src(paths.packageOther)
     .pipe(renameStream(relative => relative.replace('src', 'lib')))
     .pipe(gulp.dest(paths.packages));
+}
+
+function buildRSC() {
+  return gulp
+    .src('packages/utils/rsc/src/*.tsx')
+    .pipe(
+      new TapStream(vinyl => {
+        let result = swc.transformSync(vinyl.contents.toString(), {
+          filename: vinyl.path,
+          jsc: {
+            parser: {
+              syntax: 'typescript',
+              tsx: true,
+            },
+            target: 'esnext',
+            experimental: {
+              emitIsolatedDts: true,
+            },
+          },
+        });
+
+        let output = JSON.parse(result.output);
+        vinyl.contents = Buffer.from(output.__swc_isolated_declarations__);
+      }),
+    )
+    .pipe(renameStream(relative => relative.replace('.tsx', '.d.ts')))
+    .pipe(gulp.dest('packages/utils/rsc/lib'));
 }
 
 function _updatePackageJson(file) {
