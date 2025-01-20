@@ -45,6 +45,7 @@
     "@khanacademy/flow-to-ts": "^0.5.2",
     "@napi-rs/cli": "^2.18.3",
     "@parcel/babel-register": "*",
+    "@swc/core": "^1.10.7",
     "@types/node": ">= 18",
     "buffer": "mischnic/buffer#b8a4fa94",
     "cross-env": "^7.0.0",
