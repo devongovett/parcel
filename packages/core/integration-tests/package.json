@@ -52,6 +52,7 @@
     "tailwindcss": "^3.0.2",
     "tempy": "^0.3.0",
     "wasm-sourcemap": "^1.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@mongodb-js/zstd": "^2.0.0"
   }
 }
