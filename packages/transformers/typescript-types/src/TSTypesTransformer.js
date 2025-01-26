@@ -165,6 +165,7 @@ export default (new Transformer({
 
     let code = nullthrows(host.outputCode);
     code = code.substring(0, code.lastIndexOf('//# sourceMappingURL'));
+    code += `\nexport {};\n`;
 
     let map = JSON.parse(nullthrows(host.outputMap));
     map.sources = map.sources.map(source =>
