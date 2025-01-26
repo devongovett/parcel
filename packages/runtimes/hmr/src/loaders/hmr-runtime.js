@@ -303,7 +303,7 @@ function createErrorOverlay(diagnostics) {
   overlay.id = OVERLAY_ID;
 
   let errorHTML =
-    '<div style="background: black; opacity: 0.85; font-size: 16px; color: white; position: fixed; height: 100%; width: 100%; top: 0px; left: 0px; padding: 30px; font-family: Menlo, Consolas, monospace; z-index: 9999;">';
+    '<div style="background: black; opacity: 0.85; font-size: 16px; color: white; position: fixed; height: 100%; width: 100%; top: 0px; left: 0px; padding: 30px; font-family: Menlo, Consolas, monospace; z-index: 9999; white-space: pre; overflow: scroll;">';
 
   for (let diagnostic of diagnostics) {
     let stack = diagnostic.frames.length
