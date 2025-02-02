@@ -129,16 +129,18 @@ export default function codeFrame(
 
   // Split input into lines and highlight syntax
   let lines = code.split(NEWLINE);
-  let highlighted = highlightSyntax(
-    lines
-      .slice(startLine, endLineIndex + 1)
-      .join('\n')
-      .replace(TAB_REPLACE_REGEX, TAB_REPLACEMENT),
-    opts.language,
-  ).split(NEWLINE);
+  let visibleLines = lines
+    .slice(startLine, endLineIndex + 1)
+    .map(l => l.replace(TAB_REPLACE_REGEX, TAB_REPLACEMENT));
+  if (opts.syntaxHighlighting) {
+    visibleLines = highlightSyntax(
+      visibleLines.join('\n'),
+      opts.language,
+    ).split(NEWLINE);
+  }
   let syntaxHighlightedLines = lines
     .slice(0, startLine)
-    .concat(highlighted)
+    .concat(visibleLines)
     .concat(lines.slice(endLineIndex + 2));
 
   // Loop over all lines and create codeframe
