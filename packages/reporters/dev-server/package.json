@@ -23,7 +23,9 @@
   "targets": {
     "main": {
       "includeNodeModules": {
+        "@parcel/codeframe": false,
         "@parcel/plugin": false,
+        "@parcel/source-map": false,
         "@parcel/utils": false
       }
     }
