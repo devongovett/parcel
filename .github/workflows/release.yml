@@ -66,7 +66,7 @@ jobs:
         if: ${{ runner.os == 'macOS' && inputs.profile == 'canary' }}
         run: dsymutil packages/*/*/*.node
       - name: Upload debug symbols
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.profile == 'canary' }}
         with:
           name: debug-symbols-${{ matrix.name }}
@@ -75,7 +75,7 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         run: strip -x packages/*/*/*.node # Must use -x on macOS. This produces larger results on linux.
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.name }}
           path: packages/*/*/*.node
@@ -109,7 +109,7 @@ jobs:
           find packages -name "*.node" -type f -exec objcopy --strip-debug --strip-unneeded {} \;
           find packages -name "*.node" -type f -exec objcopy --add-gnu-debuglink={}.debug {} \;
       - name: Upload debug symbols
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.profile == 'canary' }}
         with:
           name: debug-symbols-linux-gnu-x64
@@ -117,7 +117,7 @@ jobs:
       - name: Strip debug symbols # https://github.com/rust-lang/rust/issues/46034
         run: strip packages/*/*/*.node
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-linux-gnu-x64
           path: packages/*/*/*.node
@@ -171,7 +171,7 @@ jobs:
           find packages -name "*.node" -type f -exec ${{ matrix.objcopy }} --strip-debug --strip-unneeded {} \;
           find packages -name "*.node" -type f -exec ${{ matrix.objcopy }} --add-gnu-debuglink={}.debug {} \;
       - name: Upload debug symbols
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.profile == 'canary' }}
         with:
           name: debug-symbols-${{ matrix.target }}
@@ -179,7 +179,7 @@ jobs:
       - name: Strip debug symbols # https://github.com/rust-lang/rust/issues/46034
         run: ${{ matrix.strip }} packages/*/*/*.node
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.target }}
           path: packages/*/*/*.node
@@ -238,7 +238,7 @@ jobs:
           find packages -name "*.node" -type f -exec ${{ matrix.objcopy }} --strip-debug --strip-unneeded {} \;
           find packages -name "*.node" -type f -exec ${{ matrix.objcopy }} --add-gnu-debuglink={}.debug {} \;
       - name: Upload debug symbols
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.profile == 'canary' }}
         with:
           name: debug-symbols-linux-musl-${{ matrix.arch }}
@@ -246,7 +246,7 @@ jobs:
       - name: Strip debug symbols # https://github.com/rust-lang/rust/issues/46034
         run: ${{ matrix.strip }} packages/*/*/*.node
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-linux-musl-${{ matrix.arch }}
           path: packages/*/*/*.node
@@ -272,7 +272,7 @@ jobs:
       - name: Build native packages
         run: yarn build-native-${{ inputs.profile }}
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Move bindings
@@ -285,7 +285,7 @@ jobs:
           find artifacts -name "*.node" -path "**/DWARF/**" -exec cp {} debug-symbols/ \;
           ls -l debug-symbols
       - name: Upload combined debug symbols artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.profile == 'canary' }}
         with:
           name: debug-symbols

@@ -86,7 +86,7 @@ jobs:
       - run: yarn test:unit
       - name: Upload @parcel/rust artifacts on Linux with Node v20
         if: ${{ runner.os == 'Linux' && matrix.node == 20 }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Rust Linux Binaries
           path: |
@@ -158,7 +158,7 @@ jobs:
       - run: yarn build-native-wasm
       - run: yarn workspace @parcel/repl build
       # - name: Upload REPL
-      #   uses: actions/upload-artifact@v3
+      #   uses: actions/upload-artifact@v4
       #   with:
       #     name: REPL
       #     path: 'packages/dev/repl/dist'
