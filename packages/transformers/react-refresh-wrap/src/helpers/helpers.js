@@ -43,7 +43,7 @@ module.exports.init = function () {
     };
 
     if (typeof window !== 'undefined') {
-      let ErrorOverlay = require('react-error-overlay');
+      let ErrorOverlay = require('@parcel/error-overlay');
       ErrorOverlay.setEditorHandler(function editorHandler(errorLocation) {
         let file = `${errorLocation.fileName}:${
           errorLocation.lineNumber || 1

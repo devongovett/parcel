@@ -1,5 +1,5 @@
 {
-  "name": "@parcel/transformer-react-refresh-wrap",
+  "name": "@parcel/error-overlay",
   "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
@@ -13,16 +13,14 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
-  "main": "lib/ReactRefreshWrapTransformer.js",
-  "source": "src/ReactRefreshWrapTransformer.js",
+  "main": "lib/index.js",
+  "source": "src/index.js",
   "engines": {
-    "node": ">= 16.0.0",
-    "parcel": "^2.13.3"
+    "node": ">= 16.0.0"
   },
   "dependencies": {
-    "@parcel/error-overlay": "2.13.3",
-    "@parcel/plugin": "2.13.3",
-    "@parcel/utils": "2.13.3",
-    "react-refresh": ">=0.9 <=0.16"
+    "ansi-html-community": "0.0.8",
+    "react": "^19",
+    "react-dom": "^19"
   }
 }

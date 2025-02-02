@@ -56,7 +56,7 @@ ${code}
 
     asset.setCode(code);
     if (map) {
-      map.offsetLines(1, 6);
+      map.offsetLines(1, 7);
       asset.setMap(map);
     }
 
