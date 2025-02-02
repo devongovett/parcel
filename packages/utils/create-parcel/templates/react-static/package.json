@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@parcel/rsc": "canary",
-    "react": "canary",
-    "react-dom": "canary"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@parcel/config-react-static": "canary",
