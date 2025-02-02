@@ -1,5 +1,5 @@
 // @flow strict-local
-import type {Environment, NamedBundle} from '@parcel/types';
+import type {Environment, NamedBundle, PluginOptions} from '@parcel/types';
 import {relativePath} from '@parcel/utils';
 import path from 'path';
 
@@ -180,6 +180,24 @@ const $parcel$publicUrl = (env: Environment, bundle: NamedBundle): string => {
   return `var $parcel$publicUrl = ${JSON.stringify(publicUrl)};\n`;
 };
 
+const $parcel$devServer = (
+  env: Environment,
+  bundle: NamedBundle,
+  _usedHelpers: Set<string>,
+  options: PluginOptions,
+): string => {
+  if (options.hmrOptions) {
+    let {host = 'localhost', port} = options.hmrOptions;
+    let https = options.serveOptions ? options.serveOptions.https : false;
+    port = port ?? (options.serveOptions ? options.serveOptions.port : null);
+    if (port != null) {
+      let url = (https ? 'https://' : 'http://') + host + ':' + port;
+      return `var $parcel$devServer = ${JSON.stringify(url)};\n`;
+    }
+  }
+  return `var $parcel$devServer = null;\n`;
+};
+
 const $parcel$extendImportMap = (env: Environment): string => {
   let defineImportMap = env.shouldScopeHoist
     ? 'parcelRequire.i ??= {}'
@@ -287,6 +305,7 @@ export const helpers = {
   $parcel$defineInteropFlag,
   $parcel$distDir,
   $parcel$publicUrl,
+  $parcel$devServer,
   $parcel$extendImportMap,
   $parcel$import,
   $parcel$resolve,

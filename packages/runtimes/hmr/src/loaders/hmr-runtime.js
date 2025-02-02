@@ -105,19 +105,19 @@ if (!WebSocket && typeof module.bundle.root === 'function') {
   }
 }
 
+var hostname = getHostname();
+var port = getPort();
+var protocol =
+  HMR_SECURE ||
+  (typeof location !== 'undefined' &&
+    location.protocol === 'https:' &&
+    !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname))
+    ? 'wss'
+    : 'ws';
+
 // eslint-disable-next-line no-redeclare
 var parent = module.bundle.parent;
 if (!parent || !parent.isParcelRequire) {
-  var hostname = getHostname();
-  var port = getPort();
-  var protocol =
-    HMR_SECURE ||
-    (typeof location !== 'undefined' &&
-      location.protocol === 'https:' &&
-      !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname))
-      ? 'wss'
-      : 'ws';
-
   // Web extension context
   var extCtx =
     typeof browser === 'undefined'
@@ -309,7 +309,9 @@ function createErrorOverlay(diagnostics) {
     let stack = diagnostic.frames.length
       ? diagnostic.frames.reduce((p, frame) => {
           return `${p}
-<a href="/__parcel_launch_editor?file=${encodeURIComponent(
+<a href="${
+            protocol === 'wss' ? 'https' : 'http'
+          }://${hostname}:${port}/__parcel_launch_editor?file=${encodeURIComponent(
             frame.location,
           )}" style="text-decoration: underline; color: #888" onclick="fetch(this.href); return false">${
             frame.location

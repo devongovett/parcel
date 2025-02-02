@@ -205,7 +205,8 @@ export class DevPackager {
 
     if (load) {
       usedHelpers |= 1 | 2;
-      prefix = prefix.replace('// INSERT_LOAD_HERE', load);
+      // Remove newlines to avoid messing up source maps
+      prefix = prefix.replace('// INSERT_LOAD_HERE', load.replace(/\n/g, ''));
     }
 
     let contents =
@@ -230,7 +231,7 @@ export class DevPackager {
         distDir += '/';
       }
       contents += ', ' + JSON.stringify(distDir);
-    } else if (usedHelpers & 2) {
+    } else if (usedHelpers & (2 | 32)) {
       contents += ', null';
     }
 
@@ -241,6 +242,18 @@ export class DevPackager {
         publicUrl += '/';
       }
       contents += ', ' + JSON.stringify(publicUrl);
+    } else if (usedHelpers & 32) {
+      contents += ', null';
+    }
+
+    if (usedHelpers & 32) {
+      let code = helpers.$parcel$devServer(
+        this.bundle.env,
+        this.bundle,
+        new Set(),
+        this.options,
+      );
+      contents += ', ' + code.slice('var $parcel$devServer = '.length, -2);
     }
 
     contents += ')\n';

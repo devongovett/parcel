@@ -48,7 +48,10 @@ module.exports.init = function () {
         let file = `${errorLocation.fileName}:${
           errorLocation.lineNumber || 1
         }:${errorLocation.colNumber || 1}`;
-        fetch(`/__parcel_launch_editor?file=${encodeURIComponent(file)}`);
+        fetch(
+          import.meta.devServer +
+            `/__parcel_launch_editor?file=${encodeURIComponent(file)}`,
+        );
       });
 
       ErrorOverlay.startReportingRuntimeErrors({

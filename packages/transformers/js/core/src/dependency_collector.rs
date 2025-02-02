@@ -113,6 +113,8 @@ bitflags! {
     const RESOLVE = 1 << 3;
     /// `parcelRequire.extendImportMap`
     const EXTEND_IMPORT_MAP = 1 << 4;
+    /// `import.meta.devServer` – URL of Parcel HMR server
+    const DEV_SERVER = 1 << 5;
   }
 }
 
@@ -1526,6 +1528,21 @@ impl<'a> DependencyCollector<'a> {
                   Default::default(),
                   span,
                   module.bundle.publicUrl
+                )))
+              }
+            }
+            "devServer" => {
+              self.helpers |= Helpers::DEV_SERVER;
+              if self.config.scope_hoist {
+                Some(Expr::Ident(Ident::new_no_ctxt(
+                  "$parcel$devServer".into(),
+                  span,
+                )))
+              } else {
+                Some(Expr::Member(member_expr!(
+                  Default::default(),
+                  span,
+                  module.bundle.devServer
                 )))
               }
             }

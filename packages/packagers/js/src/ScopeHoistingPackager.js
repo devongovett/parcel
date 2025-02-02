@@ -536,6 +536,9 @@ export class ScopeHoistingPackager {
         this.needsPrelude = true;
         this.usedHelpers.add('$parcel$extendImportMap');
       }
+      if (usedHelpers & 32) {
+        this.usedHelpers.add('$parcel$devServer');
+      }
     }
 
     if (this.bundle.env.isNode() && asset.meta.has_node_replacements) {
@@ -1397,6 +1400,7 @@ ${code}
           this.bundle.env,
           this.bundle,
           this.usedHelpers,
+          this.options,
         );
       }
       res += currentHelper;

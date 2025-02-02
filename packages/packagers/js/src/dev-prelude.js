@@ -6,7 +6,15 @@
 // anything defined in a previous bundle is accessed via the
 // orig method which is the require for previous bundles
 
-(function (modules, entry, mainEntry, parcelRequireName, distDir, publicUrl) {
+(function (
+  modules,
+  entry,
+  mainEntry,
+  parcelRequireName,
+  distDir,
+  publicUrl,
+  devServer
+) {
   /* eslint-disable no-undef */
   var globalObject =
     typeof globalThis !== 'undefined'
@@ -104,6 +112,7 @@
   newRequire.parent = previousRequire;
   newRequire.distDir = distDir;
   newRequire.publicUrl = publicUrl;
+  newRequire.devServer = devServer;
   newRequire.i = importMap;
   newRequire.register = function (id, exports) {
     modules[id] = [
