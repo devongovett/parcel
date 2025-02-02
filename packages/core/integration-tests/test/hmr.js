@@ -11,6 +11,7 @@ import {
   sleep,
   run,
   request,
+  distDir,
 } from '@parcel/test-utils';
 import WebSocket from 'ws';
 import json5 from 'json5';
@@ -18,6 +19,9 @@ import getPort from 'get-port';
 // flowlint-next-line untyped-import:off
 import JSDOM from 'jsdom';
 import nullthrows from 'nullthrows';
+import {pathToFileURL} from 'url';
+import {normalizeSeparators} from '@parcel/utils';
+import SourceMap from '@parcel/source-map';
 
 const config = path.join(
   __dirname,
@@ -359,6 +363,276 @@ describe('hmr', function () {
       );
       assert(contents.includes('//# sourceMappingURL'));
       assert(contents.includes('//# sourceURL'));
+    });
+
+    describe('source maps', function () {
+      let port, bundleGraph;
+      async function setup(publicUrl) {
+        port = await getPort();
+        let b = bundler(path.join(__dirname, '/input/index.js'), {
+          serveOptions: {port, publicUrl},
+          hmrOptions: {port},
+          inputFS: overlayFS,
+          config,
+        });
+
+        subscription = await b.watch();
+        let event = await getNextBuild(b);
+        bundleGraph = nullthrows(event.bundleGraph);
+      }
+
+      it('should return source maps by absolute bundle path', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          normalizeSeparators(bundleGraph.getBundles()[0].filePath),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by relative bundle path', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          normalizeSeparators(
+            path.relative(distDir, bundleGraph.getBundles()[0].filePath),
+          ),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by file url', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          pathToFileURL(bundleGraph.getBundles()[0].filePath).toString(),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by fully qualified bundle URL', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          'http://localhost:1234/' +
+            normalizeSeparators(
+              path.relative(distDir, bundleGraph.getBundles()[0].filePath),
+            ),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by with fully qualified public URL', async function () {
+        await setup('http://localhost:1234/static/');
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          'http://localhost:1234/static/' +
+            normalizeSeparators(
+              path.relative(distDir, bundleGraph.getBundles()[0].filePath),
+            ),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by with relative public url', async function () {
+        await setup('/static');
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          '/static/' +
+            normalizeSeparators(
+              path.relative(distDir, bundleGraph.getBundles()[0].filePath),
+            ),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps by with RSC file URL', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          'rsc://React/Server/' +
+            pathToFileURL(bundleGraph.getBundles()[0].filePath).toString(),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert.equal(
+          contents,
+          await outputFS.readFile(
+            bundleGraph.getBundles()[0].filePath + '.map',
+            'utf8',
+          ),
+        );
+      });
+
+      it('should return source maps for an asset by id', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          '/__parcel_hmr/' +
+            nullthrows(bundleGraph.getBundles()[0].getMainEntry()).id,
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert(contents.startsWith('{"mappings"'));
+      });
+
+      it('should return source maps for an asset by file path', async function () {
+        await setup();
+        let qs = new URLSearchParams();
+        qs.set(
+          'filename',
+          pathToFileURL(
+            nullthrows(bundleGraph.getBundles()[0].getMainEntry()).filePath,
+          ).toString(),
+        );
+        let contents = await request(
+          '/__parcel_source_map?' + qs.toString(),
+          port,
+        );
+        assert(contents.startsWith('{"mappings"'));
+      });
+    });
+
+    describe('code frame', function () {
+      let port, bundleGraph;
+      beforeEach(async function () {
+        port = await getPort();
+        let b = bundler(path.join(__dirname, '/input/index.js'), {
+          serveOptions: {port},
+          hmrOptions: {port},
+          inputFS: overlayFS,
+          config,
+        });
+
+        subscription = await b.watch();
+        let event = await getNextBuild(b);
+        bundleGraph = nullthrows(event.bundleGraph);
+      });
+
+      it('should return code frames for stack', async function () {
+        let map = new SourceMap('/');
+        map.addVLQMap(
+          JSON.parse(
+            await outputFS.readFile(
+              bundleGraph.getBundles()[0].filePath + '.map',
+              'utf8',
+            ),
+          ),
+        );
+        let source = map.getSourceIndex('input/index.js');
+        let mappings = map.getMappings();
+        let mapping = nullthrows(
+          mappings.find(m => m.source === source && m.original?.line === 6),
+        );
+
+        let res = await fetch(
+          'http://localhost:' + port + '/__parcel_code_frame',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contextLines: 3,
+              frames: [
+                {
+                  fileName: normalizeSeparators(
+                    bundleGraph.getBundles()[0].filePath,
+                  ),
+                  lineNumber: mapping.generated.line,
+                  columnNumber: mapping.generated.column,
+                },
+              ],
+            }),
+          },
+        );
+
+        let json = await res.json();
+        assert.deepEqual(json, [
+          {
+            fileName: '../dist/index.js',
+            lineNumber: mapping.generated.line,
+            columnNumber: mapping.generated.column,
+            sourceFileName: 'input/index.js',
+            sourceLineNumber: mapping.original?.line,
+            sourceColumnNumber: mapping.original?.column,
+            compiledLines: json[0].compiledLines,
+            sourceLines: json[0].sourceLines,
+          },
+        ]);
+      });
     });
   });
 

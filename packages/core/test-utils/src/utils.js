@@ -681,7 +681,7 @@ function prepareBrowserContext(
   const fakeDocument = {
     head,
     createElement(tag) {
-      return {tag};
+      return {tag, setAttribute() {}, style: {}};
     },
 
     getElementsByTagName() {
