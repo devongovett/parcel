@@ -17,7 +17,7 @@ import type {
 import {setHeaders, SOURCES_ENDPOINT} from './Server';
 
 import nullthrows from 'nullthrows';
-import url from 'url';
+import url, {fileURLToPath} from 'url';
 import path from 'path';
 import mime from 'mime-types';
 import WebSocket from 'ws';
@@ -29,6 +29,7 @@ import {
   prettyDiagnostic,
   PromiseQueue,
   isDirectoryInside,
+  normalizeSeparators,
 } from '@parcel/utils';
 import SourceMap from '@parcel/source-map';
 import formatCodeFrame from '@parcel/codeframe';
@@ -429,9 +430,8 @@ export default class HMRServer {
               json.contextLines,
               path.extname(location.filePath).slice(1),
             );
-            frame.fileName = path.relative(
-              this.options.projectRoot,
-              location.filePath,
+            frame.fileName = normalizeSeparators(
+              path.relative(this.options.projectRoot, location.filePath),
             );
           } else if (location.type === 'asset') {
             // Get source map from the asset.
@@ -443,9 +443,8 @@ export default class HMRServer {
               json.contextLines,
               location.asset.type,
             );
-            frame.fileName = path.relative(
-              this.options.projectRoot,
-              location.asset.filePath,
+            frame.fileName = normalizeSeparators(
+              path.relative(this.options.projectRoot, location.asset.filePath),
             );
             map = await location.asset.getMap();
             if (!map) {
@@ -460,11 +459,11 @@ export default class HMRServer {
               frame.columnNumber,
             );
             if (mapping) {
-              let source = mapping.source
-                ? map.getSourceContent(mapping.source) || ''
+              let sourceFileName = mapping.source;
+              let source = sourceFileName
+                ? map.getSourceContent(sourceFileName) || ''
                 : '';
-              if (mapping.original && mapping.source) {
-                frame.sourceFileName = mapping.source;
+              if (mapping.original && sourceFileName) {
                 frame.sourceLineNumber = mapping.original.line;
                 frame.sourceColumnNumber = mapping.original.column;
                 frame.sourceLines = getCodeFrame(
@@ -472,13 +471,17 @@ export default class HMRServer {
                   mapping.original.column + 1,
                   source,
                   json.contextLines,
-                  path.extname(mapping.source).slice(1),
+                  path.extname(source).slice(1),
                 );
+                frame.sourceFileName = normalizeSeparators(sourceFileName);
               }
             }
           } else if (location.type === 'source') {
             // This is already a source location. Generate a code frame.
-            frame.sourceFileName = location.filePath;
+            frame.fileName = normalizeSeparators(
+              path.relative(this.options.projectRoot, location.filePath),
+            );
+            frame.sourceFileName = frame.fileName;
             frame.sourceLineNumber = frame.lineNumber;
             frame.sourceColumnNumber = frame.columnNumber;
             let contents = await this.options.outputFS.readFile(
@@ -491,10 +494,6 @@ export default class HMRServer {
               contents,
               json.contextLines,
               path.extname(location.filePath).slice(1),
-            );
-            frame.fileName = path.relative(
-              this.options.projectRoot,
-              location.filePath,
             );
           }
         }
@@ -576,12 +575,11 @@ export default class HMRServer {
 
     // Get path from URL.
     if (filePath.startsWith('file://')) {
-      let fileURL = new URL(filePath);
-      filePath = fileURL.pathname;
+      filePath = fileURLToPath(filePath);
     } else {
       if (/^https?:\/\//.test(filePath)) {
-        let fileURL = new URL(filePath);
-        filePath = fileURL.pathname.slice(1);
+        let url = new URL(filePath);
+        filePath = url.pathname.slice(1);
       }
 
       // If public url is just a subpath, strip it.
@@ -600,7 +598,7 @@ export default class HMRServer {
       };
     }
 
-    if (filePath.startsWith('/')) {
+    if (filePath.startsWith('/') || path.isAbsolute(filePath)) {
       filePath = path.normalize(filePath);
     } else {
       filePath = path.join(distDir, filePath);
