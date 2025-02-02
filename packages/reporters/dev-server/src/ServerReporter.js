@@ -59,6 +59,8 @@ export default (new Reporter({
               inputFS: options.inputFS,
               outputFS: options.outputFS,
               projectRoot: options.projectRoot,
+              distDir: serveOptions.distDir,
+              publicUrl: serveOptions.publicUrl ?? '/',
             };
             hmrServer = new HMRServer(hmrServerOptions);
             hmrServers.set(serveOptions.port, hmrServer);
@@ -78,6 +80,8 @@ export default (new Reporter({
             inputFS: options.inputFS,
             outputFS: options.outputFS,
             projectRoot: options.projectRoot,
+            distDir: serveOptions ? serveOptions.distDir : null,
+            publicUrl: serveOptions ? serveOptions.publicUrl ?? '/' : '/',
           };
           hmrServer = new HMRServer(hmrServerOptions);
           hmrServers.set(port, hmrServer);
@@ -103,9 +107,8 @@ export default (new Reporter({
         }
         break;
       case 'buildStart':
-        if (server) {
-          server.buildStart();
-        }
+        server?.buildStart();
+        hmrServer?.buildStart();
         nodeRunner?.buildStart();
         break;
       case 'buildProgress':
@@ -154,6 +157,7 @@ export default (new Reporter({
           nodeRunners.set(options.instanceId, nodeRunner);
         }
         nodeRunner?.buildSuccess(event.bundleGraph);
+        hmrServer?.buildSuccess(event);
         break;
       }
       case 'buildFailure':

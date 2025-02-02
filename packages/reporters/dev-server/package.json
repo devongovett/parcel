@@ -34,7 +34,9 @@
   },
   "devDependencies": {
     "@parcel/babel-preset": "2.13.3",
+    "@parcel/codeframe": "2.13.3",
     "@parcel/diagnostic": "2.13.3",
+    "@parcel/source-map": "^2.1.1",
     "@parcel/types": "2.13.3",
     "connect": "^3.7.0",
     "ejs": "^3.1.6",

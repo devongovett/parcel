@@ -54,4 +54,6 @@ export type HMRServerOptions = {|
   inputFS: FileSystem,
   outputFS: FileSystem,
   projectRoot: FilePath,
+  distDir: ?FilePath,
+  publicUrl: string,
 |};

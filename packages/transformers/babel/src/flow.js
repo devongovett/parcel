@@ -19,17 +19,25 @@ export default async function getFlowOptions(
   }
 
   // Only add flow plugin if `flow-bin` is listed as a dependency in the root package.json
-  let conf = await config.getConfigFrom<PackageJSON>(
-    options.projectRoot + '/index',
-    ['package.json'],
-  );
-  let pkg = conf?.contents;
+  // @parcel/error-overlay package in integration tests is an exception
   if (
-    !pkg ||
-    (!(pkg.dependencies && pkg.dependencies['flow-bin']) &&
-      !(pkg.devDependencies && pkg.devDependencies['flow-bin']))
+    !(
+      process.env.PARCEL_BUILD_ENV === 'test' &&
+      config.searchPath.includes('error-overlay')
+    )
   ) {
-    return null;
+    let conf = await config.getConfigFrom<PackageJSON>(
+      options.projectRoot + '/index',
+      ['package.json'],
+    );
+    let pkg = conf?.contents;
+    if (
+      !pkg ||
+      (!(pkg.dependencies && pkg.dependencies['flow-bin']) &&
+        !(pkg.devDependencies && pkg.devDependencies['flow-bin']))
+    ) {
+      return null;
+    }
   }
 
   const babelCore: BabelCore = await options.packageManager.require(

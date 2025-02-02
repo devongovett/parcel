@@ -75,6 +75,7 @@ export default (new Transformer({
       sourceFileName,
       sourceMaps: !!asset.env.sourceMap,
       comments: true,
+      importAttributesKeyword: 'with',
     });
 
     let map = new SourceMap(options.projectRoot);

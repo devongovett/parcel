@@ -1,11 +1,10 @@
 // @flow
 import type {
   Asset,
-  BundleGraph,
   Dependency,
-  NamedBundle,
-  PackagedBundle,
   PluginOptions,
+  BuildSuccessEvent,
+  BundledProgressEvent,
 } from '@parcel/types';
 import type {Diagnostic} from '@parcel/diagnostic';
 import type {AnsiDiagnosticResult} from '@parcel/utils';
@@ -19,15 +18,21 @@ import {setHeaders, SOURCES_ENDPOINT} from './Server';
 
 import nullthrows from 'nullthrows';
 import url from 'url';
+import path from 'path';
 import mime from 'mime-types';
 import WebSocket from 'ws';
 import invariant from 'assert';
+import {Readable} from 'stream';
 import {
   ansiHtml,
   createHTTPServer,
   prettyDiagnostic,
   PromiseQueue,
+  isDirectoryInside,
 } from '@parcel/utils';
+import SourceMap from '@parcel/source-map';
+import formatCodeFrame from '@parcel/codeframe';
+import launchEditor from 'launch-editor';
 
 export type HMRAsset = {|
   id: string,
@@ -57,18 +62,42 @@ export type HMRMessage =
 
 const FS_CONCURRENCY = 64;
 const HMR_ENDPOINT = '/__parcel_hmr';
+const CODEFRAME_ENDPOINT = '/__parcel_code_frame';
+const SOURCEMAP_ENDPOINT = '/__parcel_source_map';
+const EDITOR_ENDPOINT = '/__parcel_launch_editor';
 const BROADCAST_MAX_ASSETS = 10000;
 
 export default class HMRServer {
   wss: WebSocket.Server;
   unresolvedError: HMRMessage | null = null;
   options: HMRServerOptions;
-  bundleGraph: BundleGraph<PackagedBundle> | BundleGraph<NamedBundle> | null =
-    null;
+  event: BundledProgressEvent | BuildSuccessEvent | null = null;
   stopServer: ?() => Promise<void>;
+  pending: boolean = true;
+  pendingRequests: Array<[Request, Response]> = [];
 
   constructor(options: HMRServerOptions) {
     this.options = options;
+  }
+
+  buildStart() {
+    this.pending = true;
+  }
+
+  buildSuccess(event: BuildSuccessEvent) {
+    this.pending = false;
+    this.event = event;
+
+    if (this.pendingRequests.length > 0) {
+      let pendingRequests = this.pendingRequests;
+      this.pendingRequests = [];
+      for (let [req, res] of pendingRequests) {
+        if (!this.handle(req, res)) {
+          res.statusCode = 404;
+          res.end();
+        }
+      }
+    }
   }
 
   async start() {
@@ -81,6 +110,11 @@ export default class HMRServer {
         cacheDir: this.options.cacheDir,
         listener: (req, res) => {
           setHeaders(res);
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 200;
+            res.end();
+            return;
+          }
           if (!this.handle(req, res)) {
             res.statusCode = 404;
             res.end();
@@ -106,15 +140,60 @@ export default class HMRServer {
   }
 
   handle(req: Request, res: Response): boolean {
-    let {pathname} = url.parse(req.originalUrl || req.url);
+    let {pathname, query} = url.parse(req.originalUrl || req.url);
     if (pathname != null && pathname.startsWith(HMR_ENDPOINT)) {
       let id = pathname.slice(HMR_ENDPOINT.length + 1);
-      let bundleGraph = nullthrows(this.bundleGraph);
+      let bundleGraph = nullthrows(this.event).bundleGraph;
       let asset = bundleGraph.getAssetById(id);
       this.getHotAssetContents(asset).then(output => {
         res.setHeader('Content-Type', mime.contentType(asset.type));
         res.end(output);
       });
+      return true;
+    } else if (
+      pathname?.startsWith(CODEFRAME_ENDPOINT) &&
+      req.method === 'POST'
+    ) {
+      if (this.pending) {
+        this.pendingRequests.push([req, res]);
+      } else {
+        this.serveCodeFrame(req, res);
+      }
+      return true;
+    } else if (pathname?.startsWith(SOURCEMAP_ENDPOINT)) {
+      if (this.pending) {
+        this.pendingRequests.push([req, res]);
+      } else {
+        let qs = new URLSearchParams(query || '');
+        let filename = qs.get('filename');
+        if (!filename) {
+          return false;
+        }
+        this.getSourceMapContents(filename).then(
+          map => {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(map);
+          },
+          () => {
+            res.statusCode = 500;
+            res.end();
+          },
+        );
+      }
+      return true;
+    } else if (pathname?.startsWith(EDITOR_ENDPOINT) && query) {
+      let qs = new URLSearchParams(query);
+      let file = qs.get('file');
+      if (file) {
+        // File location might start with /__parcel_source_root if it came from a source map.
+        if (file.startsWith(SOURCES_ENDPOINT)) {
+          file = file.slice(SOURCES_ENDPOINT.length + 1);
+        } else if (!path.isAbsolute(file)) {
+          file = path.join(this.options.projectRoot, file);
+        }
+        launchEditor(file);
+      }
+      res.end();
       return true;
     }
     return false;
@@ -160,13 +239,11 @@ export default class HMRServer {
     this.broadcast(this.unresolvedError);
   }
 
-  async getUpdate(event: {
-    +bundleGraph: BundleGraph<PackagedBundle> | BundleGraph<NamedBundle>,
-    +changedAssets: Map<string, Asset>,
-    ...
-  }): Promise<?HMRMessage> {
+  async getUpdate(
+    event: BundledProgressEvent | BuildSuccessEvent,
+  ): Promise<?HMRMessage> {
     this.unresolvedError = null;
-    this.bundleGraph = event.bundleGraph;
+    this.event = event;
 
     let changedAssets = new Set(event.changedAssets.values());
     if (changedAssets.size === 0) return Promise.resolve(null);
@@ -240,7 +317,7 @@ export default class HMRServer {
 
   async getHotAssetContents(asset: Asset): Promise<string> {
     let output = await asset.getCode();
-    let bundleGraph = nullthrows(this.bundleGraph);
+    let bundleGraph = nullthrows(this.event).bundleGraph;
     if (asset.type === 'js') {
       let publicId = bundleGraph.getAssetPublicId(asset);
       output = `parcelHotUpdate['${publicId}'] = function (require, module, exports) {${output}}`;
@@ -265,7 +342,7 @@ export default class HMRServer {
     return output;
   }
 
-  getSourceURL(asset: Asset): string {
+  getSourceURLEndpoint(): string {
     let origin = '';
     if (
       !this.options.devServer ||
@@ -276,7 +353,11 @@ export default class HMRServer {
         this.options.port
       }`;
     }
-    return origin + HMR_ENDPOINT + '/' + asset.id;
+    return origin + HMR_ENDPOINT + '/';
+  }
+
+  getSourceURL(asset: Asset): string {
+    return this.getSourceURLEndpoint() + asset.id;
   }
 
   handleSocketError(err: ServerError) {
@@ -298,6 +379,247 @@ export default class HMRServer {
       ws.send(json);
     }
   }
+
+  async serveCodeFrame(req: Request, res: Response) {
+    let distDir = this.options.distDir;
+    if (!distDir) {
+      res.statusCode = 500;
+      res.end();
+      return;
+    }
+
+    // $FlowFixMe
+    let webRequest = new Request('http://localhost' + req.url, {
+      method: 'POST',
+      headers: req.headers,
+      // $FlowFixMe
+      body: Readable.toWeb(req),
+      duplex: 'half',
+    });
+
+    let json = await webRequest.json();
+
+    let sourceMaps = new Map();
+    for (let frame of json.frames) {
+      try {
+        if (frame.fileName) {
+          let map;
+          let location = this.findSourceMap(frame.fileName);
+          if (location.type === 'bundle') {
+            // Read the corresponding source map for the bundle.
+            if (!sourceMaps.has(location)) {
+              let contents = await this.options.outputFS.readFile(
+                location.filePath + '.map',
+                'utf8',
+              );
+              let sm = new SourceMap(this.options.projectRoot);
+              sm.addVLQMap(JSON.parse(contents));
+              sourceMaps.set(location, sm);
+            }
+            map = sourceMaps.get(location);
+
+            let contents = await this.options.outputFS.readFile(
+              location.filePath,
+              'utf8',
+            );
+            frame.compiledLines = getCodeFrame(
+              frame.lineNumber,
+              frame.columnNumber,
+              contents,
+              json.contextLines,
+              path.extname(location.filePath).slice(1),
+            );
+            frame.fileName = path.relative(
+              this.options.projectRoot,
+              location.filePath,
+            );
+          } else if (location.type === 'asset') {
+            // Get source map from the asset.
+            let contents = await location.asset.getCode();
+            frame.compiledLines = getCodeFrame(
+              frame.lineNumber,
+              frame.columnNumber,
+              contents,
+              json.contextLines,
+              location.asset.type,
+            );
+            frame.fileName = path.relative(
+              this.options.projectRoot,
+              location.asset.filePath,
+            );
+            map = await location.asset.getMap();
+            if (!map) {
+              throw new Error('Asset does not have a source map');
+            }
+          }
+
+          if (map && frame.lineNumber != null) {
+            // Find the original location in the source map.
+            let mapping = map.findClosestMapping(
+              frame.lineNumber,
+              frame.columnNumber,
+            );
+            if (mapping) {
+              let source = mapping.source
+                ? map.getSourceContent(mapping.source) || ''
+                : '';
+              if (mapping.original && mapping.source) {
+                frame.sourceFileName = mapping.source;
+                frame.sourceLineNumber = mapping.original.line;
+                frame.sourceColumnNumber = mapping.original.column;
+                frame.sourceLines = getCodeFrame(
+                  mapping.original.line,
+                  mapping.original.column + 1,
+                  source,
+                  json.contextLines,
+                  path.extname(mapping.source).slice(1),
+                );
+              }
+            }
+          } else if (location.type === 'source') {
+            // This is already a source location. Generate a code frame.
+            frame.sourceFileName = location.filePath;
+            frame.sourceLineNumber = frame.lineNumber;
+            frame.sourceColumnNumber = frame.columnNumber;
+            let contents = await this.options.outputFS.readFile(
+              location.filePath,
+              'utf8',
+            );
+            frame.sourceLines = getCodeFrame(
+              frame.lineNumber,
+              frame.columnNumber,
+              contents,
+              json.contextLines,
+              path.extname(location.filePath).slice(1),
+            );
+            frame.fileName = path.relative(
+              this.options.projectRoot,
+              location.filePath,
+            );
+          }
+        }
+      } catch (err) {
+        continue;
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(json.frames));
+  }
+
+  async getSourceMapContents(filePath: string): Promise<string> {
+    let location = await this.findSourceMap(filePath);
+    if (location.type === 'bundle') {
+      return this.options.outputFS.readFile(location.filePath + '.map', 'utf8');
+    }
+
+    let map;
+    if (location.type === 'source') {
+      // Return an empty source map
+      map = new SourceMap(this.options.projectRoot);
+      let contents = await this.options.inputFS.readFile(
+        location.filePath,
+        'utf8',
+      );
+      map.addEmptyMap(location.filePath, contents);
+    } else {
+      map = await location.asset.getMap();
+      if (!map) {
+        throw new Error('Asset does not have a source map');
+      }
+    }
+
+    let sourcemapStringified = await map.stringify({
+      format: 'string',
+      sourceRoot: SOURCES_ENDPOINT + '/',
+      // $FlowFixMe
+      fs: this.options.inputFS,
+    });
+    invariant(typeof sourcemapStringified === 'string');
+    return sourcemapStringified;
+  }
+
+  findSourceMap(
+    filePath: string,
+  ):
+    | {|type: 'bundle', filePath: string|}
+    | {|type: 'asset', asset: Asset|}
+    | {|type: 'source', filePath: string|} {
+    let distDir = this.options.distDir;
+    if (!distDir) {
+      throw new Error('Must have a distDir');
+    }
+
+    let event = this.event;
+    invariant(event?.type === 'buildSuccess');
+
+    // React generates URLs like rsc://React/Server/file:///foo/bar
+    if (filePath.startsWith('rsc://')) {
+      let url = new URL(filePath);
+      let index = url.pathname.indexOf('/', 1);
+      if (index >= 0) {
+        filePath = url.pathname.slice(index + 1);
+      } else {
+        throw new Error('Unexpected RSC URL');
+      }
+    }
+
+    // Remove public url prefix first, in case it has a protocol/origin.
+    let publicUrl = this.options.publicUrl;
+    if (publicUrl.endsWith('/')) {
+      publicUrl = publicUrl.slice(0, -1);
+    }
+
+    if (publicUrl.length > 0 && filePath.startsWith(publicUrl + '/')) {
+      filePath = filePath.slice(publicUrl.length + 1);
+    }
+
+    // Get path from URL.
+    if (filePath.startsWith('file://')) {
+      let fileURL = new URL(filePath);
+      filePath = fileURL.pathname;
+    } else {
+      if (/^https?:\/\//.test(filePath)) {
+        let fileURL = new URL(filePath);
+        filePath = fileURL.pathname.slice(1);
+      }
+
+      // If public url is just a subpath, strip it.
+      if (publicUrl.length > 0 && filePath.startsWith(publicUrl)) {
+        filePath = filePath.slice(publicUrl.length);
+      }
+    }
+
+    // If url starts with /__parcel_hmr, get source map by asset id.
+    let hmrEndpoint = this.getSourceURLEndpoint();
+    if (filePath.startsWith(hmrEndpoint)) {
+      let id = filePath.slice(hmrEndpoint.length);
+      return {
+        type: 'asset',
+        asset: event.bundleGraph.getAssetById(id),
+      };
+    }
+
+    if (filePath.startsWith('/')) {
+      filePath = path.normalize(filePath);
+    } else {
+      filePath = path.join(distDir, filePath);
+    }
+
+    // If the file is inside the distDir, it's a bundle path.
+    if (isDirectoryInside(filePath, distDir)) {
+      return {type: 'bundle', filePath: filePath};
+    }
+
+    // Otherwise, assume this refers to a source file.
+    // This can happen if the server uses --enable-source-maps,
+    // in which case Node will have already mapped the location.
+    if (isDirectoryInside(filePath, this.options.projectRoot)) {
+      return {type: 'source', filePath};
+    }
+
+    throw new Error('Source map not found');
+  }
 }
 
 function getSpecifier(dep: Dependency): string {
@@ -306,4 +628,37 @@ function getSpecifier(dep: Dependency): string {
   }
 
   return dep.specifier;
+}
+
+function getCodeFrame(
+  line: number,
+  column: number,
+  source: string,
+  contextLines: number,
+  language: string,
+): string {
+  return formatCodeFrame(
+    source,
+    [
+      {
+        start: {
+          line,
+          column,
+        },
+        end: {
+          line,
+          column,
+        },
+      },
+    ],
+    {
+      useColor: true,
+      syntaxHighlighting: true,
+      padding: {
+        before: contextLines,
+        after: contextLines,
+      },
+      language,
+    },
+  );
 }
