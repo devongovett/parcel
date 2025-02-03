@@ -157,6 +157,7 @@ export default async function resolveOptions(
   };
 
   let port = determinePort(initialOptions.serveOptions, env.PORT);
+  let hmrPort = determinePort(initialOptions.hmrOptions, env.HMR_PORT);
 
   return {
     config: getRelativeConfigSpecifier(
@@ -173,7 +174,13 @@ export default async function resolveOptions(
     env,
     mode,
     shouldAutoInstall: initialOptions.shouldAutoInstall ?? false,
-    hmrOptions: initialOptions.hmrOptions ?? null,
+    hmrOptions:
+      initialOptions.hmrOptions != null
+        ? {
+            ...initialOptions.hmrOptions,
+            port: hmrPort,
+          }
+        : null,
     shouldBuildLazily,
     lazyIncludes,
     lazyExcludes,
