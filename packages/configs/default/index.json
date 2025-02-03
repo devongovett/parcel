@@ -49,6 +49,7 @@
       "@parcel/transformer-image"
     ],
     "*.svg": ["@parcel/transformer-svg"],
+    "*.txt": ["@parcel/transformer-raw"],
     "*.{xml,rss,atom}": ["@parcel/transformer-xml"],
     "*.node": ["@parcel/transformer-node"],
     "url:*": ["...", "@parcel/transformer-raw"]
