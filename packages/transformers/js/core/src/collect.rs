@@ -680,30 +680,38 @@ impl Visit for Collect {
     match &*node.obj {
       Expr::Member(member) => {
         if match_member_expr(member, vec!["module", "exports"], self.unresolved_mark) {
+          // module.exports[...]
           handle_export!();
+          node.prop.visit_with(self);
           return;
-        } else {
-          member.visit_with(self);
         }
       }
       Expr::Ident(ident) => {
-        if &*ident.sym == "exports" && is_unresolved(&ident, self.unresolved_mark) {
+        if &*ident.sym == "exports" && is_unresolved(ident, self.unresolved_mark) {
+          // exports[...]
           handle_export!();
-        } else if ident.sym == js_word!("module") && is_unresolved(&ident, self.unresolved_mark) {
+          node.prop.visit_with(self);
+          return;
+        } else if ident.sym == js_word!("module") && is_unresolved(ident, self.unresolved_mark) {
+          // module[...]
           self.has_cjs_exports = true;
           self.static_cjs_exports = false;
           self.should_wrap = true;
           self.add_bailout(node.span, BailoutReason::FreeModule);
+          node.prop.visit_with(self);
+          return;
         } else if match_property_name(node).is_none() {
+          // something[some_var]
           self
             .non_static_access
             .entry(id!(ident))
             .or_default()
             .push(node.span);
         } else if self.imports.contains_key(&id!(ident)) {
+          // anImport[...]
           self.used_imports.insert(id!(ident));
         }
-        return;
+        // continue to visit children...
       }
       Expr::This(_this) => {
         if self.in_module_this {
@@ -715,6 +723,7 @@ impl Visit for Collect {
             self.this_exprs.insert(prop.sym.clone(), node.span);
           }
         }
+        node.prop.visit_with(self);
         return;
       }
       _ => {}
@@ -796,7 +805,8 @@ impl Visit for Collect {
     // This visitor helps us identify used imports in cases like:
     //
     //   import { foo } from "bar";
-    //   const baz = { foo };
+    //   { foo }
+    //   something[foo]
     if self.imports.contains_key(&id!(node)) {
       self.used_imports.insert(id!(node));
     }
