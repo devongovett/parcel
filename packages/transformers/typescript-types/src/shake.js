@@ -59,7 +59,8 @@ export function shake(
 
       moduleStack.push(_currentModule);
       let isFirstModule = !_currentModule;
-      _currentModule = moduleGraph.getModule(node.name.text);
+      const nodeModule = moduleGraph.getModule(node.name.text);
+      _currentModule = nodeModule;
       let statements = ts.visitEachChild(node, visit, context).body.statements;
       _currentModule = moduleStack.pop();
 
@@ -68,6 +69,13 @@ export function shake(
         addedGeneratedImports = true;
       }
 
+      const exportedName = nodeModule.names.get('*');
+      if (exportedName) {
+        node = ts.getMutableClone(node);
+        node.name = ts.createIdentifier(exportedName);
+        node.modifiers.unshift(ts.createModifier(ts.SyntaxKind.ExportKeyword));
+        statements.push(node);
+      }
       return statements;
     }
 

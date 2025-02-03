@@ -88,6 +88,15 @@ export class TSModuleGraph {
         return null;
       }
 
+      if (e.imported === '*') {
+        // Named, wildcard re-export, e.g. export * as Something from "./something-else"
+        return {
+          module: m,
+          imported: '*',
+          name: exportName,
+        };
+      }
+
       let exp = this.resolveExport(m, e.imported);
       if (!exp) {
         return null;

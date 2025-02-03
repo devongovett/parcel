@@ -64,19 +64,19 @@ export function collect(
 
     if (ts.isExportDeclaration(node)) {
       if (node.exportClause) {
-        for (let element of node.exportClause.elements) {
-          if (node.moduleSpecifier) {
-            currentModule.addExport(
-              element.name.text,
-              (element.propertyName ?? element.name).text,
-              node.moduleSpecifier.text,
-            );
-          } else {
-            currentModule.addExport(
-              element.name.text,
-              (element.propertyName ?? element.name).text,
-            );
+        if (ts.isNamedExports(node.exportClause)) {
+          for (let element of node.exportClause.elements) {
+            const imported = (element.propertyName ?? element.name).text;
+            const specifier = node.moduleSpecifier?.text;
+            currentModule.addExport(element.name.text, imported, specifier);
           }
+        } else if (ts.isNamespaceExport(node.exportClause)) {
+          // Namespace export, e.g. export * as Something from "./something-else".
+          currentModule.addExport(
+            node.exportClause.name.text,
+            '*',
+            node.moduleSpecifier.text,
+          );
         }
       } else {
         currentModule.addWildcardExport(node.moduleSpecifier.text);
