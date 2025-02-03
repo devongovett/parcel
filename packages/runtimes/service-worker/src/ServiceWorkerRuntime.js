@@ -24,18 +24,21 @@ export default (new Runtime({
     }
 
     let manifest = [];
+    let precacheManifest = []
     bundleGraph.traverseBundles(b => {
       if (b.bundleBehavior === 'inline' || b.id === bundle.id) {
         return;
       }
 
       manifest.push(urlJoin(b.target.publicUrl, b.name));
+      precacheManifest.push({ url: urlJoin(b.target.publicUrl, b.name), revision: b.needsStableName ? b.hashReference : null });
     });
 
     let code = `import {_register} from '@parcel/service-worker';
 const manifest = ${JSON.stringify(manifest)};
+const precacheManifest = ${JSON.stringify(precacheManifest)};
 const version = ${JSON.stringify(bundle.hashReference)};
-_register(manifest, version);
+_register(manifest, precacheManifest, version);
 `;
 
     return [
