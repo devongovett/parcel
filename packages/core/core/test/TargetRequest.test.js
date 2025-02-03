@@ -561,7 +561,7 @@ describe('TargetResolver', () => {
       await targetResolver.resolve(CUSTOM_TARGETS_DISTDIR_FIXTURE_PATH),
       [
         {
-          name: 'app',
+          name: '/dist/app',
           distDir: 'fixtures/custom-targets-distdir/www',
           distEntry: undefined,
           publicUrl: 'www',
@@ -590,7 +590,7 @@ describe('TargetResolver', () => {
             },
             end: {
               line: 3,
-              column: 10,
+              column: 16,
             },
           },
         },
