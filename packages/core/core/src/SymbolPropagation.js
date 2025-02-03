@@ -138,6 +138,7 @@ export function propagateSymbols({
 
       // Incomding dependency with cleared symbols, add everything
       if (addAll) {
+        assetNode.usedSymbols.add('*');
         assetSymbols?.forEach((_, exportSymbol) =>
           assetNode.usedSymbols.add(exportSymbol),
         );
@@ -169,11 +170,10 @@ export function propagateSymbols({
           if (depSymbols.get('*')?.local === '*') {
             if (addAll) {
               depUsedSymbolsDown.add('*');
-            } else {
-              for (let s of namespaceReexportedSymbols) {
-                // We need to propagate the namespaceReexportedSymbols to all namespace dependencies (= even wrong ones because we don't know yet)
-                depUsedSymbolsDown.add(s);
-              }
+            }
+            for (let s of namespaceReexportedSymbols) {
+              // We need to propagate the namespaceReexportedSymbols to all namespace dependencies (= even wrong ones because we don't know yet)
+              depUsedSymbolsDown.add(s);
             }
           }
 
@@ -189,7 +189,7 @@ export function propagateSymbols({
               if (reexportedExportSymbols == null) {
                 // not reexported = used in asset itself
                 depUsedSymbolsDown.add(symbol);
-              } else if (assetNode.usedSymbols.has('*')) {
+              } else if (assetNode.usedSymbols.has('*') || addAll) {
                 // we need everything
                 depUsedSymbolsDown.add(symbol);
 
@@ -380,6 +380,8 @@ export function propagateSymbols({
         current.set(s, value);
       }
 
+      // console.log('up', assetNode.value.filePath, reexportedSymbols);
+
       for (let incomingDep of incomingDeps) {
         let incomingDepUsedSymbolsUpOld = incomingDep.usedSymbolsUp;
         incomingDep.usedSymbolsUp = new Map();
@@ -388,6 +390,7 @@ export function propagateSymbols({
 
         let hasNamespaceReexport = incomingDepSymbols.get('*')?.local === '*';
         for (let s of incomingDep.usedSymbolsDown) {
+          // console.log('up s', incomingDep.value.specifier, s);
           if (
             assetSymbols == null || // Assume everything could be provided if symbols are cleared
             assetNode.value.bundleBehavior === BundleBehavior.isolated ||
