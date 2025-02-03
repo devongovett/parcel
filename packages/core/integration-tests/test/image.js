@@ -85,7 +85,7 @@ describe('image', function () {
 
       assert.deepStrictEqual(
         foundExtensions,
-        new Set(['html', 'webp', 'avif', 'jpeg', 'png', 'tiff']),
+        new Set(['html', 'webp', 'avif', 'jpeg', 'jxl', 'png', 'tiff']),
       );
     });
   });
