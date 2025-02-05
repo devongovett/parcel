@@ -1,3 +1,3 @@
 import b from "./b.js";
 
-output = b;
+global.output = b;

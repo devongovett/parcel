@@ -349,6 +349,12 @@ export async function runBundles(
   // A utility to prevent optimizers from removing side-effect-free code needed for testing
   // $FlowFixMe[prop-missing]
   ctx.sideEffectNoop = v => v;
+  if (!('output' in ctx)) {
+    // So that assignments to `output` don't fail in strict mode.
+    // Related: https://github.com/nodejs/node/issues/38918#issuecomment-1110258667
+    // $FlowFixMe[prop-missing]
+    ctx.output = undefined;
+  }
 
   vm.createContext(ctx);
   let esmOutput;

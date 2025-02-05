@@ -1,3 +1,3 @@
 const f = () => import("./b.js");
 
-output = f;
+global.output = f;

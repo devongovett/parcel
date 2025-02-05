@@ -1382,6 +1382,14 @@ ${code}
       }
     }
 
+    if (
+      this.bundle.env.sourceType === 'module' &&
+      this.bundle.env.outputFormat !== 'esmodule'
+    ) {
+      res += "'use strict';\n";
+      lines++;
+    }
+
     // The output format may have specific things to add at the start of the bundle (e.g. imports).
     let [outputFormatPrelude, outputFormatLines] =
       this.outputFormat.buildBundlePrelude();

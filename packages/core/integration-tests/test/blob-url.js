@@ -47,7 +47,7 @@ describe('blob urls', () => {
     assert(bundleContent.includes('new Worker(require('));
     assert(
       bundleContent.includes(
-        'module.exports = URL.createObjectURL(new Blob(["// modules are defined as an array\\n',
+        "module.exports = URL.createObjectURL(new Blob([\"'use strict';\\n// modules are defined as an array\\n",
       ),
     );
     assert(
@@ -90,7 +90,7 @@ describe('blob urls', () => {
     assert(bundleContent.includes('new Worker('));
     assert(
       bundleContent.includes(
-        ".exports=URL.createObjectURL(new Blob(['!function(",
+        '.exports=URL.createObjectURL(new Blob([\'"use strict";!function(',
       ),
     );
     assert(
