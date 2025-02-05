@@ -119,12 +119,6 @@ export default async function resolveOptions(
     initialOptions?.defaultTargetOptions?.shouldOptimize ??
     mode === 'production';
 
-  let publicUrl = initialOptions?.defaultTargetOptions?.publicUrl ?? '/';
-  let distDir =
-    initialOptions?.defaultTargetOptions?.distDir != null
-      ? path.resolve(inputCwd, initialOptions?.defaultTargetOptions?.distDir)
-      : undefined;
-
   let shouldBuildLazily = initialOptions.shouldBuildLazily ?? false;
   let lazyIncludes = compileGlobs(initialOptions.lazyIncludes ?? []);
   if (lazyIncludes.length > 0 && !shouldBuildLazily) {
@@ -157,6 +151,17 @@ export default async function resolveOptions(
   };
 
   let port = determinePort(initialOptions.serveOptions, env.PORT);
+  let publicUrl =
+    initialOptions?.defaultTargetOptions?.publicUrl ??
+    env.PARCEL_PUBLIC_URL ??
+    '/';
+  let distDir =
+    initialOptions?.defaultTargetOptions?.distDir ??
+    env.PARCEL_DIST_DIR ??
+    undefined;
+  if (distDir != null) {
+    distDir = path.resolve(inputCwd, distDir);
+  }
 
   return {
     config: getRelativeConfigSpecifier(
