@@ -82,6 +82,10 @@ const mv2Background = {
     scripts: arrStr,
     page: string,
     persistent: boolean,
+    type: {
+      type: 'string',
+      enum: ['classic', 'module'],
+    },
   },
   additionalProperties: false,
 };
