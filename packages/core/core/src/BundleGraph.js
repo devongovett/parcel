@@ -308,7 +308,10 @@ export default class BundleGraph {
                       local,
                       loc: reexportAllLoc,
                     });
-                    if (node.value.sourceAssetId != null) {
+                    if (
+                      node.value.sourceAssetId != null &&
+                      assetGraph.hasContentKey(node.value.sourceAssetId)
+                    ) {
                       let sourceAssetId = nullthrows(
                         assetGraphNodeIdToBundleGraphNodeId.get(
                           assetGraph.getNodeIdByContentKey(
