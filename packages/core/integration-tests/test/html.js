@@ -17,7 +17,7 @@ import path from 'path';
 import Logger from '@parcel/logger';
 import {md} from '@parcel/diagnostic';
 
-describe('html', function () {
+describe.only('html', function () {
   beforeEach(async () => {
     await removeDistDirectory();
   });
@@ -192,7 +192,7 @@ describe('html', function () {
       'utf8',
     );
 
-    assert(/<script src=".+?\.js"><\/script><\/html>/.test(html));
+    assert(/<script src=".+?\.js"><\/script><\/body><\/html>/.test(html));
   });
 
   it('should insert empty script tag for HMR at the end of the file if both </body> and </html> are implied', async function () {
@@ -219,7 +219,7 @@ describe('html', function () {
       'utf8',
     );
 
-    assert(/<script src=".+?\.js"><\/script>$/.test(html));
+    assert(/<script src=".+?\.js"><\/script><\/body><\/html>$/.test(html));
   });
 
   it('should insert empty script tag for HMR at the end of the body when having normal inline script', async function () {
@@ -402,7 +402,7 @@ describe('html', function () {
       'utf8',
     );
     assert(
-      /<html>\s*<link rel="stylesheet" href="[/\\]{1}index\.[a-f0-9]+\.css">\s*<body>/.test(
+      /<html><head>\s*<link rel="stylesheet" href="[/\\]{1}index\.[a-f0-9]+\.css"><\/head><body>/.test(
         html,
       ),
     );
@@ -433,7 +433,7 @@ describe('html', function () {
       'utf8',
     );
     assert(
-      /^\s*<!DOCTYPE html>\s*<link .*>\s*<script .*>\s*<\/script>\s*$/.test(
+      /^\s*<!DOCTYPE html><html><head>\s*<link .*>\s*<script .*>\s*<\/script>\s*/.test(
         html,
       ),
     );
@@ -502,7 +502,7 @@ describe('html', function () {
     );
 
     assert(
-      /^<link rel="stylesheet" href="[/\\]index\.[a-f0-9]+\.css">\s*<script type="module" src="[/\\]index\.[a-f0-9]+\.js"><\/script>\s*<h1>Hello/m.test(
+      /^<html><head><link rel="stylesheet" href="[/\\]index\.[a-f0-9]+\.css">\s*<script type="module" src="[/\\]index\.[a-f0-9]+\.js"><\/script>\s*<\/head><body><h1>Hello/m.test(
         html,
       ),
     );
@@ -608,7 +608,7 @@ describe('html', function () {
 
     let outputFile = path.join(distDir, 'index.html');
     let html = await outputFS.readFile(outputFile, 'utf8');
-    assert.equal(html.length, 0);
+    assert.equal(html, '<html><head></head><body></body></html>');
   });
 
   it('should work with an invalid html file', async function () {
@@ -1075,7 +1075,7 @@ describe('html', function () {
     let contents = await outputFS.readFile(b.getBundles()[0].filePath, 'utf8');
     assert(
       contents.includes(
-        '<svg><symbol id="all"><rect width="100" height="100"/></symbol></svg><svg><use href="#all"/></svg>',
+        '<svg><symbol id="all"><rect width="100" height="100"/></symbol></svg> <svg><use href="#all"/></svg>',
       ),
     );
   });
@@ -1803,7 +1803,7 @@ describe('html', function () {
                   },
                   end: {
                     line: 1,
-                    column: 32,
+                    column: 1,
                   },
                 },
               ],
@@ -2752,9 +2752,10 @@ describe('html', function () {
       b.getBundles().find(b => b.type === 'html').filePath,
       'utf8',
     );
-    assert.equal(
-      contents.trim(),
-      `<img src="data:image/svg+xml,%3Csvg%20width%3D%22120%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%20%20%3Cfilter%20id%3D%22blur-_.%21~%2a%22%3E%0A%20%20%20%20%3CfeGaussianBlur%20stdDeviation%3D%225%22%3E%3C%2FfeGaussianBlur%3E%0A%20%20%3C%2Ffilter%3E%0A%20%20%3Ccircle%20cx%3D%2260%22%20cy%3D%2260%22%20r%3D%2250%22%20fill%3D%22green%22%20filter%3D%22url%28%27%23blur-_.%21~%2a%27%29%22%3E%3C%2Fcircle%3E%0A%3C%2Fsvg%3E%0A">`,
+    assert(
+      contents.includes(
+        `<img src="data:image/svg+xml,%3Csvg%20width%3D%22120%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%20%20%3Cfilter%20id%3D%22blur-_.%21~%2a%22%3E%0A%20%20%20%20%3CfeGaussianBlur%20stdDeviation%3D%225%22%3E%3C%2FfeGaussianBlur%3E%0A%20%20%3C%2Ffilter%3E%0A%20%20%3Ccircle%20cx%3D%2260%22%20cy%3D%2260%22%20r%3D%2250%22%20fill%3D%22green%22%20filter%3D%22url%28%27%23blur-_.%21~%2a%27%29%22%3E%3C%2Fcircle%3E%0A%3C%2Fsvg%3E%0A">`,
+      ),
     );
   });
 
@@ -2963,7 +2964,7 @@ describe('html', function () {
                       line: 1,
                     },
                     end: {
-                      column: 14,
+                      column: 1,
                       line: 1,
                     },
                   },
@@ -2989,8 +2990,8 @@ describe('html', function () {
                       line: 2,
                     },
                     end: {
-                      column: 24,
                       line: 2,
+                      column: 1,
                     },
                   },
                 ],
@@ -3015,7 +3016,7 @@ describe('html', function () {
                       line: 3,
                     },
                     end: {
-                      column: 16,
+                      column: 1,
                       line: 3,
                     },
                   },

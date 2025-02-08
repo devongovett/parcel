@@ -1,0 +1,13 @@
+[package]
+authors = ["Devon Govett <devongovett@gmail.com>"]
+name = "parcel-html"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+html5ever = "0.29.0"
+markup5ever = "0.14.1"
+markup5ever_rcdom = "0.5.0-unofficial"
+serde = "1.0.123"
+serde_bytes = "0.11.5"
+typed-arena = "2.0.2"

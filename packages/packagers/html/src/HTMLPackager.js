@@ -85,7 +85,7 @@ export default (new Packager({
       contents,
       getInlineBundleContents,
       getInlineReplacement: (dep, inlineType, contents) => ({
-        from: dep.id,
+        from: dep.meta.placeholder ?? dep.id,
         to: contents.replace(/"/g, '&quot;').trim(),
       }),
       map,

@@ -1,5 +1,5 @@
 // @flow
-import type {FileCreateInvalidation} from '@parcel/types';
+import type {FileCreateInvalidation, DependencyPriority} from '@parcel/types';
 
 declare export var init: void | (() => void);
 
@@ -16,6 +16,7 @@ declare export function findNodeModule(
 declare export function hashString(s: string): string;
 declare export function hashBuffer(buf: Buffer): string;
 declare export function optimizeImage(kind: string, buf: Buffer): Buffer;
+declare export function transformHtml(opts: TransformHtmlOpts): TransformHtmlResult;
 export interface JsFileSystemOptions {
   readLink: string => string;
   read: string => Buffer;
@@ -80,4 +81,44 @@ declare export class Resolver {
   resolve(options: ResolveOptions): ResolveResult;
   resolveAsync(options: ResolveOptions): Promise<ResolveResult>;
   getInvalidations(path: string): JsInvalidations;
+}
+
+export interface TransformHtmlOpts {
+  code: Buffer,
+  scope_hoist: boolean,
+  supports_esm: boolean,
+  hmr: boolean
+}
+
+export interface TransformHtmlResult {
+  code: Buffer,
+  dependencies: HtmlDependency[],
+  assets: HtmlAsset[],
+  errors: HtmlError[]
+}
+
+export interface HtmlDependency {
+  href: string,
+  needsStableName: boolean,
+  priority: DependencyPriority,
+  outputFormat: 'none' | 'global' | 'esmodule',
+  sourceType: 'none' | 'module' | 'script',
+  bundleBehavior: 'none' | 'isolated' | 'inline',
+  placeholder: string,
+  line: number
+}
+
+export interface HtmlAsset {
+  type: string,
+  content: Buffer,
+  key: string,
+  isAttr: boolean,
+  outputFormat: 'none' | 'global' | 'esmodule',
+  sourceType: 'none' | 'module' | 'script',
+  line: number
+}
+
+export interface HtmlError {
+  message: string,
+  line: number
 }

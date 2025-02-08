@@ -19,6 +19,7 @@ mod hash;
 #[cfg(not(target_arch = "wasm32"))]
 mod image;
 
+mod html;
 mod resolver;
 mod transformer;
 

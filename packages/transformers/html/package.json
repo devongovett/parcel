@@ -22,12 +22,6 @@
   "dependencies": {
     "@parcel/diagnostic": "2.13.3",
     "@parcel/plugin": "2.13.3",
-    "@parcel/rust": "2.13.3",
-    "nullthrows": "^1.1.1",
-    "posthtml": "^0.16.5",
-    "posthtml-parser": "^0.12.1",
-    "posthtml-render": "^3.0.0",
-    "semver": "^7.5.2",
-    "srcset": "4"
+    "@parcel/rust": "2.13.3"
   }
 }
