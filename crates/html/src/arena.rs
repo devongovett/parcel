@@ -430,7 +430,7 @@ enum SerializeOp<'arena> {
 pub struct SerializableHandle<'arena>(Ref<'arena>);
 
 impl<'arena> From<Ref<'arena>> for SerializableHandle<'arena> {
-  fn from(h: Ref<'arena>) -> SerializableHandle {
+  fn from(h: Ref<'arena>) -> SerializableHandle<'arena> {
     SerializableHandle(h)
   }
 }
