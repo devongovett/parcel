@@ -1,5 +1,5 @@
 // @flow
-import type {FileCreateInvalidation, DependencyPriority} from '@parcel/types';
+import type {FileCreateInvalidation, DependencyPriority, JSONObject} from '@parcel/types';
 
 declare export var init: void | (() => void);
 
@@ -17,6 +17,7 @@ declare export function hashString(s: string): string;
 declare export function hashBuffer(buf: Buffer): string;
 declare export function optimizeImage(kind: string, buf: Buffer): Buffer;
 declare export function transformHtml(opts: TransformHtmlOpts): TransformHtmlResult;
+declare export function packageHtml(opts: PackageHtmlOpts): PackageHtmlResult;
 export interface JsFileSystemOptions {
   readLink: string => string;
   read: string => Buffer;
@@ -121,4 +122,24 @@ export interface HtmlAsset {
 export interface HtmlError {
   message: string,
   line: number
+}
+
+export interface PackageHtmlOpts {
+  code: Buffer,
+  bundles: HtmlBundleReference[],
+  inlineBundles: {[string]: HtmlInlineBundle},
+  importMap: JSONObject
+}
+
+export type HtmlBundleReference =
+  | {|type: 'StyleSheet', value: {|href: string|}|}
+  | {|type: 'Script', value: {|src: string, module: boolean, nomodule: boolean|}|};
+
+export interface HtmlInlineBundle {
+  contents: string,
+  module: boolean
+}
+
+export interface PackageHtmlResult {
+  code: Buffer
 }

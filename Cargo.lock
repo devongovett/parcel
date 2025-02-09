@@ -1457,18 +1457,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "markup5ever_rcdom"
-version = "0.5.0-unofficial"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9cb12459c4cab18dcc580159590f404ad78c0a9c5435ace80288ed43abdce31"
-dependencies = [
- "html5ever",
- "markup5ever",
- "tendril",
- "xml5ever",
-]
-
-[[package]]
 name = "match_token"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1780,9 +1768,9 @@ version = "0.1.0"
 dependencies = [
  "html5ever",
  "markup5ever",
- "markup5ever_rcdom",
  "serde",
  "serde_bytes",
+ "serde_json",
  "typed-arena",
 ]
 
@@ -3778,17 +3766,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
-]
-
-[[package]]
-name = "xml5ever"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2278b4bf33071ba8e30368a59436c65eec8e01c49d5c29b3dfeb0cdc45331383"
-dependencies = [
- "log",
- "mac",
- "markup5ever",
 ]
 
 [[package]]

@@ -4,9 +4,10 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::arena::{Node, NodeData};
 use crate::srcset::parse_srcset;
+use crate::SerializableTendril;
 use html5ever::tendril::{format_tendril, StrTendril};
 use html5ever::{expanded_name, local_name, namespace_url, ns, Attribute, ExpandedName, QualName};
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use typed_arena::Arena;
 
 #[derive(Serialize, Hash)]
@@ -33,18 +34,6 @@ impl Dependency {
     self.bundle_behavior.hash(&mut hasher);
     self.placeholder = SerializableTendril(format_tendril!("{:x}", hasher.finish()));
     self.placeholder.0.as_ref()
-  }
-}
-
-#[derive(Hash, Default)]
-pub struct SerializableTendril(StrTendril);
-
-impl serde::Serialize for SerializableTendril {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-  where
-    S: Serializer,
-  {
-    serializer.serialize_str(self.0.as_ref())
   }
 }
 

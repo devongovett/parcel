@@ -92,6 +92,18 @@ impl<'arena> Node<'arena> {
     }
   }
 
+  pub fn create_element(name: ExpandedName) -> Self {
+    Node::new(
+      NodeData::Element {
+        name: QualName::new(None, name.ns.clone(), name.local.clone()),
+        attrs: RefCell::new(Vec::new()),
+        template_contents: None,
+        mathml_annotation_xml_integration_point: false,
+      },
+      1,
+    )
+  }
+
   pub fn detach(&self) {
     let parent = self.parent.take();
     let previous_sibling = self.previous_sibling.take();
@@ -122,6 +134,20 @@ impl<'arena> Node<'arena> {
       self.first_child.set(Some(new_child));
     }
     self.last_child.set(Some(new_child));
+  }
+
+  pub fn prepend(&'arena self, new_child: &'arena Self) {
+    new_child.detach();
+    new_child.parent.set(Some(self));
+    if let Some(first_child) = self.first_child.take() {
+      new_child.next_sibling.set(Some(first_child));
+      debug_assert!(first_child.previous_sibling.get().is_none());
+      first_child.previous_sibling.set(Some(new_child));
+    } else {
+      debug_assert!(self.last_child.get().is_none());
+      self.last_child.set(Some(new_child));
+    }
+    self.first_child.set(Some(new_child));
   }
 
   pub fn insert_before(&'arena self, new_sibling: &'arena Self) {
@@ -164,6 +190,17 @@ impl<'arena> Node<'arena> {
       child = c.next_sibling.get();
     }
     code
+  }
+
+  pub fn set_text_content(&'arena self, arena: Arena<'arena>, content: StrTendril) {
+    let text = arena.alloc(Node::new(
+      NodeData::Text {
+        contents: RefCell::new(content),
+      },
+      0,
+    ));
+    self.first_child.set(Some(text));
+    self.last_child.set(Some(text));
   }
 
   pub fn find(&'arena self, element: ExpandedName) -> Option<Ref<'arena>> {
