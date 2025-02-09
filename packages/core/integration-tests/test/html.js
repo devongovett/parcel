@@ -17,7 +17,7 @@ import path from 'path';
 import Logger from '@parcel/logger';
 import {md} from '@parcel/diagnostic';
 
-describe.only('html', function () {
+describe('html', function () {
   beforeEach(async () => {
     await removeDistDirectory();
   });

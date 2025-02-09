@@ -1,16 +1,15 @@
 // @flow
 
-import type {Bundle, BundleGraph, NamedBundle} from '@parcel/types';
+import type {BundleGraph, NamedBundle} from '@parcel/types';
 import assert from 'assert';
 import {Packager} from '@parcel/plugin';
-import posthtml from 'posthtml';
+import {blobToString, urlJoin, getURLReplacement} from '@parcel/utils';
 import {
-  blobToString,
-  replaceInlineReferences,
-  replaceURLReferences,
-  urlJoin,
-  setDifference,
-} from '@parcel/utils';
+  packageSvg,
+  type HtmlBundleReference,
+  type HtmlInlineBundle,
+} from '@parcel/rust';
+import invariant from 'assert';
 
 export default (new Packager({
   async package({bundle, bundleGraph, getInlineBundleContents}) {
@@ -25,145 +24,113 @@ export default (new Packager({
       'SVG bundles must only contain one asset',
     );
 
-    // Add bundles in the same bundle group that are not inline. For example, if two inline
-    // bundles refer to the same library that is extracted into a shared bundle.
-    let referencedBundles = [
-      ...setDifference(
-        new Set(bundleGraph.getReferencedBundles(bundle)),
-        new Set(bundleGraph.getReferencedBundles(bundle, {recursive: false})),
-      ),
-    ];
+    let asset = assets[0];
+    let code = await asset.getBuffer();
 
-    const asset = assets[0];
-    const code = await asset.getCode();
-    const options = {
-      directives: [
-        {
-          name: /^\?/,
-          start: '<',
-          end: '>',
-        },
-      ],
-      xmlMode: true,
-    };
-
-    let {html: svg} = await posthtml([
-      tree => insertBundleReferences(referencedBundles, tree),
-      tree =>
-        replaceInlineAssetContent(bundleGraph, getInlineBundleContents, tree),
-    ]).process(code, options);
-
-    const {contents, map} = replaceURLReferences({
-      bundle,
+    let {bundles, importMap} = getBundleReferences(bundleGraph, bundle);
+    let inlineBundles = await getInlineBundles(
       bundleGraph,
-      contents: svg,
-      relative: false,
-      getReplacement: contents => contents.replace(/"/g, '&quot;'),
-    });
-
-    return replaceInlineReferences({
       bundle,
-      bundleGraph,
-      contents,
       getInlineBundleContents,
-      getInlineReplacement: (dep, inlineType, contents) => ({
-        from: dep.id,
-        to: contents.replace(/"/g, '&quot;').trim(),
-      }),
-      map,
+    );
+
+    let res = packageSvg({
+      code,
+      bundles,
+      inlineBundles,
+      importMap,
     });
+
+    return {contents: res.code};
   },
 }): Packager);
 
-async function replaceInlineAssetContent(
+async function getInlineBundles(
   bundleGraph: BundleGraph<NamedBundle>,
+  bundle: NamedBundle,
   getInlineBundleContents,
-  tree,
 ) {
-  const inlineNodes = [];
-  tree.walk(node => {
-    if (node.attrs && node.attrs['data-parcel-key']) {
-      inlineNodes.push(node);
-    }
-    return node;
-  });
+  let inlineBundles: {|[string]: HtmlInlineBundle|} = {};
 
-  for (const node of inlineNodes) {
-    const newContent = await getAssetContent(
-      bundleGraph,
-      getInlineBundleContents,
-      node.attrs['data-parcel-key'],
-    );
-
-    if (newContent === null) {
-      continue;
-    }
-
-    node.content = await blobToString(newContent.contents);
-
-    // Wrap scripts and styles with CDATA if needed to ensure characters are not interpreted as XML
-    if (node.tag === 'script' || node.tag === 'style') {
-      if (node.content.includes('<') || node.content.includes('&')) {
-        node.content = node.content.replace(/]]>/g, ']\\]>');
-        node.content = `<![CDATA[\n${node.content}\n]]>`;
-      }
-    }
-
-    // remove attr from output
-    delete node.attrs['data-parcel-key'];
-  }
-
-  return tree;
-}
-
-async function getAssetContent(
-  bundleGraph: BundleGraph<NamedBundle>,
-  getInlineBundleContents,
-  assetId,
-) {
-  let inlineBundle: ?Bundle;
-  bundleGraph.traverseBundles((bundle, context, {stop}) => {
-    const entryAssets = bundle.getEntryAssets();
-    if (entryAssets.some(a => a.uniqueKey === assetId)) {
-      inlineBundle = bundle;
-      stop();
+  let dependencies = [];
+  bundle.traverse(node => {
+    if (node.type === 'dependency') {
+      dependencies.push(node.value);
     }
   });
 
-  if (!inlineBundle) {
-    return null;
-  }
-
-  const bundleResult = await getInlineBundleContents(inlineBundle, bundleGraph);
-
-  return {bundle: inlineBundle, contents: bundleResult.contents};
-}
-
-function insertBundleReferences(siblingBundles, tree) {
-  let scripts = [];
-  let stylesheets = [];
-
-  for (let bundle of siblingBundles) {
-    if (bundle.type === 'css') {
-      stylesheets.push(
-        `<?xml-stylesheet href=${JSON.stringify(
-          urlJoin(bundle.target.publicUrl, bundle.name),
-        )}?>`,
+  for (let dependency of dependencies) {
+    let entryBundle = bundleGraph.getReferencedBundle(dependency, bundle);
+    if (entryBundle?.bundleBehavior === 'inline') {
+      let packagedBundle = await getInlineBundleContents(
+        entryBundle,
+        bundleGraph,
       );
-    } else if (bundle.type === 'js') {
-      scripts.push({
-        tag: 'script',
-        attrs: {
+      let packagedContents = await blobToString(packagedBundle.contents);
+
+      // Wrap scripts and styles with CDATA if needed to ensure characters are not interpreted as XML
+      if (entryBundle.type === 'js' || entryBundle.type === 'css') {
+        if (packagedContents.includes('<') || packagedContents.includes('&')) {
+          packagedContents = packagedContents.replace(/]]>/g, ']\\]>');
+          packagedContents = `<![CDATA[\n${packagedContents}\n]]>`;
+        }
+      }
+
+      let placeholder = dependency.meta?.placeholder ?? dependency.id;
+      invariant(typeof placeholder === 'string');
+      inlineBundles[placeholder] = {
+        contents: packagedContents,
+        module: false,
+      };
+    } else if (dependency.specifierType === 'url') {
+      let placeholder = dependency.meta?.placeholder ?? dependency.id;
+      invariant(typeof placeholder === 'string');
+      inlineBundles[placeholder] = {
+        contents: entryBundle
+          ? getURLReplacement({
+              dependency,
+              fromBundle: bundle,
+              toBundle: entryBundle,
+              relative: false,
+            }).to
+          : dependency.specifier,
+        module: false,
+      };
+    }
+  }
+
+  return inlineBundles;
+}
+
+function getBundleReferences(bundleGraph, htmlBundle) {
+  let bundles: HtmlBundleReference[] = [];
+  let importMap = {};
+
+  let referencedBundles = new Set(bundleGraph.getReferencedBundles(htmlBundle));
+  let nonRecursiveReferencedBundles = new Set(
+    bundleGraph.getReferencedBundles(htmlBundle, {recursive: false}),
+  );
+
+  for (let bundle of referencedBundles) {
+    let isDirectlyReferenced = nonRecursiveReferencedBundles.has(bundle);
+    if (bundle.type === 'css' && !isDirectlyReferenced) {
+      bundles.push({
+        type: 'StyleSheet',
+        value: {
           href: urlJoin(bundle.target.publicUrl, bundle.name),
+        },
+      });
+    } else if (bundle.type === 'js' && !isDirectlyReferenced) {
+      bundles.push({
+        type: 'Script',
+        value: {
+          module: false,
+          nomodule: false,
+          src: urlJoin(bundle.target.publicUrl, bundle.name),
         },
       });
     }
   }
 
-  tree.unshift(...stylesheets);
-  if (scripts.length > 0) {
-    tree.match({tag: 'svg'}, node => {
-      node.content.unshift(...scripts);
-    });
-  }
+  return {bundles, importMap};
 }

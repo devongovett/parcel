@@ -80,6 +80,36 @@ pub fn transform_html(options: TransformOptions) -> TransformResult {
   }
 }
 
+pub fn transform_svg(options: TransformOptions) -> TransformResult {
+  let arena = Arena::new();
+  let dom =
+    xml5ever::driver::parse_document(Sink::new(&arena), xml5ever::driver::XmlParseOpts::default())
+      .from_utf8()
+      .one(options.code.as_slice());
+  let (deps, assets, errors) = collect_dependencies(
+    &arena,
+    &dom,
+    options.scope_hoist,
+    options.supports_esm,
+    options.hmr,
+  );
+
+  let mut vec = Vec::new();
+  let handle: SerializableHandle = dom.into();
+  xml5ever::serialize::serialize(
+    &mut vec,
+    &handle,
+    xml5ever::serialize::SerializeOpts::default(),
+  );
+
+  TransformResult {
+    code: vec,
+    dependencies: deps,
+    assets,
+    errors,
+  }
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageOptions {
@@ -113,6 +143,32 @@ pub fn package_html(options: PackageOptions) -> PackageResult {
   let mut vec = Vec::new();
   let handle: SerializableHandle = dom.into();
   serialize(&mut vec, &handle, SerializeOpts::default());
+
+  PackageResult { code: vec }
+}
+
+pub fn package_svg(options: PackageOptions) -> PackageResult {
+  let arena = Arena::new();
+  let dom =
+    xml5ever::driver::parse_document(Sink::new(&arena), xml5ever::driver::XmlParseOpts::default())
+      .from_utf8()
+      .one(options.code.as_slice());
+
+  insert_bundle_references(
+    &arena,
+    dom,
+    options.bundles,
+    options.inline_bundles,
+    options.import_map,
+  );
+
+  let mut vec = Vec::new();
+  let handle: SerializableHandle = dom.into();
+  xml5ever::serialize::serialize(
+    &mut vec,
+    &handle,
+    xml5ever::serialize::SerializeOpts::default(),
+  );
 
   PackageResult { code: vec }
 }

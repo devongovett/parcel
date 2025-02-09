@@ -6,6 +6,7 @@ import {transformHtml} from '@parcel/rust';
 
 const TYPES = {
   'application/javascript': 'js',
+  'application/ecmascript': 'js',
   'text/javascript': 'js',
   'application/json': false,
   'application/ld+json': 'jsonld',

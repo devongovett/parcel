@@ -5,7 +5,7 @@ import assert from 'assert';
 import {Readable} from 'stream';
 import {Packager} from '@parcel/plugin';
 import {
-  bufferStream,
+  blobToString,
   urlJoin,
   getImportMap,
   getURLReplacement,
@@ -68,11 +68,7 @@ async function getInlineBundles(
         entryBundle,
         bundleGraph,
       );
-      let packagedContents = (
-        packagedBundle.contents instanceof Readable
-          ? await bufferStream(packagedBundle.contents)
-          : packagedBundle.contents
-      ).toString();
+      let packagedContents = await blobToString(packagedBundle.contents);
 
       // Escape closing script tags and HTML comments in JS content.
       // https://www.w3.org/TR/html52/semantics-scripting.html#restrictions-for-contents-of-script-elements

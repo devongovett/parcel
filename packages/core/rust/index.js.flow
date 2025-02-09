@@ -18,6 +18,8 @@ declare export function hashBuffer(buf: Buffer): string;
 declare export function optimizeImage(kind: string, buf: Buffer): Buffer;
 declare export function transformHtml(opts: TransformHtmlOpts): TransformHtmlResult;
 declare export function packageHtml(opts: PackageHtmlOpts): PackageHtmlResult;
+declare export function transformSvg(opts: TransformHtmlOpts): TransformHtmlResult;
+declare export function packageSvg(opts: PackageHtmlOpts): PackageHtmlResult;
 export interface JsFileSystemOptions {
   readLink: string => string;
   read: string => Buffer;

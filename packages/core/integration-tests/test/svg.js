@@ -69,9 +69,9 @@ describe('svg', function () {
     );
     assert(
       file.includes(
-        `fill="url('/${path.basename(
+        `fill="url(/${path.basename(
           b.getBundles().find(b => b.name.startsWith('gradient')).filePath,
-        )}#myGradient')"`,
+        )}#myGradient)"`,
       ),
     );
     assert(

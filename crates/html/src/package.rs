@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
   arena::{Node, NodeData},
+  dependencies::{is_func_iri_attr, parse_xml_stylesheet, serialize_xml_stylesheet},
   SerializableTendril,
 };
 use html5ever::{expanded_name, local_name, namespace_url, ns, ExpandedName};
@@ -72,7 +73,29 @@ pub fn insert_bundle_references<'arena>(
 
       for attr in attrs.borrow_mut().iter_mut() {
         if let Some(bundle) = inline_bundles.get(&SerializableTendril(attr.value.clone())) {
-          attr.value = bundle.contents.0.clone();
+          if is_func_iri_attr(&attr.name) {
+            use cssparser::ToCss;
+            let placeholder =
+              cssparser::Token::UnquotedUrl(cssparser::CowRcStr::from(bundle.contents.0.as_ref()))
+                .to_css_string()
+                .into();
+            attr.value = placeholder;
+          } else {
+            attr.value = bundle.contents.0.clone();
+          }
+        }
+      }
+    } else if let NodeData::ProcessingInstruction { target, contents } = &node.data {
+      if target.as_ref() == "xml-stylesheet" {
+        let mut contents = contents.borrow_mut();
+        if let Ok(mut attrs) = parse_xml_stylesheet(&contents) {
+          for attr in &mut attrs {
+            if let Some(bundle) = inline_bundles.get(&SerializableTendril(attr.value.clone())) {
+              attr.value = bundle.contents.0.clone();
+            }
+          }
+
+          *contents = serialize_xml_stylesheet(attrs);
         }
       }
     }
@@ -130,6 +153,29 @@ pub fn insert_bundle_references<'arena>(
           node.set_text_content(arena, json.into());
         }
         head.prepend(node);
+      }
+    }
+  } else if let Some(svg) = dom.find(expanded_name!(svg "svg")) {
+    for bundle in bundles.into_iter().rev() {
+      match bundle {
+        BundleReference::StyleSheet { href } => {
+          let node = arena.alloc(Node::new(
+            NodeData::ProcessingInstruction {
+              target: "xml-stylesheet".into(),
+              contents: RefCell::new(serialize_xml_stylesheet(vec![xml5ever::Attribute {
+                name: xml5ever::QualName::new(None, ns!(), local_name!("href")),
+                value: href.0,
+              }])),
+            },
+            1,
+          ));
+          dom.prepend(node);
+        }
+        BundleReference::Script { src, .. } => {
+          let node = arena.alloc(Node::create_element(expanded_name!(svg "script")));
+          node.set_attribute(expanded_name!("", "href"), &src.0);
+          svg.prepend(node);
+        }
       }
     }
   }

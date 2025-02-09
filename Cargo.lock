@@ -561,6 +561,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cssparser"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7c66d1cd8ed61bf80b38432613a7a2f09401ab8d0501110655f8b341484a3e3"
+dependencies = [
+ "cssparser-macros",
+ "dtoa-short",
+ "itoa",
+ "phf",
+ "smallvec",
+]
+
+[[package]]
+name = "cssparser-macros"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13b588ba4ac1a99f7f2964d24b3d896ddc6bf847ee3855dbd4366f058cfcd331"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ctor"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -755,6 +778,21 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "dtoa"
+version = "1.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcbb2bf8e87535c23f7a8a321e364ce21462d0ff10cb6407820e8e96dfff6653"
+
+[[package]]
+name = "dtoa-short"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd1511a7b6a56299bd043a9c167a6d2bfb37bf84a6dfceaba651168adfb43c87"
+dependencies = [
+ "dtoa",
+]
 
 [[package]]
 name = "dunce"
@@ -1104,9 +1142,8 @@ dependencies = [
 
 [[package]]
 name = "html5ever"
-version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b7410cae13cbc75623c98ac4cbfd1f0bedddf3227afc24f370cf0f50a44a11c"
+version = "0.29.0"
+source = "git+https://github.com/devongovett/html5ever.git?branch=xmlns-attrs#653e07369dba04c20022ef5295854b6948c007e6"
 dependencies = [
  "log",
  "mac",
@@ -1444,9 +1481,8 @@ dependencies = [
 
 [[package]]
 name = "markup5ever"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7a7213d12e1864c0f002f52c2923d4556935a43dec5e71355c2760e0f6e7a18"
+version = "0.14.0"
+source = "git+https://github.com/devongovett/html5ever.git?branch=xmlns-attrs#653e07369dba04c20022ef5295854b6948c007e6"
 dependencies = [
  "log",
  "phf",
@@ -1459,8 +1495,7 @@ dependencies = [
 [[package]]
 name = "match_token"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88a9689d8d44bf9964484516275f5cd4c9b59457a6940c1d5d0ecbb94510a36b"
+source = "git+https://github.com/devongovett/html5ever.git?branch=xmlns-attrs#653e07369dba04c20022ef5295854b6948c007e6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1766,12 +1801,13 @@ dependencies = [
 name = "parcel-html"
 version = "0.1.0"
 dependencies = [
+ "cssparser",
  "html5ever",
- "markup5ever",
  "serde",
  "serde_bytes",
  "serde_json",
  "typed-arena",
+ "xml5ever",
 ]
 
 [[package]]
@@ -3766,6 +3802,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "xml5ever"
+version = "0.20.0"
+source = "git+https://github.com/devongovett/html5ever.git?branch=xmlns-attrs#653e07369dba04c20022ef5295854b6948c007e6"
+dependencies = [
+ "log",
+ "mac",
+ "markup5ever",
 ]
 
 [[package]]

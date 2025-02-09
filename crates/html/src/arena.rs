@@ -75,7 +75,7 @@ pub enum NodeData<'arena> {
   },
   ProcessingInstruction {
     target: StrTendril,
-    contents: StrTendril,
+    contents: RefCell<StrTendril>,
   },
 }
 
@@ -381,7 +381,7 @@ impl<'arena> TreeSink for Sink<'arena> {
   fn create_pi(&self, target: StrTendril, data: StrTendril) -> Ref<'arena> {
     self.new_node(NodeData::ProcessingInstruction {
       target,
-      contents: data,
+      contents: RefCell::new(data),
     })
   }
 
@@ -503,7 +503,6 @@ impl<'arena> Serialize for SerializableHandle<'arena> {
               attrs.borrow().iter().map(|at| (&at.name, &at.value[..])),
             )?;
 
-            // ops.reserve(1 + handle.children.borrow().len());
             ops.push_front(SerializeOp::Close(name.clone()));
 
             let mut child = handle.last_child.get();
@@ -522,7 +521,7 @@ impl<'arena> Serialize for SerializableHandle<'arena> {
           NodeData::ProcessingInstruction {
             ref target,
             ref contents,
-          } => serializer.write_processing_instruction(target, contents)?,
+          } => serializer.write_processing_instruction(target, &*contents.borrow())?,
 
           NodeData::Document => panic!("Can't serialize Document node itself"),
         },

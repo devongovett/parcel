@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, Cow};
 use std::cell::RefCell;
 use std::fmt::Write;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -98,10 +99,26 @@ pub fn collect_dependencies<'arena>(
 ) -> (Vec<Dependency>, Vec<Asset>, Vec<Error>) {
   let mut collector = DependencyCollector::new(arena, scope_hoist, supports_esm);
 
-  dom.walk(&mut |node| {
-    if let NodeData::Element { name, .. } = &node.data {
+  dom.walk(&mut |node| match &node.data {
+    NodeData::Element { name, .. } => {
       collector.visit_element(node, name);
     }
+    NodeData::ProcessingInstruction { target, contents } => {
+      let mut contents = contents.borrow_mut();
+      if target.as_ref() == "xml-stylesheet" {
+        if let Ok(mut attrs) = parse_xml_stylesheet(contents.borrow().as_ref()) {
+          for attr in &mut attrs {
+            if attr.name.expanded() == expanded_name!("", "href") {
+              attr.value =
+                collector.add_dep(attr.value.clone(), false, Priority::Parallel, node.line);
+            }
+          }
+
+          *contents = serialize_xml_stylesheet(attrs);
+        }
+      }
+    }
+    _ => {}
   });
 
   if hmr && !collector.has_module_scripts {
@@ -219,8 +236,19 @@ impl<'arena> DependencyCollector<'arena> {
 
         self.handle_srcset(node, imagesrcset, node.line);
       }
-      expanded_name!(html "script") => {
-        let src = node.get_attribute(expanded_name!("", "src"));
+      expanded_name!(html "script") | expanded_name!(svg "script") => {
+        let is_svg = name.ns == ns!(svg);
+        let href = expanded_name!(xlink "href");
+        let src_attr = if is_svg {
+          if node.get_attribute(href).is_some() {
+            href
+          } else {
+            expanded_name!("", "href")
+          }
+        } else {
+          expanded_name!("", "src")
+        };
+        let src = node.get_attribute(src_attr);
         let ty = node.get_attribute(expanded_name!("", "type"));
         let mut output_format = OutputFormat::Global;
         let source_type = match &ty {
@@ -241,12 +269,13 @@ impl<'arena> DependencyCollector<'arena> {
             return;
           }
 
-          if source_type == SourceType::Module && (self.scope_hoist || self.supports_esm) {
+          if source_type == SourceType::Module && (self.scope_hoist || self.supports_esm) && !is_svg
+          {
             output_format = OutputFormat::Esmodule;
           }
 
           if output_format != OutputFormat::Esmodule {
-            if source_type == SourceType::Module {
+            if source_type == SourceType::Module && !is_svg {
               node.set_attribute(expanded_name!("", "defer"), "");
             }
             node.remove_attribute(expanded_name!("", "type"));
@@ -282,7 +311,7 @@ impl<'arena> DependencyCollector<'arena> {
               line: node.line,
             };
 
-            copy.set_attribute(expanded_name!("", "src"), dep.set_placeholder());
+            copy.set_attribute(src_attr, dep.set_placeholder());
             self.deps.push(dep);
             node.insert_before(copy);
           }
@@ -298,7 +327,7 @@ impl<'arena> DependencyCollector<'arena> {
             line: node.line,
           };
 
-          node.set_attribute(expanded_name!("", "src"), dep.set_placeholder());
+          node.set_attribute(src_attr, dep.set_placeholder());
           self.deps.push(dep);
         } else {
           if let Some(ty) = &ty {
@@ -312,7 +341,7 @@ impl<'arena> DependencyCollector<'arena> {
 
           let code = node.text_content();
 
-          if source_type == SourceType::Module && self.scope_hoist && self.supports_esm {
+          if source_type == SourceType::Module && self.scope_hoist && self.supports_esm && !is_svg {
             output_format = OutputFormat::Esmodule;
           } else {
             node.remove_attribute(expanded_name!("", "type"));
@@ -355,7 +384,7 @@ impl<'arena> DependencyCollector<'arena> {
           });
         }
       }
-      expanded_name!(html "style") => {
+      expanded_name!(html "style") | expanded_name!(svg "style") => {
         let code = node.text_content();
         let data_parcel_key = ExpandedName {
           ns: &ns!(),
@@ -493,8 +522,32 @@ impl<'arena> DependencyCollector<'arena> {
           node.set_attribute(expanded_name!("", "href"), &placeholder);
         }
       }
-      expanded_name!(svg "use") | expanded_name!(svg "script") | expanded_name!(svg "image") => {
+      // A list of all SVG elements that create a dependency
+      // Based on https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute
+      // See also https://www.w3.org/TR/SVG/attindex.html and https://www.w3.org/TR/SVG11/attindex.html
+      // SVG animation elements are excluded because they may only reference elements in the same document: https://www.w3.org/TR/SVG/linking.html#processingURL-fetch
+      expanded_name!(svg "a") => {
+        self.handle_attr(node, expanded_name!("", "href"), true, node.line);
+        self.handle_attr(node, expanded_name!(xlink "href"), true, node.line);
+      }
+      expanded_name!(svg "use")
+      | expanded_name!(svg "image")
+      | expanded_name!(svg "feImage")
+      | expanded_name!(svg "linearGradient")
+      | expanded_name!(svg "radialGradient")
+      | expanded_name!(svg "pattern")
+      | expanded_name!(svg "mpath")
+      | expanded_name!(svg "textPath") => {
         self.handle_attr(node, expanded_name!("", "href"), false, node.line);
+        self.handle_attr(node, expanded_name!(xlink "href"), false, node.line);
+      }
+      expanded_name!(svg "altGlyph")
+      | expanded_name!(svg "cursor")
+      | expanded_name!(svg "filter")
+      | expanded_name!(svg "font-face-uri")
+      | expanded_name!(svg "glyphRef")
+      | expanded_name!(svg "tref")
+      | expanded_name!(svg "color-profile") => {
         self.handle_attr(node, expanded_name!(xlink "href"), false, node.line);
       }
       _ => {}
@@ -526,6 +579,29 @@ impl<'arena> DependencyCollector<'arena> {
         source_type: SourceType::None,
         line: node.line,
       });
+    }
+
+    // Attributes that allow url() to reference another element, either in the same document or a different one.
+    // https://www.w3.org/TR/SVG11/linking.html#processingIRI
+    // SVG2 - https://www.w3.org/TR/SVG/linking.html#processingURL-validity
+    if name.ns == ns!(svg) {
+      if let NodeData::Element { attrs, .. } = &node.data {
+        for attr in attrs.borrow_mut().iter_mut() {
+          if is_func_iri_attr(&attr.name) && attr.value.starts_with("url(") {
+            let mut input = cssparser::ParserInput::new(&attr.value);
+            let mut parser = cssparser::Parser::new(&mut input);
+            let placeholder = if let Ok(url) = parser.expect_url() {
+              Some(self.add_dep(url.as_ref().into(), false, Priority::Lazy, node.line))
+            } else {
+              None
+            };
+            drop(input);
+            if let Some(placeholder) = placeholder {
+              attr.value = placeholder;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -612,4 +688,86 @@ impl<'arena> DependencyCollector<'arena> {
     self.deps.push(dep);
     placeholder
   }
+}
+
+pub fn is_func_iri_attr(name: &QualName) -> bool {
+  match name.expanded() {
+    expanded_name!("", "fill")
+    | expanded_name!("", "stroke")
+    | expanded_name!("", "clip-path")
+    | expanded_name!("", "color-profile")
+    | expanded_name!("", "cursor")
+    | expanded_name!("", "filter")
+    | expanded_name!("", "marker")
+    | expanded_name!("", "marker-start")
+    | expanded_name!("", "marker-mid")
+    | expanded_name!("", "marker-end")
+    | expanded_name!("", "mask") => true,
+    name => {
+      let local = name.local.as_ref();
+      local == "shape-inside" || local == "shape-subtract" || local == "mask-image"
+    }
+  }
+}
+
+/// Parses an <?xml-stylesheet ?> processing instruction.
+/// https://www.w3.org/TR/xml-stylesheet/
+pub fn parse_xml_stylesheet(contents: &str) -> Result<Vec<Attribute>, Cow<'static, str>> {
+  use xml5ever::{buffer_queue::*, tokenizer::*};
+
+  struct Sink(RefCell<Result<Vec<Attribute>, Cow<'static, str>>>);
+  impl TokenSink for Sink {
+    fn process_token(&self, token: Token) {
+      match token {
+        Token::TagToken(tag) => {
+          *self.0.borrow_mut() = Ok(tag.attrs);
+        }
+        Token::ParseError(err) => {
+          *self.0.borrow_mut() = Err(err);
+        }
+        _ => {}
+      }
+    }
+  }
+
+  let sink = Sink(RefCell::new(Err(Cow::Borrowed("Invalid xml-stylesheet"))));
+  let tokenizer = XmlTokenizer::new(sink, Default::default());
+
+  let mut buf = BufferQueue::default();
+  buf.push_back(format_tendril!("<xml-stylesheet {} />", contents));
+  tokenizer.run(&mut buf);
+
+  tokenizer.sink.0.into_inner()
+}
+
+pub fn serialize_xml_stylesheet(attrs: Vec<Attribute>) -> StrTendril {
+  let mut s = StrTendril::new();
+
+  let mut first = true;
+  for attr in attrs {
+    if first {
+      first = false;
+    } else {
+      s.push_char(' ');
+    }
+
+    if let Some(ref prefix) = attr.name.prefix {
+      s.push_slice(prefix.as_ref());
+      s.push_char(':');
+    }
+    s.push_slice(attr.name.local.as_ref());
+    s.push_char('=');
+    s.push_char('"');
+    for c in attr.value.chars() {
+      match c {
+        '&' => s.push_slice("&amp;"),
+        '\'' => s.push_slice("&apos;"),
+        '"' => s.push_slice("&quot;"),
+        c => s.push_char(c),
+      }
+    }
+    s.push_char('"');
+  }
+
+  s
 }

@@ -1,68 +1,107 @@
 // @flow
 
 import {Transformer} from '@parcel/plugin';
-import nullthrows from 'nullthrows';
-import semver from 'semver';
-import {parser as parse} from 'posthtml-parser';
-import {render} from 'posthtml-render';
-import collectDependencies from './dependencies';
-import extractInlineAssets from './inline';
 import ThrowableDiagnostic from '@parcel/diagnostic';
+import {transformSvg} from '@parcel/rust';
+
+const TYPES = {
+  'application/javascript': 'js',
+  'application/ecmascript': 'js',
+  'text/javascript': 'js',
+  'application/json': false,
+  'application/ld+json': 'jsonld',
+  'text/html': false,
+  module: 'js',
+};
 
 export default (new Transformer({
-  canReuseAST({ast}) {
-    return ast.type === 'posthtml' && semver.satisfies(ast.version, '^0.4.0');
-  },
-
-  async parse({asset}) {
-    return {
-      type: 'posthtml',
-      version: '0.4.1',
-      program: parse(await asset.getCode(), {
-        directives: [
-          {
-            name: /^\?/,
-            start: '<',
-            end: '>',
-          },
-        ],
-        sourceLocations: true,
-        xmlMode: true,
-      }),
-    };
-  },
-
   async transform({asset}) {
     asset.bundleBehavior = 'isolated';
 
-    const ast = nullthrows(await asset.getAST());
+    let res = transformSvg({
+      code: await asset.getBuffer(),
+      scope_hoist: asset.env.shouldScopeHoist,
+      supports_esm: false,
+      hmr: false,
+    });
 
-    try {
-      collectDependencies(asset, ast);
-    } catch (errors) {
+    if (res.errors.length) {
       throw new ThrowableDiagnostic({
-        diagnostic: errors.map(error => ({
+        diagnostic: res.errors.map(error => ({
           message: error.message,
           origin: '@parcel/transformer-svg',
           codeFrames: [
             {
-              filePath: error.filePath,
+              filePath: asset.filePath,
               language: 'svg',
-              codeHighlights: [error.loc],
+              codeHighlights: [
+                {
+                  start: {
+                    line: error.line,
+                    column: 1,
+                  },
+                  end: {
+                    line: error.line,
+                    column: 1,
+                  },
+                },
+              ],
             },
           ],
         })),
       });
     }
 
-    const inlineAssets = extractInlineAssets(asset, ast);
+    asset.setBuffer(res.code);
 
-    return [asset, ...inlineAssets];
-  },
+    let assets = [asset];
+    for (let dep of res.dependencies) {
+      asset.addURLDependency(dep.href, {
+        priority: dep.priority,
+        needsStableName: dep.needsStableName,
+        bundleBehavior:
+          dep.bundleBehavior === 'none' ? undefined : dep.bundleBehavior,
+        env: convertEnv(asset, dep),
+        meta: {
+          placeholder: dep.placeholder,
+        },
+      });
+    }
 
-  generate({ast}) {
-    return {
-      content: render(ast.program),
-    };
+    for (let a of res.assets) {
+      assets.push({
+        type: TYPES[a.type] || a.type.split('/')[1] || a.type,
+        content: a.content,
+        uniqueKey: a.key,
+        env: convertEnv(asset, a),
+        meta: {
+          type: a.isAttr ? 'attr' : 'tag',
+          startLine: a.line,
+        },
+      });
+    }
+
+    return assets;
   },
 }): Transformer);
+
+function convertEnv(asset, dep) {
+  return {
+    outputFormat: dep.outputFormat === 'none' ? undefined : dep.outputFormat,
+    sourceType: dep.sourceType === 'none' ? undefined : dep.sourceType,
+    loc:
+      dep.outputFormat !== 'none' || dep.sourceType !== 'none'
+        ? {
+            filePath: asset.filePath,
+            start: {
+              line: dep.line,
+              column: 1,
+            },
+            end: {
+              line: dep.line,
+              column: 2,
+            },
+          }
+        : undefined,
+  };
+}
