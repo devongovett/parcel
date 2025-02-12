@@ -24,7 +24,7 @@
     "@parcel/plugin": "2.13.3",
     "@parcel/source-map": "^2.1.1",
     "@parcel/utils": "2.13.3",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.25.0",
     "nullthrows": "^1.1.1"
   }
 }
