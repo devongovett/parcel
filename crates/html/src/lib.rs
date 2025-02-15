@@ -3,16 +3,19 @@ use std::collections::HashMap;
 use arena::{SerializableHandle, Sink};
 use dependencies::{collect_dependencies, Asset, Dependency, Error};
 use html5ever::driver::ParseOpts;
-use html5ever::serialize::SerializeOpts;
+use html5ever::parse_document;
 use html5ever::tendril::{StrTendril, TendrilSink};
-use html5ever::{parse_document, serialize};
+use optimize::optimize;
 use package::{insert_bundle_references, BundleReference, InlineBundle};
 use serde::{Deserialize, Serialize, Serializer};
 use typed_arena::Arena;
 
 mod arena;
 mod dependencies;
+mod optimize;
+mod oxvg;
 mod package;
+mod serialize;
 mod srcset;
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -69,8 +72,11 @@ pub fn transform_html(options: TransformOptions) -> TransformResult {
   );
 
   let mut vec = Vec::new();
-  let handle: SerializableHandle = dom.into();
-  serialize(&mut vec, &handle, SerializeOpts::default());
+  html5ever::serialize::serialize(
+    &mut vec,
+    &SerializableHandle(dom),
+    html5ever::serialize::SerializeOpts::default(),
+  );
 
   TransformResult {
     code: vec,
@@ -141,8 +147,11 @@ pub fn package_html(options: PackageOptions) -> PackageResult {
   );
 
   let mut vec = Vec::new();
-  let handle: SerializableHandle = dom.into();
-  serialize(&mut vec, &handle, SerializeOpts::default());
+  html5ever::serialize::serialize(
+    &mut vec,
+    &SerializableHandle(dom),
+    html5ever::serialize::SerializeOpts::default(),
+  );
 
   PackageResult { code: vec }
 }
@@ -169,6 +178,27 @@ pub fn package_svg(options: PackageOptions) -> PackageResult {
     &handle,
     xml5ever::serialize::SerializeOpts::default(),
   );
+
+  PackageResult { code: vec }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizeOptions {
+  #[serde(with = "serde_bytes")]
+  pub code: Vec<u8>,
+}
+
+pub fn optimize_html(options: OptimizeOptions) -> PackageResult {
+  let arena = Arena::new();
+  let dom = parse_document(Sink::new(&arena), ParseOpts::default())
+    .from_utf8()
+    .one(options.code.as_slice());
+
+  optimize(&arena, dom);
+
+  let mut vec = Vec::new();
+  serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default());
 
   PackageResult { code: vec }
 }

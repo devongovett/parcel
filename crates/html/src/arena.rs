@@ -17,8 +17,8 @@ use std::collections::{HashSet, VecDeque};
 use std::io;
 use std::ptr;
 
-type Arena<'arena> = &'arena typed_arena::Arena<Node<'arena>>;
-type Ref<'arena> = &'arena Node<'arena>;
+pub type Arena<'arena> = &'arena typed_arena::Arena<Node<'arena>>;
+pub type Ref<'arena> = &'arena Node<'arena>;
 type Link<'arena> = Cell<Option<Ref<'arena>>>;
 
 /// Sink struct is responsible for handling how the data that comes out of the HTML parsing
@@ -43,17 +43,17 @@ impl<'arena> Sink<'arena> {
 
 /// DOM node which contains links to other nodes in the tree.
 pub struct Node<'arena> {
-  parent: Link<'arena>,
-  next_sibling: Link<'arena>,
-  previous_sibling: Link<'arena>,
-  first_child: Link<'arena>,
-  last_child: Link<'arena>,
+  pub parent: Link<'arena>,
+  pub next_sibling: Link<'arena>,
+  pub previous_sibling: Link<'arena>,
+  pub first_child: Link<'arena>,
+  pub last_child: Link<'arena>,
   pub data: NodeData<'arena>,
   pub line: u64,
 }
 
 /// HTML node data which can be an element, a comment, a string, a DOCTYPE, etc...
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum NodeData<'arena> {
   Document,
   Doctype {
@@ -77,6 +77,43 @@ pub enum NodeData<'arena> {
     target: StrTendril,
     contents: RefCell<StrTendril>,
   },
+}
+
+impl<'arena> std::fmt::Debug for Node<'arena> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let mut s = Vec::new();
+    html5ever::serialize::serialize(
+      &mut s,
+      &SerializableHandle(self),
+      html5ever::serialize::SerializeOpts::default(),
+    );
+    write!(f, "{}", String::from_utf8(s).unwrap())
+  }
+}
+
+impl<'arena> PartialEq<Node<'arena>> for Node<'arena> {
+  fn eq(&self, other: &Node<'arena>) -> bool {
+    if self.data != other.data {
+      return false;
+    }
+
+    let mut self_child = self.first_child.get();
+    let mut other_child = other.first_child.get();
+    loop {
+      match (self_child, other_child) {
+        (None, None) => return true,
+        (None, Some(_)) => return false,
+        (Some(_), None) => return false,
+        (Some(a), Some(b)) => {
+          if a != b {
+            return false;
+          }
+          self_child = a.next_sibling.get();
+          other_child = b.next_sibling.get();
+        }
+      }
+    }
+  }
 }
 
 impl<'arena> Node<'arena> {
@@ -170,6 +207,14 @@ impl<'arena> Node<'arena> {
 
   pub fn walk<Visit: FnMut(Ref<'arena>)>(&'arena self, visit: &mut Visit) {
     visit(self);
+    if let NodeData::Element {
+      template_contents: Some(template_contents),
+      ..
+    } = &self.data
+    {
+      template_contents.walk(visit);
+    }
+
     let mut node = self.first_child.get();
     while let Some(n) = node {
       node = n.next_sibling.get();
@@ -254,6 +299,63 @@ impl<'arena> Node<'arena> {
       if let Some(idx) = attrs.iter().position(|a| a.name.expanded() == name) {
         attrs.remove(idx);
       }
+    }
+  }
+
+  pub fn starts_with_whitespace(&self) -> bool {
+    if let NodeData::Text { contents } = &self.data {
+      match contents.borrow().chars().next() {
+        None => false,
+        Some(c) => c.is_whitespace(),
+      }
+    } else {
+      false
+    }
+  }
+
+  pub fn next_sibling_is_comment(&self) -> bool {
+    match self.next_sibling.get() {
+      None => false,
+      Some(next) => matches!(next.data, NodeData::Comment { .. }),
+    }
+  }
+
+  pub fn next_sibling_is_comment_or_whitespace(&self) -> bool {
+    match self.next_sibling.get() {
+      None => false,
+      Some(next) => matches!(next.data, NodeData::Comment { .. }) || next.starts_with_whitespace(),
+    }
+  }
+
+  pub fn is_last_child(&self) -> bool {
+    self.next_sibling.get().is_none()
+  }
+
+  pub fn next_sibling_is(&self, tag: ExpandedName) -> bool {
+    match self.next_sibling.get() {
+      None => false,
+      Some(next) => matches!(&next.data, NodeData::Element { name, .. } if name.expanded() == tag),
+    }
+  }
+
+  pub fn first_child_is_comment(&self) -> bool {
+    match self.first_child.get() {
+      None => false,
+      Some(next) => matches!(next.data, NodeData::Comment { .. }),
+    }
+  }
+
+  pub fn first_child_is_comment_or_whitespace(&self) -> bool {
+    match self.first_child.get() {
+      None => false,
+      Some(next) => matches!(next.data, NodeData::Comment { .. }) || next.starts_with_whitespace(),
+    }
+  }
+
+  pub fn first_child_is(&self, tag: ExpandedName) -> bool {
+    match self.first_child.get() {
+      None => false,
+      Some(next) => matches!(&next.data, NodeData::Element { name, .. } if name.expanded() == tag),
     }
   }
 }
@@ -459,20 +561,20 @@ impl<'arena> TreeSink for Sink<'arena> {
   }
 }
 
-enum SerializeOp<'arena> {
-  Open(Ref<'arena>),
+enum SerializeOp<'a, 'arena> {
+  Open(&'a Node<'arena>),
   Close(QualName),
 }
 
-pub struct SerializableHandle<'arena>(Ref<'arena>);
+pub struct SerializableHandle<'a, 'arena>(pub &'a Node<'arena>);
 
-impl<'arena> From<Ref<'arena>> for SerializableHandle<'arena> {
-  fn from(h: Ref<'arena>) -> SerializableHandle<'arena> {
+impl<'a, 'arena> From<Ref<'arena>> for SerializableHandle<'a, 'arena> {
+  fn from(h: &'a Node<'arena>) -> SerializableHandle<'a, 'arena> {
     SerializableHandle(h)
   }
 }
 
-impl<'arena> Serialize for SerializableHandle<'arena> {
+impl<'a, 'arena> Serialize for SerializableHandle<'a, 'arena> {
   fn serialize<S>(&self, serializer: &mut S, traversal_scope: TraversalScope) -> io::Result<()>
   where
     S: Serializer,

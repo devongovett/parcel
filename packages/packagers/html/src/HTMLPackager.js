@@ -2,7 +2,6 @@
 import type {BundleGraph, NamedBundle} from '@parcel/types';
 
 import assert from 'assert';
-import {Readable} from 'stream';
 import {Packager} from '@parcel/plugin';
 import {
   blobToString,
