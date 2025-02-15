@@ -169,6 +169,7 @@ pub(crate) mod private {
 }
 
 bitflags! {
+  #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
   struct PathFlags: u8 {
     /// Whether this path is inside a node_modules directory.
     const IN_NODE_MODULES = 1 << 0;

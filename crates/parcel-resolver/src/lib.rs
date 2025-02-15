@@ -76,6 +76,7 @@ mod url_to_path;
 
 bitflags! {
   /// Resolution features to enable.
+  #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
   pub struct Flags: u16 {
     /// Parcel-style absolute paths resolved relative to project root.
     const ABSOLUTE_SPECIFIERS = 1 << 0;
@@ -102,11 +103,11 @@ bitflags! {
     const EXPORTS_OPTIONAL_EXTENSIONS = 1 << 10;
 
     /// Default Node settings for CommonJS.
-    const NODE_CJS = Self::EXPORTS.bits | Self::DIR_INDEX.bits | Self::OPTIONAL_EXTENSIONS.bits;
+    const NODE_CJS = Self::EXPORTS.bits() | Self::DIR_INDEX.bits() | Self::OPTIONAL_EXTENSIONS.bits();
     /// Default Node settings for ESM.
-    const NODE_ESM = Self::EXPORTS.bits;
+    const NODE_ESM = Self::EXPORTS.bits();
     /// Default TypeScript settings.
-    const TYPESCRIPT = Self::TSCONFIG.bits | Self::EXPORTS.bits | Self::DIR_INDEX.bits | Self::OPTIONAL_EXTENSIONS.bits | Self::TYPESCRIPT_EXTENSIONS.bits | Self::EXPORTS_OPTIONAL_EXTENSIONS.bits;
+    const TYPESCRIPT = Self::TSCONFIG.bits() | Self::EXPORTS.bits() | Self::DIR_INDEX.bits() | Self::OPTIONAL_EXTENSIONS.bits() | Self::TYPESCRIPT_EXTENSIONS.bits() | Self::EXPORTS_OPTIONAL_EXTENSIONS.bits();
   }
 }
 

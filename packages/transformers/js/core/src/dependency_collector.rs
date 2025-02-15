@@ -100,8 +100,7 @@ pub enum DependencyKind {
 }
 
 bitflags! {
-  #[derive(Serialize, Deserialize, Default)]
-  #[serde(transparent)]
+  #[derive(Default, Debug, Clone, Copy, PartialEq)]
   pub struct Helpers: u8 {
     /// `import.meta.distDir` – a relative path from the current bundle to the distDir
     const DIST_DIR = 1 << 0;
@@ -118,6 +117,25 @@ bitflags! {
   }
 }
 
+impl serde::Serialize for Helpers {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    self.bits().serialize(serializer)
+  }
+}
+
+impl<'de> serde::Deserialize<'de> for Helpers {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let bits: u8 = Deserialize::deserialize(deserializer)?;
+    Self::from_bits(bits).ok_or(serde::de::Error::custom("invalid flags"))
+  }
+}
+
 impl fmt::Display for DependencyKind {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{:?}", self)
@@ -125,13 +143,31 @@ impl fmt::Display for DependencyKind {
 }
 
 bitflags! {
-  #[derive(Serialize, Deserialize, Default)]
-  #[serde(transparent)]
+  #[derive(Default, Clone, Copy, Debug, PartialEq)]
   pub struct DependencyFlags: u8 {
     const OPTIONAL = 1 << 0;
     const HELPER = 1 << 1;
     const NEEDS_STABLE_NAME = 1 << 2;
     const REACT_LAZY = 1 << 3;
+  }
+}
+
+impl serde::Serialize for DependencyFlags {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    self.bits().serialize(serializer)
+  }
+}
+
+impl<'de> serde::Deserialize<'de> for DependencyFlags {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let bits: u8 = Deserialize::deserialize(deserializer)?;
+    Self::from_bits(bits).ok_or(serde::de::Error::custom("invalid flags"))
   }
 }
 

@@ -7,6 +7,7 @@ use bitflags::bitflags;
 
 bitflags! {
   /// Bitflags that describe path metadata.
+  #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
   pub struct FileKind: u8 {
     /// If set, the path is a file.
     const IS_FILE = 1 << 0;
