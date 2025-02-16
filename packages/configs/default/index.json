@@ -65,7 +65,7 @@
     "*.css": ["@parcel/optimizer-css"],
     "*.{html,xhtml}": ["@parcel/optimizer-html"],
     "*.{js,mjs,cjs}": ["@parcel/optimizer-swc"],
-    "*.svg": ["@parcel/optimizer-svgo"],
+    "*.svg": ["@parcel/optimizer-svg"],
     "*.{jpg,jpeg,png}": ["@parcel/optimizer-image"]
   },
   "packagers": {

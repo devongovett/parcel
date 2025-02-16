@@ -38,3 +38,11 @@ pub fn package_svg(opts: JsObject, env: Env) -> napi::Result<JsUnknown> {
     .map_err(|_| napi::Error::new(napi::Status::GenericFailure, "An unexpected error occurred"))?;
   env.to_js_value(&result)
 }
+
+#[napi]
+pub fn optimize_svg(opts: JsObject, env: Env) -> napi::Result<JsUnknown> {
+  let options: parcel_html::OptimizeOptions = env.from_js_value(opts)?;
+  let result = parcel_html::optimize_svg(options)
+    .map_err(|_| napi::Error::new(napi::Status::GenericFailure, "An unexpected error occurred"))?;
+  env.to_js_value(&result)
+}

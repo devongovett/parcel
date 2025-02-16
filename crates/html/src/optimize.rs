@@ -306,7 +306,16 @@ pub fn optimize<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'a
         }
         expanded_name!(svg "svg") => {
           remove_whitespace(node);
-          let node = crate::oxvg::OxvgNode { node, arena };
+
+          // Synthesize a fake document node to act as the root of the SVG.
+          let document = arena.alloc(Node::new(NodeData::Document, 0));
+          document.first_child.set(Some(node));
+          document.last_child.set(Some(node));
+          let node = crate::oxvg::OxvgNode {
+            node: document,
+            arena,
+          };
+
           let jobs = oxvg_optimiser::Jobs::<crate::oxvg::OxvgNode> {
             // These defaults can break CSS selectors.
             convert_shape_to_path: None,
@@ -370,6 +379,35 @@ pub fn optimize<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'a
         (contents.starts_with("[if ") && contents.ends_with("]")) || contents.as_ref() == "[endif]";
       if !is_conditional_comment {
         node.detach();
+      }
+    }
+    _ => {}
+  });
+}
+
+pub fn optimize_svg<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'arena>) {
+  let node = crate::oxvg::OxvgNode { node: dom, arena };
+  let jobs = oxvg_optimiser::Jobs::<crate::oxvg::OxvgNode> {
+    // Removing ids could break SVG sprites.
+    cleanup_ids: None,
+    ..Default::default()
+  };
+  match jobs.run(&node, &oxvg_ast::visitor::Info::default()) {
+    Err(_err) => {}
+    Ok(()) => {}
+  }
+
+  dom.walk(&mut |node| match &node.data {
+    NodeData::Element { name, .. } => {
+      if !matches!(
+        name.local,
+        local_name!("text")
+          | local_name!("textPath")
+          | local_name!("tspan")
+          | local_name!("script")
+          | local_name!("style")
+      ) {
+        remove_whitespace(node);
       }
     }
     _ => {}

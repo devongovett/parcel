@@ -21,6 +21,7 @@ declare export function packageHtml(opts: PackageHtmlOpts): PackageHtmlResult;
 declare export function optimizeHtml(opts: OptimizeHtmlOpts): PackageHtmlResult;
 declare export function transformSvg(opts: TransformHtmlOpts): TransformHtmlResult;
 declare export function packageSvg(opts: PackageHtmlOpts): PackageHtmlResult;
+declare export function optimizeSvg(opts: OptimizeHtmlOpts): PackageHtmlResult;
 export interface JsFileSystemOptions {
   readLink: string => string;
   read: string => Buffer;

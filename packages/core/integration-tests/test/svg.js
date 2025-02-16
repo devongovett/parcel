@@ -117,7 +117,7 @@ describe('svg', function () {
     assert(!file.includes('comment'));
   });
 
-  it('support SVGO config files', async function () {
+  it.skip('support SVGO config files', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/svgo-config/index.html'),
       {
@@ -135,7 +135,7 @@ describe('svg', function () {
     assert(file.includes('comment'));
   });
 
-  it('should detect the version of SVGO to use', async function () {
+  it.skip('should detect the version of SVGO to use', async function () {
     // Test is outside parcel so that svgo is not already installed.
     await fsFixture(overlayFS, '/')`
       svgo-version

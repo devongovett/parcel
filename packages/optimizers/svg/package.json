@@ -1,5 +1,5 @@
 {
-  "name": "@parcel/optimizer-html",
+  "name": "@parcel/optimizer-svg",
   "version": "2.13.3",
   "license": "MIT",
   "publishConfig": {
@@ -13,8 +13,8 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/parcel.git"
   },
-  "main": "lib/HTMLOptimizer.js",
-  "source": "src/HTMLOptimizer.js",
+  "main": "lib/SVGOptimizer.js",
+  "source": "src/SVGOptimizer.js",
   "engines": {
     "node": ">= 16.0.0",
     "parcel": "^2.13.3"

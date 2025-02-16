@@ -1975,7 +1975,7 @@ dependencies = [
 [[package]]
 name = "oxvg_ast"
 version = "0.0.1-alpha.1"
-source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#29f16c884091cbee67597f6aca32cb05d8e65472"
+source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#975446e5f87c284d214eb002ad3806c94cf37448"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1996,7 +1996,7 @@ dependencies = [
 [[package]]
 name = "oxvg_collections"
 version = "0.0.1-alpha.1"
-source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#29f16c884091cbee67597f6aca32cb05d8e65472"
+source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#975446e5f87c284d214eb002ad3806c94cf37448"
 dependencies = [
  "lazy_static",
  "phf",
@@ -2006,7 +2006,7 @@ dependencies = [
 [[package]]
 name = "oxvg_optimiser"
 version = "0.1.0"
-source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#29f16c884091cbee67597f6aca32cb05d8e65472"
+source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#975446e5f87c284d214eb002ad3806c94cf37448"
 dependencies = [
  "anyhow",
  "derive-where",
@@ -2028,7 +2028,7 @@ dependencies = [
 [[package]]
 name = "oxvg_path"
 version = "0.0.1-beta.4"
-source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#29f16c884091cbee67597f6aca32cb05d8e65472"
+source = "git+https://github.com/devongovett/oxvg.git?branch=parcel#975446e5f87c284d214eb002ad3806c94cf37448"
 dependencies = [
  "bitflags",
  "lightningcss",

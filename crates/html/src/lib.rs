@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use arena::{SerializableHandle, Sink};
 use dependencies::{collect_dependencies, Asset, Dependency, Error};
-use html5ever::driver::ParseOpts;
-use html5ever::parse_document;
 use html5ever::tendril::{StrTendril, TendrilSink};
 use optimize::optimize;
 use package::{insert_bundle_references, BundleReference, InlineBundle};
@@ -60,7 +58,7 @@ pub struct TransformResult {
 
 pub fn transform_html(options: TransformOptions) -> TransformResult {
   let arena = Arena::new();
-  let dom = parse_document(Sink::new(&arena), ParseOpts::default())
+  let dom = html5ever::driver::parse_document(Sink::new(&arena), html5ever::ParseOpts::default())
     .from_utf8()
     .one(options.code.as_slice());
   let (deps, assets, mut errors) = collect_dependencies(
@@ -144,7 +142,7 @@ pub struct PackageResult {
 
 pub fn package_html(options: PackageOptions) -> Result<PackageResult, ()> {
   let arena = Arena::new();
-  let dom = parse_document(Sink::new(&arena), ParseOpts::default())
+  let dom = html5ever::driver::parse_document(Sink::new(&arena), html5ever::ParseOpts::default())
     .from_utf8()
     .one(options.code.as_slice());
 
@@ -203,7 +201,7 @@ pub struct OptimizeOptions {
 
 pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
   let arena = Arena::new();
-  let dom = parse_document(Sink::new(&arena), ParseOpts::default())
+  let dom = html5ever::driver::parse_document(Sink::new(&arena), html5ever::ParseOpts::default())
     .from_utf8()
     .one(options.code.as_slice());
 
@@ -211,6 +209,27 @@ pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
 
   let mut vec: Vec<u8> = Vec::new();
   serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default()).map_err(|_| ())?;
+
+  Ok(PackageResult { code: vec })
+}
+
+pub fn optimize_svg(options: OptimizeOptions) -> Result<PackageResult, ()> {
+  let arena = Arena::new();
+  let dom =
+    xml5ever::driver::parse_document(Sink::new(&arena), xml5ever::driver::XmlParseOpts::default())
+      .from_utf8()
+      .one(options.code.as_slice());
+
+  optimize::optimize_svg(&arena, dom);
+
+  let mut vec = Vec::new();
+  let handle: SerializableHandle = dom.into();
+  xml5ever::serialize::serialize(
+    &mut vec,
+    &handle,
+    xml5ever::serialize::SerializeOpts::default(),
+  )
+  .map_err(|_| ())?;
 
   Ok(PackageResult { code: vec })
 }

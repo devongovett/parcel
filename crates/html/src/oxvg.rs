@@ -361,16 +361,13 @@ impl<'arena> Node for OxvgNode<'arena> {
   }
 
   fn text_content(&self) -> Option<String> {
-    // if self.0.children.borrow().len() > 0 {
-    //   return Node5Ever::node_data_text_content(&self.0);
-    // }
     match &self.node.data {
       NodeData::Doctype { .. } | NodeData::Document => None,
       // FIXME: Empty string should only be returned on recursive calls
       NodeData::Comment { contents } => Some(contents.to_string()),
       NodeData::ProcessingInstruction { contents, .. } => Some(contents.borrow().to_string()),
       NodeData::Text { contents } => Some(contents.borrow().to_string()),
-      NodeData::Element { .. } => Some(String::new()),
+      NodeData::Element { .. } => Some(self.node.text_content()),
     }
   }
 
