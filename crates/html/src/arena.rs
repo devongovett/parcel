@@ -86,7 +86,8 @@ impl<'arena> std::fmt::Debug for Node<'arena> {
       &mut s,
       &SerializableHandle(self),
       html5ever::serialize::SerializeOpts::default(),
-    );
+    )
+    .map_err(|_| std::fmt::Error)?;
     write!(f, "{}", String::from_utf8(s).unwrap())
   }
 }
@@ -203,6 +204,24 @@ impl<'arena> Node<'arena> {
       parent.first_child.set(Some(new_sibling));
     }
     self.previous_sibling.set(Some(new_sibling));
+  }
+
+  pub fn insert_after(&'arena self, new_sibling: &'arena Self) {
+    new_sibling.detach();
+    new_sibling.parent.set(self.parent.get());
+    new_sibling.previous_sibling.set(Some(self));
+    if let Some(next_sibling) = self.next_sibling.take() {
+      new_sibling.next_sibling.set(Some(next_sibling));
+      debug_assert!(ptr::eq::<Node>(
+        next_sibling.previous_sibling.get().unwrap(),
+        self
+      ));
+      next_sibling.previous_sibling.set(Some(new_sibling));
+    } else if let Some(parent) = self.parent.get() {
+      debug_assert!(ptr::eq::<Node>(parent.last_child.get().unwrap(), self));
+      parent.last_child.set(Some(new_sibling));
+    }
+    self.next_sibling.set(Some(new_sibling));
   }
 
   pub fn walk<Visit: FnMut(Ref<'arena>)>(&'arena self, visit: &mut Visit) {
@@ -334,7 +353,9 @@ impl<'arena> Node<'arena> {
   pub fn next_sibling_is(&self, tag: ExpandedName) -> bool {
     match self.next_sibling.get() {
       None => false,
-      Some(next) => matches!(&next.data, NodeData::Element { name, .. } if name.expanded() == tag),
+      Some(next) => {
+        matches!(&next.data, NodeData::Element{ name, .. } if name.expanded() == tag)
+      }
     }
   }
 
@@ -345,17 +366,12 @@ impl<'arena> Node<'arena> {
     }
   }
 
-  pub fn first_child_is_comment_or_whitespace(&self) -> bool {
-    match self.first_child.get() {
-      None => false,
-      Some(next) => matches!(next.data, NodeData::Comment { .. }) || next.starts_with_whitespace(),
-    }
-  }
-
   pub fn first_child_is(&self, tag: ExpandedName) -> bool {
     match self.first_child.get() {
       None => false,
-      Some(next) => matches!(&next.data, NodeData::Element { name, .. } if name.expanded() == tag),
+      Some(next) => {
+        matches!(&next.data, NodeData::Element{ name, .. } if name.expanded() == tag)
+      }
     }
   }
 }

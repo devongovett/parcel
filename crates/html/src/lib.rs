@@ -63,7 +63,7 @@ pub fn transform_html(options: TransformOptions) -> TransformResult {
   let dom = parse_document(Sink::new(&arena), ParseOpts::default())
     .from_utf8()
     .one(options.code.as_slice());
-  let (deps, assets, errors) = collect_dependencies(
+  let (deps, assets, mut errors) = collect_dependencies(
     &arena,
     &dom,
     options.scope_hoist,
@@ -72,11 +72,16 @@ pub fn transform_html(options: TransformOptions) -> TransformResult {
   );
 
   let mut vec = Vec::new();
-  html5ever::serialize::serialize(
+  if let Err(err) = html5ever::serialize::serialize(
     &mut vec,
     &SerializableHandle(dom),
     html5ever::serialize::SerializeOpts::default(),
-  );
+  ) {
+    errors.push(Error {
+      message: err.to_string(),
+      line: 0,
+    });
+  }
 
   TransformResult {
     code: vec,
@@ -92,7 +97,7 @@ pub fn transform_svg(options: TransformOptions) -> TransformResult {
     xml5ever::driver::parse_document(Sink::new(&arena), xml5ever::driver::XmlParseOpts::default())
       .from_utf8()
       .one(options.code.as_slice());
-  let (deps, assets, errors) = collect_dependencies(
+  let (deps, assets, mut errors) = collect_dependencies(
     &arena,
     &dom,
     options.scope_hoist,
@@ -102,11 +107,16 @@ pub fn transform_svg(options: TransformOptions) -> TransformResult {
 
   let mut vec = Vec::new();
   let handle: SerializableHandle = dom.into();
-  xml5ever::serialize::serialize(
+  if let Err(err) = xml5ever::serialize::serialize(
     &mut vec,
     &handle,
     xml5ever::serialize::SerializeOpts::default(),
-  );
+  ) {
+    errors.push(Error {
+      message: err.to_string(),
+      line: 0,
+    });
+  }
 
   TransformResult {
     code: vec,
@@ -132,7 +142,7 @@ pub struct PackageResult {
   pub code: Vec<u8>,
 }
 
-pub fn package_html(options: PackageOptions) -> PackageResult {
+pub fn package_html(options: PackageOptions) -> Result<PackageResult, ()> {
   let arena = Arena::new();
   let dom = parse_document(Sink::new(&arena), ParseOpts::default())
     .from_utf8()
@@ -151,12 +161,13 @@ pub fn package_html(options: PackageOptions) -> PackageResult {
     &mut vec,
     &SerializableHandle(dom),
     html5ever::serialize::SerializeOpts::default(),
-  );
+  )
+  .map_err(|_| ())?;
 
-  PackageResult { code: vec }
+  Ok(PackageResult { code: vec })
 }
 
-pub fn package_svg(options: PackageOptions) -> PackageResult {
+pub fn package_svg(options: PackageOptions) -> Result<PackageResult, ()> {
   let arena = Arena::new();
   let dom =
     xml5ever::driver::parse_document(Sink::new(&arena), xml5ever::driver::XmlParseOpts::default())
@@ -177,9 +188,10 @@ pub fn package_svg(options: PackageOptions) -> PackageResult {
     &mut vec,
     &handle,
     xml5ever::serialize::SerializeOpts::default(),
-  );
+  )
+  .map_err(|_| ())?;
 
-  PackageResult { code: vec }
+  Ok(PackageResult { code: vec })
 }
 
 #[derive(Deserialize)]
@@ -189,7 +201,7 @@ pub struct OptimizeOptions {
   pub code: Vec<u8>,
 }
 
-pub fn optimize_html(options: OptimizeOptions) -> PackageResult {
+pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
   let arena = Arena::new();
   let dom = parse_document(Sink::new(&arena), ParseOpts::default())
     .from_utf8()
@@ -198,7 +210,7 @@ pub fn optimize_html(options: OptimizeOptions) -> PackageResult {
   optimize(&arena, dom);
 
   let mut vec = Vec::new();
-  serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default());
+  serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default()).map_err(|_| ())?;
 
-  PackageResult { code: vec }
+  Ok(PackageResult { code: vec })
 }

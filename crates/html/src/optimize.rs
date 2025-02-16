@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use html5ever::{expanded_name, local_name, namespace_url, ns, ExpandedName};
+use oxvg_optimiser::RemoveUnknownsAndDefaults;
 use typed_arena::Arena;
 use xml5ever::tendril::StrTendril;
 
@@ -94,6 +95,12 @@ pub fn optimize<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'a
           enumerated(node, expanded_name!("", "target"), "_self");
           boolean(node, expanded_name!("", "novalidate"));
         }
+        expanded_name!(html "head") => {
+          remove_whitespace(node);
+        }
+        expanded_name!(html "html") => {
+          remove_whitespace(node);
+        }
         expanded_name!(html "iframe") => {
           trim(node, expanded_name!("", "src"));
           unordered_space_separated_set(node, expanded_name!("", "sandbox"));
@@ -164,6 +171,11 @@ pub fn optimize<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'a
         }
         expanded_name!(html "meta") => {
           enumerated(node, expanded_name!("", "charset"), "utf-8");
+          if let NodeData::Element { attrs, .. } = &node.data {
+            if attrs.borrow().is_empty() {
+              node.detach();
+            }
+          }
         }
         expanded_name!(html "meter") => {
           trim(node, expanded_name!("", "high"));
@@ -292,11 +304,44 @@ pub fn optimize<'arena>(arena: &'arena Arena<Node<'arena>>, dom: &'arena Node<'a
           boolean(node, expanded_name!("", "muted"));
           // boolean(node, expanded_name!("", "playsinline"));
         }
+        expanded_name!(svg "svg") => {
+          remove_whitespace(node);
+          let node = crate::oxvg::OxvgNode { node, arena };
+          let jobs = oxvg_optimiser::Jobs::<crate::oxvg::OxvgNode> {
+            // These defaults can break CSS selectors.
+            convert_shape_to_path: None,
+            // Additional defaults to preserve accessibility information.
+            remove_title: None,
+            remove_desc: None,
+            remove_unknowns_and_defaults: Some(RemoveUnknownsAndDefaults {
+              keep_aria_attrs: true,
+              keep_role_attr: true,
+              ..Default::default()
+            }),
+            // Do not minify ids or remove unreferenced elements in
+            // inline SVGs because they could actually be referenced
+            // by a separate inline SVG.
+            cleanup_ids: None,
+            remove_hidden_elems: None,
+            ..Default::default()
+          };
+          match jobs.run(&node, &oxvg_ast::visitor::Info::default()) {
+            Err(_err) => {}
+            Ok(()) => {}
+          }
+        }
         _ => {
-          if name.ns == ns!(svg) {
-            // let jobs = oxvg_optimiser::Jobs::<Ref<'_>>::default();
-            // jobs.run(node, &oxvg_ast::visitor::Info::default());
-            remove_text_nodes(node);
+          if name.ns == ns!(svg)
+            && !matches!(
+              name.local,
+              local_name!("text")
+                | local_name!("textPath")
+                | local_name!("tspan")
+                | local_name!("script")
+                | local_name!("style")
+            )
+          {
+            remove_whitespace(node);
           }
         }
       }
@@ -461,13 +506,26 @@ fn boolean<'arena>(node: Ref<'arena>, attr: ExpandedName) {
   }
 }
 
-fn remove_text_nodes<'arena>(node: Ref<'arena>) {
+fn remove_whitespace<'arena>(node: Ref<'arena>) {
   let mut child = node.first_child.get();
   while let Some(c) = child {
     child = c.next_sibling.get();
     if let NodeData::Text { contents } = &c.data {
-      // let trimmed = contents
-      c.detach();
+      let text = contents.borrow();
+      let trimmed = text.trim();
+      if trimmed.is_empty() {
+        c.detach();
+      } else {
+        let mut result = StrTendril::with_capacity(trimmed.len() as u32);
+        for word in trimmed.split_whitespace() {
+          if !result.is_empty() {
+            result.push_char(' ');
+          }
+          result.push_slice(word);
+        }
+        drop(text);
+        *contents.borrow_mut() = result;
+      }
     }
   }
 }
@@ -487,10 +545,6 @@ mod tests {
       .one(input.as_bytes());
 
     optimize(&arena, dom);
-
-    // let mut vec = Vec::new();
-    // serialize(&mut vec, dom, SerializeOpts::default()).expect("Serialize error");
-    // assert_eq!(std::str::from_utf8(&vec).unwrap(), expected);
 
     let arena = Arena::new();
     let expected = parse_document(Sink::new(&arena), ParseOpts::default())
@@ -559,5 +613,31 @@ mod tests {
       "<!--[if IE 8]><link href='ie8only.css' rel='stylesheet'><![endif]-->",
     );
     test("<div class='' style=''>Test</div>", "<div>Test</div>");
+  }
+
+  #[test]
+  fn test_whitespace() {
+    // Remove whitespace in the html and head elements.
+    // Extra lines at the end are due to the parser adding whitespace outside the body/html to the body.
+    test(
+      r#"<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Test</title>
+  </head>
+  <body>
+    <p>Test</p>
+    <p>Foo</p>
+  </body>
+</html>
+"#,
+      r#"<!doctype html><html><head><title>Test</title></head><body>
+    <p>Test</p>
+    <p>Foo</p>
+  
+
+</body></html>"#,
+    );
   }
 }

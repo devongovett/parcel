@@ -86,8 +86,8 @@ pub struct Asset {
 
 #[derive(Serialize)]
 pub struct Error {
-  message: String,
-  line: u64,
+  pub message: String,
+  pub line: u64,
 }
 
 pub fn collect_dependencies<'arena>(
@@ -659,7 +659,9 @@ impl<'arena> DependencyCollector<'arena> {
         if !res.is_empty() {
           res.push_str(", ");
         }
-        write!(&mut res, "{}", img);
+        if write!(&mut res, "{}", img).is_err() {
+          return;
+        }
       }
 
       node.set_attribute(name, &res);
