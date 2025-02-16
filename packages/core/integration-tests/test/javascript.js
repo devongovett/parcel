@@ -2755,7 +2755,10 @@ describe('javascript', function () {
     );
 
     let res = await run(b);
-    assert.equal(res.default, '<html><head></head><body><p>test</p>\n</body></html>');
+    assert.equal(
+      res.default,
+      '<html><head></head><body><p>test</p>\n</body></html>',
+    );
   });
 
   it('should inline an HTML bundle and inline scripts with `bundle-text`', async () => {
