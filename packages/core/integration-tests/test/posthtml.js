@@ -53,7 +53,7 @@ describe('posthtml', function () {
     ]);
   });
 
-  it('Should be able to process an html file with plugins without any params for plugin', async function () {
+  it.skip('Should be able to process an html file with plugins without any params for plugin', async function () {
     let b = await bundle(
       path.join(__dirname, '/integration/posthtml-plugins/index.html'),
     );

@@ -356,10 +356,12 @@ impl<'arena> DependencyCollector<'arena> {
 
           let code = node.text_content();
 
-          if source_type == SourceType::Module && self.scope_hoist && self.supports_esm && !is_svg {
-            output_format = OutputFormat::Esmodule;
-          } else {
-            node.remove_attribute(expanded_name!("", "type"));
+          if source_type == SourceType::Module {
+            if self.scope_hoist && self.supports_esm && !is_svg {
+              output_format = OutputFormat::Esmodule;
+            } else {
+              node.remove_attribute(expanded_name!("", "type"));
+            }
           }
 
           let data_parcel_key = ExpandedName {

@@ -892,7 +892,7 @@ describe('monorepos', function () {
     try {
       let b = await bundle(fixture);
 
-      assert.equal((await run(b)).default, '<svg></svg>\n');
+      assert.equal((await run(b)).default, '<svg></svg>');
     } finally {
       inputFS.chdir(oldcwd);
     }

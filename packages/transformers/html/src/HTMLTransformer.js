@@ -8,9 +8,7 @@ const TYPES = {
   'application/javascript': 'js',
   'application/ecmascript': 'js',
   'text/javascript': 'js',
-  'application/json': false,
   'application/ld+json': 'jsonld',
-  'text/html': false,
   module: 'js',
 };
 
