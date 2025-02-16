@@ -73,6 +73,8 @@ export default (new Transformer({
         type: TYPES[a.type] || a.type.split('/')[1] || a.type,
         content: a.content,
         uniqueKey: a.key,
+        bundleBehavior:
+          a.bundleBehavior === 'none' ? undefined : a.bundleBehavior,
         env: convertEnv(asset, a),
         meta: {
           type: a.isAttr ? 'attr' : 'tag',

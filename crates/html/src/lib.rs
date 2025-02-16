@@ -18,7 +18,7 @@ mod package;
 mod serialize;
 mod srcset;
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Default, Clone)]
 pub struct SerializableTendril(StrTendril);
 
 impl serde::Serialize for SerializableTendril {
@@ -209,7 +209,7 @@ pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
 
   optimize(&arena, dom);
 
-  let mut vec = Vec::new();
+  let mut vec: Vec<u8> = Vec::new();
   serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default()).map_err(|_| ())?;
 
   Ok(PackageResult { code: vec })

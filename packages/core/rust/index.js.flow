@@ -118,6 +118,7 @@ export interface HtmlAsset {
   isAttr: boolean,
   outputFormat: 'none' | 'global' | 'esmodule',
   sourceType: 'none' | 'module' | 'script',
+  bundleBehavior: 'none' | 'isolated' | 'inline',
   line: number
 }
 

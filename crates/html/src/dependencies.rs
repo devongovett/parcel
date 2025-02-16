@@ -81,6 +81,7 @@ pub struct Asset {
   pub is_attr: bool,
   pub output_format: OutputFormat,
   pub source_type: SourceType,
+  pub bundle_behavior: BundleBehavior,
   pub line: u64,
 }
 
@@ -121,6 +122,19 @@ pub fn collect_dependencies<'arena>(
     _ => {}
   });
 
+  for asset in &collector.assets {
+    collector.deps.push(Dependency {
+      href: asset.key.clone(),
+      needs_stable_name: false,
+      priority: Priority::Sync,
+      output_format: asset.output_format,
+      source_type: asset.source_type,
+      bundle_behavior: BundleBehavior::None,
+      placeholder: asset.key.clone(),
+      line: asset.line,
+    });
+  }
+
   if hmr && !collector.has_module_scripts {
     if let Some(body) = dom.find(expanded_name!(html "body")) {
       let key: StrTendril = "hmr.js".into();
@@ -132,6 +146,7 @@ pub fn collect_dependencies<'arena>(
         is_attr: false,
         output_format: OutputFormat::None,
         source_type: SourceType::None,
+        bundle_behavior: BundleBehavior::None,
         line: 0,
       });
 
@@ -369,17 +384,7 @@ impl<'arena> DependencyCollector<'arena> {
             is_attr: false,
             source_type,
             output_format,
-            line: node.line,
-          });
-
-          self.deps.push(Dependency {
-            href: SerializableTendril(key.clone()),
-            needs_stable_name: false,
-            priority: Priority::Sync,
-            output_format,
-            source_type,
             bundle_behavior: BundleBehavior::Inline,
-            placeholder: SerializableTendril(key),
             line: node.line,
           });
         }
@@ -415,17 +420,7 @@ impl<'arena> DependencyCollector<'arena> {
           is_attr: false,
           output_format: OutputFormat::None,
           source_type: SourceType::None,
-          line: node.line,
-        });
-
-        self.deps.push(Dependency {
-          href: SerializableTendril(key.clone()),
-          needs_stable_name: false,
-          priority: Priority::Sync,
-          output_format: OutputFormat::None,
-          source_type: SourceType::None,
           bundle_behavior: BundleBehavior::Inline,
-          placeholder: SerializableTendril(key),
           line: node.line,
         });
       }
@@ -559,17 +554,6 @@ impl<'arena> DependencyCollector<'arena> {
       let key: StrTendril = format!("{:x}", hash.finish()).into();
       node.set_attribute(expanded_name!("", "style"), &key);
 
-      self.deps.push(Dependency {
-        href: SerializableTendril(key.clone()),
-        needs_stable_name: false,
-        priority: Priority::Sync,
-        output_format: OutputFormat::None,
-        source_type: SourceType::None,
-        bundle_behavior: BundleBehavior::Inline,
-        placeholder: SerializableTendril(key.clone()),
-        line: node.line,
-      });
-
       self.assets.push(Asset {
         ty: SerializableTendril("text/css".into()),
         content: style.to_string().into_bytes(),
@@ -577,6 +561,7 @@ impl<'arena> DependencyCollector<'arena> {
         is_attr: true,
         output_format: OutputFormat::None,
         source_type: SourceType::None,
+        bundle_behavior: BundleBehavior::Inline,
         line: node.line,
       });
     }
