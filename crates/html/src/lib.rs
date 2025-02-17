@@ -197,6 +197,16 @@ pub fn package_svg(options: PackageOptions) -> Result<PackageResult, ()> {
 pub struct OptimizeOptions {
   #[serde(with = "serde_bytes")]
   pub code: Vec<u8>,
+  #[serde(default, deserialize_with = "ok_or_default")]
+  pub config: optimize::OptimizeOptions,
+}
+
+fn ok_or_default<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+  T: serde::Deserialize<'de> + Default,
+  D: serde::Deserializer<'de>,
+{
+  Ok(T::deserialize(deserializer).unwrap_or_default())
 }
 
 pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
@@ -205,7 +215,7 @@ pub fn optimize_html(options: OptimizeOptions) -> Result<PackageResult, ()> {
     .from_utf8()
     .one(options.code.as_slice());
 
-  optimize(&arena, dom);
+  optimize(&arena, dom, options.config);
 
   let mut vec: Vec<u8> = Vec::new();
   serialize::serialize(&mut vec, dom, serialize::SerializeOpts::default()).map_err(|_| ())?;
