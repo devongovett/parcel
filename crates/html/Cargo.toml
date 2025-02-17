@@ -1,0 +1,18 @@
+[package]
+authors = ["Devon Govett <devongovett@gmail.com>"]
+name = "parcel-html"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+html5ever = { git = "https://github.com/devongovett/html5ever.git", branch = "xmlns-attrs" }
+serde = { version = "1.0.123", features = ["derive"] }
+serde_bytes = "0.11.5"
+serde_json = "1.0.91"
+typed-arena = "2.0.2"
+xml5ever = { git = "https://github.com/devongovett/html5ever.git", branch = "xmlns-attrs" }
+cssparser = "0.34.0"
+oxvg_ast = { git = "https://github.com/devongovett/oxvg.git", branch = "parcel" }
+oxvg_optimiser = { git = "https://github.com/devongovett/oxvg.git", branch = "parcel" }
+anyhow = "*"
+selectors = "0.26"

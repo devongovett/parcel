@@ -19,7 +19,7 @@ use crate::{
 
 bitflags! {
   /// A package.json top-level entry field.
-  #[derive(serde::Serialize)]
+  #[derive(Clone, Copy)]
   pub struct Fields: u8 {
     /// The "main" field.
     const MAIN = 1 << 0;
@@ -35,6 +35,15 @@ bitflags! {
     const TSCONFIG = 1 << 5;
     /// The "types" field.
     const TYPES = 1 << 6;
+  }
+}
+
+impl serde::Serialize for Fields {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    self.bits().serialize(serializer)
   }
 }
 
@@ -186,6 +195,7 @@ impl ExportsField {
 
 bitflags! {
   /// A common package.json "exports" field.
+  #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
   pub struct ExportsCondition: u32 {
     /// The "import" condition. True when the package was referenced using the ESM `import` syntax.
     const IMPORT = 1 << 0;

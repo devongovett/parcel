@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 napi-derive = "2.16.3"
 parcel-js-swc-core = { path = "../../packages/transformers/js/core" }
 parcel-resolver = { path = "../parcel-resolver" }
+parcel-html = { path = "../html" }
 dashmap = "6.1.0"
 xxhash-rust = { version = "0.8.2", features = ["xxh3"] }
 

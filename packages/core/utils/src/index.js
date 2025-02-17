@@ -65,6 +65,7 @@ export {normalizePath, normalizeSeparators, relativePath} from './path';
 export {
   replaceURLReferences,
   replaceInlineReferences,
+  getURLReplacement,
 } from './replaceBundleReferences';
 export {
   measureStreamLength,

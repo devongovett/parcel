@@ -2689,7 +2689,6 @@ describe('javascript', function () {
     );
 
     let cssBundleContent = (await run(b)).default;
-
     assert(
       cssBundleContent.startsWith(
         `body {
@@ -2697,7 +2696,7 @@ describe('javascript', function () {
 }
 
 .svg-img {
-  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E%0A");
+  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E");
 }`,
       ),
     );
@@ -2742,7 +2741,7 @@ describe('javascript', function () {
 }
 
 .svg-img {
-  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E%0A");
+  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E");
 }`,
       ),
     );
@@ -2756,7 +2755,10 @@ describe('javascript', function () {
     );
 
     let res = await run(b);
-    assert.equal(res.default, '<p>test</p>\n');
+    assert.equal(
+      res.default,
+      '<html><head></head><body><p>test</p>\n</body></html>',
+    );
   });
 
   it('should inline an HTML bundle and inline scripts with `bundle-text`', async () => {
@@ -2767,7 +2769,7 @@ describe('javascript', function () {
     let res = await run(b);
     assert.equal(
       res.default,
-      `<p>test</p>\n<script>console.log('hi');\n\n</script>\n`,
+      `<html><head></head><body><p>test</p>\n<script>console.log('hi');\n\n</script>\n</body></html>`,
     );
   });
 
@@ -2830,7 +2832,7 @@ describe('javascript', function () {
 }
 
 .svg-img {
-  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E%0A");
+  background-image: url("data:image/svg+xml,%3Csvg%3E%0A%0A%3C%2Fsvg%3E");
 }`,
       ),
     );
@@ -2843,7 +2845,7 @@ describe('javascript', function () {
 
     assert.equal(
       (await run(b)).default,
-      'data:image/svg+xml,%3Csvg%20width%3D%22120%22%20height%3D%22120%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%20%20%3Cfilter%20id%3D%22blur-_.%21~%2a%22%3E%0A%20%20%20%20%3CfeGaussianBlur%20stdDeviation%3D%225%22%3E%3C%2FfeGaussianBlur%3E%0A%20%20%3C%2Ffilter%3E%0A%20%20%3Ccircle%20cx%3D%2260%22%20cy%3D%2260%22%20r%3D%2250%22%20fill%3D%22green%22%20filter%3D%22url%28%27%23blur-_.%21~%2a%27%29%22%3E%3C%2Fcircle%3E%0A%3C%2Fsvg%3E%0A',
+      'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%3E%0A%20%20%3Cfilter%20id%3D%22blur-_.%21~%2a%22%3E%0A%20%20%20%20%3CfeGaussianBlur%20stdDeviation%3D%225%22%3E%3C%2FfeGaussianBlur%3E%0A%20%20%3C%2Ffilter%3E%0A%20%20%3Ccircle%20cx%3D%2260%22%20cy%3D%2260%22%20r%3D%2250%22%20fill%3D%22green%22%20filter%3D%22url%28%23blur-_.%21~%2a%29%22%3E%3C%2Fcircle%3E%0A%3C%2Fsvg%3E',
     );
   });
 

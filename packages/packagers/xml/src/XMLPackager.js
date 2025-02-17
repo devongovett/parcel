@@ -51,7 +51,7 @@ export default (new Packager({
         if (type === 'xhtml' || type === 'xml') {
           let parsed = new DOMParser().parseFromString(
             contents,
-            'application/xml',
+            type === 'xhtml' ? 'text/html' : 'application/xml',
           );
           if (parsed.documentElement != null) {
             let parent = element.parentNode;

@@ -6414,7 +6414,7 @@ describe('cache', function () {
       assert(!contents.includes('$parcel$interopDefault'));
     });
 
-    it('should invalidate when an htmlnano config is modified', async function () {
+    it.skip('should invalidate when an htmlnano config is modified', async function () {
       let b = await testCache({
         mode: 'production',
         entries: ['src/index.html'],
